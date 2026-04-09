@@ -17,6 +17,7 @@ import { supabase } from "@/lib/supabase";
 import { type RoleId } from "@/lib/roles";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import AIPanel from "@/components/AIPanel";
+import AddressSearch from "@/components/AddressSearch";
 
 const TABS = [
   { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -76,6 +77,7 @@ export default function Workspace() {
   function renderDashboard() {
     return (
       <div className="space-y-6">
+        <AddressSearch />
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
             { label: "Properties", value: properties.length, color: "text-blue-400" },
