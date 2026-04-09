@@ -163,12 +163,37 @@ function PropertyContent() {
           </div>
         )}
 
-        <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
-          <h3 className="font-semibold mb-3">All Property Data</h3>
-          <pre className="text-xs text-gray-400 overflow-auto max-h-96 bg-black/20 rounded-lg p-4">
-            {JSON.stringify({ ...property, details, rooms, systems }, null, 2)}
-          </pre>
-        </div>
+        {/* Additional details */}
+        {details && (
+          <div className="bg-[var(--card)] border border-[var(--border)] rounded-xl p-5">
+            <h3 className="font-semibold mb-3">Property Details</h3>
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {Object.entries(details)
+                .filter(
+                  ([k, v]) =>
+                    v !== null &&
+                    v !== "" &&
+                    !k.endsWith("_id") &&
+                    k !== "id" &&
+                    k !== "created_at" &&
+                    k !== "updated_at" &&
+                    k !== "property_id"
+                )
+                .map(([k, v]) => (
+                  <div key={k} className="bg-white/5 rounded-lg p-3">
+                    <p className="text-[10px] text-gray-500 uppercase tracking-wider font-mono mb-1">
+                      {k.replace(/_/g, " ")}
+                    </p>
+                    <p className="text-sm font-mono text-gray-200">
+                      {typeof v === "number" && k.includes("value")
+                        ? `$${v.toLocaleString()}`
+                        : String(v)}
+                    </p>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
       </div>
       <AIPanel />
     </div>
