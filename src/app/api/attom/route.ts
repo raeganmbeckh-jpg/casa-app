@@ -11,30 +11,40 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "ATTOM API key not configured" }, { status: 500 });
   }
 
-  try {
-    // Split "2167 Villa Sonoma Glen, Escondido, CA 92029" into
-    // address1 = "2167 Villa Sonoma Glen"
-    // address2 = "Escondido, CA 92029"
-    const commaIdx = address.indexOf(",");
-    let address1 = address;
-    let address2 = "";
-    if (commaIdx !== -1) {
-      address1 = address.slice(0, commaIdx).trim();
-      address2 = address.slice(commaIdx + 1).trim();
-    }
+  const commaIdx = address.indexOf(",");
+  let address1 = address;
+  let address2 = "";
+  if (commaIdx !== -1) {
+    address1 = address.slice(0, commaIdx).trim();
+    address2 = address.slice(commaIdx + 1).trim();
+  }
 
-    const params = new URLSearchParams({ address1, address2 });
-    const res = await fetch(
-      `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/address?${params}`,
-      {
-        headers: {
-          Accept: "application/json",
-          apikey: apiKey,
-        },
-      }
-    );
-    const data = await res.json();
-    return NextResponse.json(data);
+  const params = new URLSearchParams({ address1, address2 });
+  const headers = { Accept: "application/json", apikey: apiKey };
+
+  try {
+    // Fetch both basic and detailed profile in parallel
+    const [basicRes, detailRes] = await Promise.all([
+      fetch(
+        `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/address?${params}`,
+        { headers }
+      ),
+      fetch(
+        `https://api.gateway.attomdata.com/propertyapi/v1.0.0/property/detail?${params}`,
+        { headers }
+      ),
+    ]);
+
+    const [basic, detail] = await Promise.all([
+      basicRes.json(),
+      detailRes.json(),
+    ]);
+
+    return NextResponse.json({
+      basic: basic?.property?.[0] || null,
+      detail: detail?.property?.[0] || null,
+      status: basic?.status || detail?.status,
+    });
   } catch {
     return NextResponse.json(
       { error: "Failed to fetch from ATTOM API" },
