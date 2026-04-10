@@ -36,7 +36,7 @@ export default function AIPanel() {
         style={{ backgroundColor: "#F9D96A", color: "#1A1A1A", animation: "breathe 3s ease-in-out infinite" }}
       >
         <style jsx global>{`
-          @keyframes breathe { 0%, 100% { box-shadow: 0 4px 20px rgba(249,217,106,0.3); } 50% { box-shadow: 0 4px 30px rgba(249,217,106,0.5); } }
+          @keyframes breathe { 0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(249,217,106,0.3); } 50% { transform: scale(1.05); box-shadow: 0 8px 35px rgba(249,217,106,0.55); } }
         `}</style>
         <Bot className="w-6 h-6" />
       </button>

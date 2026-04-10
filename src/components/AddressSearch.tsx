@@ -137,8 +137,8 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse }: {
 function Hdr({ icon: Icon, label, color }: { icon: any; label: string; color: string }) {
   return (
     <div className="flex items-center gap-2 pb-2 mb-1" style={{ borderBottom: `1px solid ${BORDER}` }}>
-      <Icon className="w-3.5 h-3.5" style={{ color }} />
-      <span className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color, fontFamily: "var(--font-heading)" }}>{label}</span>
+      <Icon className="w-4 h-4" style={{ color }} />
+      <span style={{ color, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16 }}>{label}</span>
     </div>
   );
 }
@@ -204,7 +204,7 @@ function SystemHealth({ detail }: { detail: any }) {
                     backgroundColor: `${statusColor}20`,
                     color: statusColor,
                     fontFamily: "var(--font-geist-mono)",
-                    animation: critical ? 'pulse-red 2s infinite' : undefined,
+                    animation: critical ? 'pulse-red 1.5s ease-in-out infinite' : undefined,
                   }}
                 >
                   {statusLabel}
@@ -599,7 +599,7 @@ export default function AddressSearch({
       <style jsx global>{`
         @keyframes pulse-red {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.7; }
+          50% { opacity: 0.6; }
         }
         @keyframes confidence-pulse {
           0% { transform: scale(1); }
@@ -715,7 +715,7 @@ export default function AddressSearch({
                 <div className="flex items-center gap-3 min-w-0">
                   <MapPin className="w-5 h-5 shrink-0" style={{ color: GOLD }} />
                   <div className="min-w-0">
-                    <h2 className="text-base md:text-lg font-bold truncate" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-heading)" }}>{fullAddress}</h2>
+                    <h2 className="truncate" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 28 }}>{fullAddress}</h2>
                     <div style={{ width: 60, height: 3, backgroundColor: '#F9D96A', borderRadius: 2, marginTop: 8 }} />
                   </div>
                   {propType && (

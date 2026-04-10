@@ -163,8 +163,7 @@ function SectionCard({
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4" style={{ color: '#E8C84A' }} />
           <span
-            className="text-[10px] font-bold uppercase tracking-[0.2em]"
-            style={{ color: '#E8C84A', fontFamily: 'var(--font-heading)' }}
+            style={{ color: '#E8C84A', fontFamily: 'var(--font-heading)', fontWeight: 600, fontSize: 18 }}
           >
             {title}
           </span>
@@ -248,7 +247,7 @@ function CountUp({ value, prefix = "", suffix = "" }: { value: number; prefix?: 
   const [display, setDisplay] = useState(0);
   useEffect(() => {
     if (!value) { setDisplay(0); return; }
-    const dur = 1200;
+    const dur = 1500;
     const start = performance.now();
     let frame: number;
     function tick(now: number) {
@@ -575,7 +574,7 @@ export default function Workspace() {
                     onClick={() => router.push(`/property?id=${p.id}`)}
                     className="p-4 cursor-pointer group"
                     style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16, transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.18)'; e.currentTarget.style.borderColor = '#F9D96A'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.18)'; e.currentTarget.style.borderColor = '#F9D96A'; e.currentTarget.style.transform = 'translateY(-6px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = '#EEEEEE'; e.currentTarget.style.transform = 'translateY(0)'; }}
                   >
                     <div className="flex items-start justify-between mb-3">
@@ -668,7 +667,7 @@ export default function Workspace() {
               onClick={() => router.push(`/property?id=${p.id}`)}
               className="p-4 cursor-pointer group"
               style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16, transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.18)'; e.currentTarget.style.borderColor = '#F9D96A'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.18)'; e.currentTarget.style.borderColor = '#F9D96A'; e.currentTarget.style.transform = 'translateY(-6px)'; }}
               onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = '#EEEEEE'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               <div className="flex items-start justify-between mb-2">
@@ -1539,16 +1538,16 @@ export default function Workspace() {
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <h1
-              className="text-lg tracking-tight cursor-pointer transition-colors"
-              style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)', fontWeight: 700 }}
+              className="tracking-tight cursor-pointer transition-colors"
+              style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)', fontWeight: 700, fontSize: 32 }}
               onClick={() => router.push("/")}
               onMouseEnter={(e) => { e.currentTarget.style.color = '#E8C84A'; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = '#1A1A1A'; }}
             >
               CASA
             </h1>
-            <div className="w-px h-5" style={{ backgroundColor: '#F0F0F0' }} />
-            <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: '#6B6B6B' }}>
+            <div className="w-px h-7" style={{ backgroundColor: '#EEEEEE' }} />
+            <span className="text-xs uppercase tracking-widest" style={{ color: '#9B9B9B', fontFamily: 'var(--font-inter)' }}>
               Real Estate Intelligence
             </span>
           </div>
@@ -1601,6 +1600,11 @@ export default function Workspace() {
 
       <style jsx global>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
+        @keyframes breathe { 0%, 100% { transform: scale(1); box-shadow: 0 4px 20px rgba(249,217,106,0.3); } 50% { transform: scale(1.05); box-shadow: 0 8px 35px rgba(249,217,106,0.55); } }
+        .casa-card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+        .casa-card-hover:hover { transform: translateY(-6px); box-shadow: 0 12px 40px rgba(249,217,106,0.2) !important; }
+        .casa-pulse { animation: pulse 1.5s ease-in-out infinite; }
       `}</style>
     </div>
   );
