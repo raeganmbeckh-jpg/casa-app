@@ -24,6 +24,7 @@ import {
   Clock,
   TrendingUp,
   Printer,
+  Search,
 } from "lucide-react";
 import { type RoleId } from "@/lib/roles";
 import RoleSwitcher from "@/components/RoleSwitcher";
@@ -156,7 +157,7 @@ function SectionCard({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="rounded-lg overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+    <div className="overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F0F0F0', backgroundColor: '#FFFFFF' }}>
         <div className="flex items-center gap-2">
           <Icon className="w-4 h-4" style={{ color: '#E8C84A' }} />
@@ -238,6 +239,27 @@ function SelectField({
       </select>
     </div>
   );
+}
+
+/* ── CountUp Animation ────────────────────────────────────────── */
+
+function CountUp({ value, prefix = "", suffix = "" }: { value: number; prefix?: string; suffix?: string }) {
+  const [display, setDisplay] = useState(0);
+  useEffect(() => {
+    if (!value) { setDisplay(0); return; }
+    const dur = 1200;
+    const start = performance.now();
+    let frame: number;
+    function tick(now: number) {
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setDisplay(Math.round(value * ease));
+      if (p < 1) frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [value]);
+  return <>{prefix}{display.toLocaleString()}{suffix}</>;
 }
 
 /* ── Main Component ────────────────────────────────────────────── */
@@ -516,15 +538,17 @@ export default function Workspace() {
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { label: "Portfolio Value", value: usd(totalValue), color: '#1A1A1A', sub: `${properties.length} properties` },
-            { label: "Monthly Rent", value: usd(totalRent), color: '#16a34a', sub: `${usd(totalRent * 12)}/yr` },
-            { label: "Occupancy", value: properties.length ? `${occupancyPct}%` : "\u2014", color: '#2563eb', sub: `${occupiedCount}/${properties.length} occupied` },
-            { label: "Avg Cap Rate", value: avgCapRate ? pct(avgCapRate) : "\u2014", color: '#9333ea', sub: "weighted avg" },
-            { label: "Open Work Orders", value: String(openWO), color: openWO > 0 ? '#d97706' : '#6B6B6B', sub: "maintenance" },
+            { label: "Portfolio Value", numValue: totalValue, prefix: "$", suffix: "", color: '#1A1A1A', sub: `${properties.length} properties` },
+            { label: "Monthly Rent", numValue: totalRent, prefix: "$", suffix: "", color: '#16a34a', sub: `${usd(totalRent * 12)}/yr` },
+            { label: "Occupancy", numValue: properties.length ? occupancyPct : 0, prefix: "", suffix: "%", color: '#2563eb', sub: `${occupiedCount}/${properties.length} occupied` },
+            { label: "Avg Cap Rate", numValue: avgCapRate ? Math.round(avgCapRate * 10) / 10 : 0, prefix: "", suffix: "%", color: '#9333ea', sub: "weighted avg" },
+            { label: "Open Work Orders", numValue: openWO, prefix: "", suffix: "", color: openWO > 0 ? '#d97706' : '#6B6B6B', sub: "maintenance" },
           ].map((kpi) => (
-            <div key={kpi.label} className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div key={kpi.label} className="p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
               <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: '#6B6B6B' }}>{kpi.label}</p>
-              <p className="text-2xl font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</p>
+              <p className="text-3xl" style={{ color: kpi.color, fontFamily: 'var(--font-heading)', fontWeight: 700 }}>
+                {kpi.numValue ? <CountUp value={kpi.numValue} prefix={kpi.prefix} suffix={kpi.suffix} /> : "\u2014"}
+              </p>
               <p className="text-[10px] font-mono mt-0.5" style={{ color: '#6B6B6B' }}>{kpi.sub}</p>
             </div>
           ))}
@@ -548,10 +572,10 @@ export default function Workspace() {
                   <div
                     key={p.id}
                     onClick={() => router.push(`/property?id=${p.id}`)}
-                    className="rounded-lg p-4 cursor-pointer transition-all group"
-                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.22)'; e.currentTarget.style.borderColor = '#F9D96A'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#F0F0F0'; }}
+                    className="p-4 cursor-pointer group"
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16, transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.18)'; e.currentTarget.style.borderColor = '#F9D96A'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = '#EEEEEE'; e.currentTarget.style.transform = 'translateY(0)'; }}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
@@ -592,10 +616,13 @@ export default function Workspace() {
             </div>
           </div>
         ) : (
-          <div className="rounded-lg p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
-            <Building2 className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
-            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>
-              Search any US address above to start building your portfolio
+          <div className="p-16 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
+            <Search className="mx-auto mb-4" style={{ width: 48, height: 48, color: '#EEEEEE' }} />
+            <p className="text-xl mb-2" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)', fontWeight: 700 }}>
+              Search any address above to begin
+            </p>
+            <p className="text-sm" style={{ color: '#6B6B6B', fontFamily: 'var(--font-inter)' }}>
+              Add properties to your portfolio to see analytics, manage tenants, and more.
             </p>
           </div>
         )}
@@ -638,10 +665,10 @@ export default function Workspace() {
             <div
               key={p.id}
               onClick={() => router.push(`/property?id=${p.id}`)}
-              className="rounded-lg p-4 cursor-pointer transition-all group"
-              style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
-              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.22)'; e.currentTarget.style.borderColor = '#F9D96A'; }}
-              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#F0F0F0'; }}
+              className="p-4 cursor-pointer group"
+              style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16, transition: 'transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease' }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.18)'; e.currentTarget.style.borderColor = '#F9D96A'; e.currentTarget.style.transform = 'translateY(-4px)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 4px 24px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = '#EEEEEE'; e.currentTarget.style.transform = 'translateY(0)'; }}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
@@ -886,14 +913,16 @@ export default function Workspace() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: "Total Income", value: usd(totalIncome), color: '#16a34a' },
-            { label: "Total Expenses", value: usd(totalExpenses), color: '#dc2626' },
-            { label: "Net Income", value: usd(totalIncome - totalExpenses), color: totalIncome - totalExpenses >= 0 ? '#16a34a' : '#dc2626' },
-            { label: "Transactions", value: String(transactions.length), color: '#2563eb' },
+            { label: "Total Income", numValue: totalIncome, prefix: "$", color: '#16a34a' },
+            { label: "Total Expenses", numValue: totalExpenses, prefix: "$", color: '#dc2626' },
+            { label: "Net Income", numValue: Math.abs(totalIncome - totalExpenses), prefix: totalIncome - totalExpenses >= 0 ? "$" : "-$", color: totalIncome - totalExpenses >= 0 ? '#16a34a' : '#dc2626' },
+            { label: "Transactions", numValue: transactions.length, prefix: "", color: '#2563eb' },
           ].map((c) => (
-            <div key={c.label} className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <div key={c.label} className="p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
               <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: '#6B6B6B' }}>{c.label}</p>
-              <p className="text-xl font-bold font-mono" style={{ color: c.color }}>{c.value}</p>
+              <p className="text-2xl" style={{ color: c.color, fontFamily: 'var(--font-heading)', fontWeight: 700 }}>
+                {c.numValue ? <CountUp value={c.numValue} prefix={c.prefix} /> : `${c.prefix}0`}
+              </p>
             </div>
           ))}
         </div>
@@ -1064,7 +1093,7 @@ export default function Workspace() {
         </div>
 
         {showWOForm && (
-          <div className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div className="p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
               <SelectField label="Property" value={woForm.property_id} onChange={(v) => setWoForm({ ...woForm, property_id: v })} options={propOptions} />
               <InputField label="Title" value={woForm.title} onChange={(v) => setWoForm({ ...woForm, title: v })} placeholder="Fix leaking faucet" />
@@ -1092,14 +1121,14 @@ export default function Workspace() {
         )}
 
         {filtered.length === 0 ? (
-          <div className="rounded-lg p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div className="p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
             <Wrench className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
             <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No work orders{woFilter !== "all" ? ` with status "${woFilter}"` : ""}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map((w) => (
-              <div key={w.id} className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <div key={w.id} className="p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
                     <p className="font-mono text-sm font-bold" style={{ color: '#1A1A1A' }}>{w.title}</p>
@@ -1302,7 +1331,7 @@ export default function Workspace() {
             {reports.map((r) => {
               const Icon = r.icon;
               return (
-                <div key={r.id} className="rounded-lg p-5" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+                <div key={r.id} className="p-5" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className="w-5 h-5" style={{ color: '#E8C84A' }} />
                     <h3 className="text-sm font-bold" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>{r.title}</h3>
@@ -1439,7 +1468,7 @@ export default function Workspace() {
         </div>
 
         {visible.length === 0 ? (
-          <div className="rounded-lg p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+          <div className="p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}>
             <CheckCircle2 className="w-10 h-10 text-emerald-300 mx-auto mb-3" />
             <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No alerts {"\u2014"} your portfolio is in good shape</p>
           </div>
@@ -1448,8 +1477,8 @@ export default function Workspace() {
             {visible.map((a) => (
               <div
                 key={a.id}
-                className="rounded-lg flex items-center gap-3 px-4 py-3"
-                style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                className="flex items-center gap-3 px-4 py-3"
+                style={{ backgroundColor: '#FFFFFF', border: '1px solid #EEEEEE', boxShadow: '0 4px 24px rgba(0,0,0,0.06)', borderRadius: 16 }}
               >
                 <AlertTriangle
                   className={`w-4 h-4 shrink-0 ${
@@ -1526,7 +1555,7 @@ export default function Workspace() {
 
       <div className="max-w-7xl mx-auto px-6 py-4">
         {/* Compact tab nav */}
-        <div className="flex gap-1 overflow-x-auto pb-3 mb-4">
+        <div className="flex gap-1 overflow-x-auto pb-3 mb-4" style={{ borderBottom: '1px solid #F0F0F0' }}>
           {TABS.map((t) => {
             const Icon = t.icon;
             const alertCount = t.id === "alerts" ? activeAlerts.length : 0;
@@ -1535,14 +1564,14 @@ export default function Workspace() {
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all"
+                className="flex items-center gap-1.5 px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all"
                 style={
                   isActive
-                    ? { backgroundColor: 'rgba(249,217,106,0.13)', color: '#E8C84A', border: '1px solid rgba(249,217,106,0.19)', fontFamily: 'var(--font-inter)' }
-                    : { color: '#6B6B6B', border: '1px solid transparent', fontFamily: 'var(--font-inter)' }
+                    ? { borderBottom: '2px solid #F9D96A', color: '#E8C84A', fontFamily: 'var(--font-inter)' }
+                    : { borderBottom: '2px solid transparent', color: '#6B6B6B', fontFamily: 'var(--font-inter)' }
                 }
-                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.color = '#1A1A1A'; e.currentTarget.style.backgroundColor = '#FAFAFA'; } }}
-                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.color = '#6B6B6B'; e.currentTarget.style.backgroundColor = 'transparent'; } }}
+                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.color = '#1A1A1A'; } }}
+                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.color = '#6B6B6B'; } }}
               >
                 <Icon className="w-3 h-3" />
                 {t.label}
@@ -1556,11 +1585,17 @@ export default function Workspace() {
           })}
         </div>
 
-        {renderTab()}
+        <div key={tab} style={{ animation: 'fadeIn 0.3s ease' }}>
+          {renderTab()}
+        </div>
       </div>
 
       <AIPanel />
       <RoleSwitcher currentRole={role} />
+
+      <style jsx global>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 }

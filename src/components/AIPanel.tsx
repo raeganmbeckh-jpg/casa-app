@@ -33,8 +33,11 @@ export default function AIPanel() {
       <button
         onClick={() => setOpen(true)}
         className="fixed bottom-16 right-6 p-4 rounded-full transition-all z-50"
-        style={{ backgroundColor: "#F9D96A", color: "#1A1A1A", boxShadow: "0 4px 20px rgba(249,217,106,0.3)" }}
+        style={{ backgroundColor: "#F9D96A", color: "#1A1A1A", animation: "breathe 3s ease-in-out infinite" }}
       >
+        <style jsx global>{`
+          @keyframes breathe { 0%, 100% { box-shadow: 0 4px 20px rgba(249,217,106,0.3); } 50% { box-shadow: 0 4px 30px rgba(249,217,106,0.5); } }
+        `}</style>
         <Bot className="w-6 h-6" />
       </button>
     );
@@ -43,7 +46,7 @@ export default function AIPanel() {
   return (
     <div
       className={`fixed z-50 rounded-2xl flex flex-col transition-all ${expanded ? "inset-4 bottom-16" : "bottom-16 right-6 w-96 h-[500px]"}`}
-      style={{ backgroundColor: "#fff", border: "1px solid #F0F0F0", boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}
+      style={{ backgroundColor: "#fff", border: "1px solid #EEEEEE", borderRadius: 16, boxShadow: "0 20px 60px rgba(0,0,0,0.1)" }}
     >
       <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: "1px solid #F0F0F0" }}>
         <div className="flex items-center gap-2">

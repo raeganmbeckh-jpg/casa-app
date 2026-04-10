@@ -31,43 +31,74 @@ const GOLD = "#E8C84A";
 const ACCENT = "#F9D96A";
 const TEXT_PRIMARY = "#1A1A1A";
 const TEXT_SECONDARY = "#6B6B6B";
-const BORDER = "#F0F0F0";
-const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.04)";
+const BORDER = "#EEEEEE";
+const CARD_SHADOW = "0 4px 24px rgba(0,0,0,0.06)";
 
 /* ═══════════════════════════════════════════════════════════════════
    CONFIDENCE SCORING
    ═══════════════════════════════════════════════════════════════════ */
 
-function conf(value: any): { pct: number; label: string; cls: string } {
+function conf(value: any): { pct: number; label: string; cls: string; color: string } {
   if (value === null || value === undefined || value === "" || value === 0)
-    return { pct: 0, label: "NO DATA", cls: "text-red-500/80 bg-red-500/10" };
+    return { pct: 0, label: "NO DATA", cls: "text-red-500/80 bg-red-500/10", color: "#ef4444" };
   if (typeof value === "string" && value === "Not reported")
-    return { pct: 20, label: "UNVERIFIED", cls: "text-amber-500/80 bg-amber-500/10" };
+    return { pct: 20, label: "UNVERIFIED", cls: "text-amber-500/80 bg-amber-500/10", color: "#f59e0b" };
   if (typeof value === "string" && value.length < 2)
-    return { pct: 40, label: "LOW", cls: "text-amber-500/80 bg-amber-500/10" };
-  return { pct: 95, label: "HIGH", cls: "text-emerald-400/80 bg-emerald-500/10" };
+    return { pct: 40, label: "LOW", cls: "text-amber-500/80 bg-amber-500/10", color: "#f59e0b" };
+  return { pct: 95, label: "HIGH", cls: "text-emerald-400/80 bg-emerald-500/10", color: "#10b981" };
 }
 
-function Badge({ value }: { value: any }) {
+function ConfidenceRing({ value, pulse }: { value: any; pulse: boolean }) {
   const c = conf(value);
+  const radius = 7;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (c.pct / 100) * circumference;
+
   return (
-    <span className={`text-[7px] font-bold px-1.5 py-[2px] rounded ${c.cls} tracking-[0.15em] leading-none`} style={{ fontFamily: "var(--font-geist-mono)" }}>
-      {c.pct}%
+    <span
+      className={pulse ? "confidence-pulse" : ""}
+      style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", width: 20, height: 20, position: "relative" }}
+    >
+      <svg width="20" height="20" viewBox="0 0 20 20" style={{ transform: "rotate(-90deg)" }}>
+        <circle cx="10" cy="10" r={radius} fill="none" stroke={BORDER} strokeWidth="2" />
+        <circle
+          cx="10" cy="10" r={radius} fill="none"
+          stroke={c.color} strokeWidth="2"
+          strokeDasharray={circumference}
+          strokeDashoffset={offset}
+          strokeLinecap="round"
+          style={{ transition: "stroke-dashoffset 0.8s ease" }}
+        />
+      </svg>
+      <span
+        style={{
+          position: "absolute", fontSize: 6, fontWeight: 700, color: c.color,
+          fontFamily: "var(--font-geist-mono)", lineHeight: 1,
+        }}
+      >
+        {c.pct}
+      </span>
     </span>
   );
+}
+
+function Badge({ value, pulse }: { value: any; pulse: boolean }) {
+  return <ConfidenceRing value={value} pulse={pulse} />;
 }
 
 /* ═══════════════════════════════════════════════════════════════════
    DATA ROW
    ═══════════════════════════════════════════════════════════════════ */
 
-function Row({ label, value, fmt, icon: Icon, accent }: {
+function Row({ label, value, fmt, icon: Icon, accent, pulse }: {
   label: string;
   value: any;
   fmt?: "usd" | "num";
   icon?: any;
   accent?: boolean;
+  pulse?: boolean;
 }) {
+  const [hovered, setHovered] = useState(false);
   let display = "\u2014";
   if (value !== null && value !== undefined && value !== "") {
     if (fmt === "usd" && typeof value === "number") display = `$${value.toLocaleString()}`;
@@ -75,7 +106,16 @@ function Row({ label, value, fmt, icon: Icon, accent }: {
     else display = String(value);
   }
   return (
-    <div className="flex items-center justify-between py-[6px] last:border-0" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
+    <div
+      className="flex items-center justify-between py-[6px] last:border-0"
+      style={{
+        borderBottom: `1px solid ${BORDER}`,
+        backgroundColor: hovered ? "#FFFBF0" : "#FFFFFF",
+        transition: "background-color 0.2s ease",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
       <div className="flex items-center gap-2">
         {Icon && <Icon className="w-3 h-3" style={{ color: "#CCCCCC" }} />}
         <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>{label}</span>
@@ -84,7 +124,7 @@ function Row({ label, value, fmt, icon: Icon, accent }: {
         <span className={`text-[13px] ${accent ? "font-bold" : ""}`} style={{ color: accent ? GOLD : TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>
           {display}
         </span>
-        <Badge value={value} />
+        <Badge value={value} pulse={!!pulse} />
       </div>
     </div>
   );
@@ -108,10 +148,16 @@ function Hdr({ icon: Icon, label, color }: { icon: any; label: string; color: st
    ═══════════════════════════════════════════════════════════════════ */
 
 function SystemHealth({ detail }: { detail: any }) {
+  const [barsAnimated, setBarsAnimated] = useState(false);
   const yearBuilt = detail?.summary?.yearbuilt || 0;
   const now = new Date().getFullYear();
   const age = yearBuilt ? now - yearBuilt : 0;
   const sqft = detail?.building?.size?.livingSize || detail?.building?.size?.bldgSize || 2000;
+
+  useEffect(() => {
+    const t = setTimeout(() => setBarsAnimated(true), 100);
+    return () => clearTimeout(t);
+  }, []);
 
   const systems = [
     { name: "HVAC SYSTEM", icon: Thermometer, life: 20, estAge: age > 20 ? Math.round(age * 0.7) : age, costPerSqft: 6.5, emergMult: 0.35 },
@@ -121,7 +167,7 @@ function SystemHealth({ detail }: { detail: any }) {
   ];
 
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
       <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4" style={{ color: GOLD }} />
@@ -154,14 +200,26 @@ function SystemHealth({ detail }: { detail: any }) {
                 </div>
                 <span
                   className="text-[8px] font-bold px-2 py-0.5 rounded tracking-wider"
-                  style={{ backgroundColor: `${statusColor}20`, color: statusColor, fontFamily: "var(--font-geist-mono)" }}
+                  style={{
+                    backgroundColor: `${statusColor}20`,
+                    color: statusColor,
+                    fontFamily: "var(--font-geist-mono)",
+                    animation: critical ? 'pulse-red 2s infinite' : undefined,
+                  }}
                 >
                   {statusLabel}
                 </span>
               </div>
 
-              <div className="w-full rounded-full h-1.5 mb-3" style={{ backgroundColor: BORDER }}>
-                <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(4, pct)}%`, backgroundColor: statusColor }} />
+              <div className="w-full rounded-full h-2.5 mb-3" style={{ backgroundColor: BORDER }}>
+                <div
+                  className="h-2.5 rounded-full"
+                  style={{
+                    width: barsAnimated ? `${Math.max(4, pct)}%` : '0%',
+                    backgroundColor: statusColor,
+                    transition: 'width 1s ease',
+                  }}
+                />
               </div>
 
               <div className="grid grid-cols-3 gap-3 text-[9px]" style={{ fontFamily: "var(--font-geist-mono)" }}>
@@ -180,7 +238,7 @@ function SystemHealth({ detail }: { detail: any }) {
               </div>
 
               {(critical || warning) && (
-                <div className="mt-2.5 rounded p-2.5" style={{ border: `1px solid ${GOLD}20`, backgroundColor: `${GOLD}08` }}>
+                <div className="mt-2.5 rounded p-2.5" style={{ backgroundColor: '#ecfdf5', border: '1px solid #a7f3d0' }}>
                   <p className="text-[9px]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>
                     <span className="font-bold" style={{ color: GOLD }}>SAVE ${savings.toLocaleString()}</span>
                     {" "}by scheduling proactive replacement. Emergency repairs add {Math.round(sys.emergMult * 100)}% to total cost.
@@ -200,9 +258,16 @@ function SystemHealth({ detail }: { detail: any }) {
    ═══════════════════════════════════════════════════════════════════ */
 
 function CompsTable({ comps }: { comps: any[] }) {
+  const [compsVisible, setCompsVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setCompsVisible(true), 100);
+    return () => clearTimeout(t);
+  }, []);
+
   if (!comps || comps.length === 0) return null;
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
       <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-cyan-400" />
@@ -230,7 +295,20 @@ function CompsTable({ comps }: { comps: any[] }) {
               const sf = c.building?.size?.livingSize || c.building?.size?.bldgSize || 0;
               const ppsf = price && sf ? Math.round(price / sf) : 0;
               return (
-                <tr key={i} className="transition-colors" style={{ borderBottom: `1px solid ${BORDER}` }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#FAFAFA")} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+                <tr
+                  key={i}
+                  className="transition-colors"
+                  style={{
+                    borderBottom: `1px solid ${BORDER}`,
+                    backgroundColor: i % 2 === 0 ? '#FAFAFA' : '#FFFFFF',
+                    opacity: compsVisible ? 1 : 0,
+                    transform: compsVisible ? 'translateY(0)' : 'translateY(12px)',
+                    transition: 'all 0.4s ease',
+                    transitionDelay: `${i * 50}ms`,
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#FFFBF0")}
+                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = i % 2 === 0 ? '#FAFAFA' : '#FFFFFF')}
+                >
                   <td className="px-4 py-2.5 max-w-[200px] truncate" style={{ color: TEXT_PRIMARY }}>{line}</td>
                   <td className="px-4 py-2.5 text-right font-medium" style={{ color: GOLD }}>{price ? `$${Number(price).toLocaleString()}` : "\u2014"}</td>
                   <td className="px-4 py-2.5 text-right" style={{ color: "#9B9B9B" }}>{date || "\u2014"}</td>
@@ -252,11 +330,11 @@ function CompsTable({ comps }: { comps: any[] }) {
    PUBLIC RECORDS
    ═══════════════════════════════════════════════════════════════════ */
 
-function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
+function PublicRecords({ detail, basic, pulse }: { detail: any; basic: any; pulse: boolean }) {
   const p = detail || basic;
   if (!p) return null;
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
       <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <FileText className="w-4 h-4 text-purple-400" />
         <span className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)" }}>Public Records</span>
@@ -264,21 +342,21 @@ function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
       <div className="grid grid-cols-1 md:grid-cols-2" style={{ backgroundColor: "#FFFFFF" }}>
         <div className="p-4" style={{ borderRight: `1px solid ${BORDER}` }}>
           <Hdr icon={MapPin} label="Land & Zoning" color="#a78bfa" />
-          <Row label="Zoning Code" value={p?.lot?.siteZoningIdent} icon={FileText} />
-          <Row label="Lot Acres" value={p?.lot?.lotSize1} fmt="num" icon={Ruler} />
-          <Row label="Lot Sqft" value={p?.lot?.lotSize2} fmt="num" icon={Ruler} />
-          <Row label="County" value={p?.area?.countrySecSubd} icon={MapPin} />
-          <Row label="Census Tract" value={p?.area?.censusTractIdent} icon={MapPin} />
-          <Row label="Jurisdiction" value={p?.area?.munName || p?.area?.countrySubd} icon={MapPin} />
+          <Row label="Zoning Code" value={p?.lot?.siteZoningIdent} icon={FileText} pulse={pulse} />
+          <Row label="Lot Acres" value={p?.lot?.lotSize1} fmt="num" icon={Ruler} pulse={pulse} />
+          <Row label="Lot Sqft" value={p?.lot?.lotSize2} fmt="num" icon={Ruler} pulse={pulse} />
+          <Row label="County" value={p?.area?.countrySecSubd} icon={MapPin} pulse={pulse} />
+          <Row label="Census Tract" value={p?.area?.censusTractIdent} icon={MapPin} pulse={pulse} />
+          <Row label="Jurisdiction" value={p?.area?.munName || p?.area?.countrySubd} icon={MapPin} pulse={pulse} />
         </div>
         <div className="p-4">
           <Hdr icon={Home} label="Structure" color="#a78bfa" />
-          <Row label="Stories" value={p?.building?.summary?.stories} fmt="num" icon={Layers} />
-          <Row label="Condition" value={p?.building?.summary?.condition} icon={Shield} />
-          <Row label="Quality" value={p?.building?.summary?.quality} icon={Shield} />
-          <Row label="Fireplaces" value={p?.building?.interior?.fplcCount} fmt="num" icon={Home} />
-          <Row label="Pool" value={p?.building?.summary?.pool ? "Yes" : null} icon={Droplets} />
-          <Row label="Parking" value={p?.building?.parking?.prkgSpaces} fmt="num" icon={Car} />
+          <Row label="Stories" value={p?.building?.summary?.stories} fmt="num" icon={Layers} pulse={pulse} />
+          <Row label="Condition" value={p?.building?.summary?.condition} icon={Shield} pulse={pulse} />
+          <Row label="Quality" value={p?.building?.summary?.quality} icon={Shield} pulse={pulse} />
+          <Row label="Fireplaces" value={p?.building?.interior?.fplcCount} fmt="num" icon={Home} pulse={pulse} />
+          <Row label="Pool" value={p?.building?.summary?.pool ? "Yes" : null} icon={Droplets} pulse={pulse} />
+          <Row label="Parking" value={p?.building?.parking?.prkgSpaces} fmt="num" icon={Car} pulse={pulse} />
         </div>
       </div>
     </div>
@@ -291,7 +369,7 @@ function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
 
 function LitigationCheck({ address }: { address: string }) {
   return (
-    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
       <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <Scale className="w-4 h-4" style={{ color: TEXT_SECONDARY }} />
         <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>Litigation &amp; Legal Check</span>
@@ -339,6 +417,7 @@ export default function AddressSearch({
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
   const [autoSearched, setAutoSearched] = useState(false);
+  const [confidencePulse, setConfidencePulse] = useState(false);
 
   // Autocomplete
   const [suggestions, setSuggestions] = useState<{ address: string }[]>([]);
@@ -350,6 +429,15 @@ export default function AddressSearch({
   // Geolocation
   const [locating, setLocating] = useState(false);
   const [locError, setLocError] = useState("");
+
+  // Trigger confidence pulse on new results
+  useEffect(() => {
+    if (result) {
+      setConfidencePulse(true);
+      const t = setTimeout(() => setConfidencePulse(false), 1200);
+      return () => clearTimeout(t);
+    }
+  }, [result]);
 
   async function search(overrideQuery?: string) {
     const q = (overrideQuery || query).trim();
@@ -497,8 +585,32 @@ export default function AddressSearch({
   const stories = prop?.building?.summary?.stories || null;
   const garage = prop?.building?.parking?.prkgSpaces || null;
 
+  /* ── Section slide-in helper ────────────────────────────────── */
+  const sectionStyle = (i: number) => ({
+    opacity: result ? 1 : 0,
+    transform: result ? 'translateY(0)' : 'translateY(20px)',
+    transition: 'all 0.5s ease',
+    transitionDelay: `${i * 80}ms`,
+  });
+
   return (
     <div className="mb-6">
+      {/* Global keyframe animations */}
+      <style jsx global>{`
+        @keyframes pulse-red {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.7; }
+        }
+        @keyframes confidence-pulse {
+          0% { transform: scale(1); }
+          50% { transform: scale(1.25); }
+          100% { transform: scale(1); }
+        }
+        .confidence-pulse {
+          animation: confidence-pulse 0.6s ease-out;
+        }
+      `}</style>
+
       {/* ── Search Bar ──────────────────────────────────────────── */}
       <div className="rounded-xl p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
         <div className="flex items-center gap-2 mb-4">
@@ -596,97 +708,112 @@ export default function AddressSearch({
         <div className="mt-4 space-y-3">
 
           {/* ── 1. HEADER ─────────────────────────────────────── */}
-          <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
-            {/* Address bar */}
-            <div className="flex flex-wrap items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
-              <div className="flex items-center gap-3 min-w-0">
-                <MapPin className="w-5 h-5 shrink-0" style={{ color: GOLD }} />
-                <h2 className="text-base md:text-lg font-bold truncate" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>{fullAddress}</h2>
-                {propType && (
-                  <span className="text-[8px] font-bold px-2.5 py-1 rounded tracking-[0.15em] uppercase shrink-0" style={{ backgroundColor: `${GOLD}15`, color: GOLD, fontFamily: "var(--font-geist-mono)" }}>
-                    {propType}
-                  </span>
-                )}
-              </div>
-              <div className="flex items-center gap-4 mt-2 sm:mt-0">
-                {onAddToPortfolio && (
-                  <button
-                    onClick={() => onAddToPortfolio(result.basic, result.detail)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em] transition-all hover:brightness-110"
-                    style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    Add to Portfolio
-                  </button>
-                )}
-                <div className="flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[8px] text-emerald-400 font-bold tracking-[0.15em] uppercase" style={{ fontFamily: "var(--font-geist-mono)" }}>ATTOM VERIFIED</span>
+          <div style={sectionStyle(0)}>
+            <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
+              {/* Address bar */}
+              <div className="flex flex-wrap items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <MapPin className="w-5 h-5 shrink-0" style={{ color: GOLD }} />
+                  <div className="min-w-0">
+                    <h2 className="text-base md:text-lg font-bold truncate" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-heading)" }}>{fullAddress}</h2>
+                    <div style={{ width: 60, height: 3, backgroundColor: '#F9D96A', borderRadius: 2, marginTop: 8 }} />
+                  </div>
+                  {propType && (
+                    <span className="text-[8px] font-bold px-2.5 py-1 rounded tracking-[0.15em] uppercase shrink-0" style={{ backgroundColor: `${GOLD}15`, color: GOLD, fontFamily: "var(--font-geist-mono)" }}>
+                      {propType}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-4 mt-2 sm:mt-0">
+                  {onAddToPortfolio && (
+                    <button
+                      onClick={() => onAddToPortfolio(result.basic, result.detail)}
+                      className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em] transition-all hover:brightness-110"
+                      style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      Add to Portfolio
+                    </button>
+                  )}
+                  <div className="flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[8px] text-emerald-400 font-bold tracking-[0.15em] uppercase" style={{ fontFamily: "var(--font-geist-mono)" }}>ATTOM VERIFIED</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            {/* Key stats: beds / baths / sqft / year built */}
-            <div className="grid grid-cols-4" style={{ borderColor: BORDER }}>
-              {[
-                { icon: Bed, label: "BEDS", val: beds, fmtNum: true },
-                { icon: Bath, label: "BATHS", val: bathsFull, fmtNum: true },
-                { icon: Ruler, label: "SQFT", val: sqft, fmtNum: true },
-                { icon: Calendar, label: "YEAR BUILT", val: yearBuilt, fmtNum: false },
-              ].map((s, idx) => {
-                const SIcon = s.icon;
-                return (
-                  <div key={s.label} className="px-5 py-4 text-center" style={{ borderRight: idx < 3 ? `1px solid ${BORDER}` : undefined }}>
-                    <div className="flex items-center justify-center gap-1.5 mb-1">
-                      <SIcon className="w-3.5 h-3.5" style={{ color: "#CCCCCC" }} />
-                      <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>{s.label}</span>
+              {/* Key stats: beds / baths / sqft / year built */}
+              <div className="grid grid-cols-4" style={{ borderColor: BORDER }}>
+                {[
+                  { icon: Bed, label: "BEDS", val: beds, fmtNum: true },
+                  { icon: Bath, label: "BATHS", val: bathsFull, fmtNum: true },
+                  { icon: Ruler, label: "SQFT", val: sqft, fmtNum: true },
+                  { icon: Calendar, label: "YEAR BUILT", val: yearBuilt, fmtNum: false },
+                ].map((s, idx) => {
+                  const SIcon = s.icon;
+                  return (
+                    <div key={s.label} className="px-5 py-4 text-center" style={{ borderRight: idx < 3 ? `1px solid ${BORDER}` : undefined }}>
+                      <div className="flex items-center justify-center gap-1.5 mb-1">
+                        <SIcon className="w-3.5 h-3.5" style={{ color: "#CCCCCC" }} />
+                        <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>{s.label}</span>
+                      </div>
+                      <p className="text-2xl font-bold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>
+                        {s.val !== null && s.val !== undefined ? (s.fmtNum && typeof s.val === "number" ? s.val.toLocaleString() : s.val) : "\u2014"}
+                      </p>
                     </div>
-                    <p className="text-2xl font-bold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>
-                      {s.val !== null && s.val !== undefined ? (s.fmtNum && typeof s.val === "number" ? s.val.toLocaleString() : s.val) : "\u2014"}
-                    </p>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
           </div>
 
           {/* ── 2 & 3. OWNERSHIP + PHYSICAL ───────────────────── */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
-              <Hdr icon={DollarSign} label="Ownership & Valuation" color={GOLD} />
-              <Row label="Owner" value={owner} icon={Shield} />
-              <Row label="APN" value={apn} icon={FileText} />
-              <Row label="Assessed Value" value={assessedValue} fmt="usd" icon={DollarSign} />
-              <Row label="Market Value AVM" value={marketValue} fmt="usd" icon={TrendingUp} accent />
-              <Row label="Last Sale Date" value={lastSaleDate} icon={Clock} />
-              <Row label="Last Sale Price" value={lastSalePrice} fmt="usd" icon={DollarSign} />
-              <Row label="Annual Taxes" value={annualTax} fmt="usd" icon={FileText} />
-            </div>
-            <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
-              <Hdr icon={Home} label="Physical & Risk" color="#60a5fa" />
-              <Row label="Year Built" value={yearBuilt} icon={Calendar} />
-              <Row label="Bedrooms" value={beds} fmt="num" icon={Bed} />
-              <Row label="Bathrooms" value={bathsStr} icon={Bath} />
-              <Row label="Living Sqft" value={sqft} fmt="num" icon={Ruler} />
-              <Row label="Lot Size" value={lotSize ? `${lotSize.toLocaleString()} sqft` : null} icon={MapPin} />
-              <Row label="Flood Zone" value={floodZone || "Not reported"} icon={Droplets} />
-              <Row label="Stories" value={stories} fmt="num" icon={Layers} />
-              <Row label="Garage" value={garage ? `${garage} spaces` : null} icon={Car} />
-              <Row label="Prop Type" value={propType} icon={Home} />
+          <div style={sectionStyle(1)}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
+                <Hdr icon={DollarSign} label="Ownership & Valuation" color={GOLD} />
+                <Row label="Owner" value={owner} icon={Shield} pulse={confidencePulse} />
+                <Row label="APN" value={apn} icon={FileText} pulse={confidencePulse} />
+                <Row label="Assessed Value" value={assessedValue} fmt="usd" icon={DollarSign} pulse={confidencePulse} />
+                <Row label="Market Value AVM" value={marketValue} fmt="usd" icon={TrendingUp} accent pulse={confidencePulse} />
+                <Row label="Last Sale Date" value={lastSaleDate} icon={Clock} pulse={confidencePulse} />
+                <Row label="Last Sale Price" value={lastSalePrice} fmt="usd" icon={DollarSign} pulse={confidencePulse} />
+                <Row label="Annual Taxes" value={annualTax} fmt="usd" icon={FileText} pulse={confidencePulse} />
+              </div>
+              <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
+                <Hdr icon={Home} label="Physical & Risk" color="#60a5fa" />
+                <Row label="Year Built" value={yearBuilt} icon={Calendar} pulse={confidencePulse} />
+                <Row label="Bedrooms" value={beds} fmt="num" icon={Bed} pulse={confidencePulse} />
+                <Row label="Bathrooms" value={bathsStr} icon={Bath} pulse={confidencePulse} />
+                <Row label="Living Sqft" value={sqft} fmt="num" icon={Ruler} pulse={confidencePulse} />
+                <Row label="Lot Size" value={lotSize ? `${lotSize.toLocaleString()} sqft` : null} icon={MapPin} pulse={confidencePulse} />
+                <Row label="Flood Zone" value={floodZone || "Not reported"} icon={Droplets} pulse={confidencePulse} />
+                <Row label="Stories" value={stories} fmt="num" icon={Layers} pulse={confidencePulse} />
+                <Row label="Garage" value={garage ? `${garage} spaces` : null} icon={Car} pulse={confidencePulse} />
+                <Row label="Prop Type" value={propType} icon={Home} pulse={confidencePulse} />
+              </div>
             </div>
           </div>
 
           {/* ── 4. SYSTEM HEALTH ──────────────────────────────── */}
-          <SystemHealth detail={prop} />
+          <div style={sectionStyle(2)}>
+            <SystemHealth detail={prop} />
+          </div>
 
           {/* ── 5. COMPARABLE SALES ───────────────────────────── */}
-          <CompsTable comps={result.comps} />
+          <div style={sectionStyle(3)}>
+            <CompsTable comps={result.comps} />
+          </div>
 
           {/* ── 6. PUBLIC RECORDS ─────────────────────────────── */}
-          <PublicRecords detail={d} basic={b} />
+          <div style={sectionStyle(4)}>
+            <PublicRecords detail={d} basic={b} pulse={confidencePulse} />
+          </div>
 
           {/* ── 7. LITIGATION CHECK ───────────────────────────── */}
-          <LitigationCheck address={fullAddress} />
+          <div style={sectionStyle(5)}>
+            <LitigationCheck address={fullAddress} />
+          </div>
         </div>
       )}
     </div>
