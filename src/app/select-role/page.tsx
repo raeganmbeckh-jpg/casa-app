@@ -4,15 +4,15 @@ import { useRouter } from "next/navigation";
 import {
   Building2,
   TrendingUp,
-  BarChart3,
-  Home,
-  Wrench,
-  Search,
+  Layers,
+  Handshake,
+  Landmark,
+  MapPin,
 } from "lucide-react";
 import { ROLES } from "@/lib/roles";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  Building2, TrendingUp, BarChart3, Home, Wrench, Search,
+  Building2, TrendingUp, Layers, Handshake, Landmark, MapPin,
 };
 
 const Y = "#F9D96A";
