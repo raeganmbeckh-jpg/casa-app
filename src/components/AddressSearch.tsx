@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import {
   Search,
   MapPin,
@@ -24,6 +24,7 @@ import {
   Calendar,
   Car,
   Layers,
+  LocateFixed,
 } from "lucide-react";
 
 const GOLD = "#E8C84A";
@@ -339,13 +340,26 @@ export default function AddressSearch({
   const [error, setError] = useState("");
   const [autoSearched, setAutoSearched] = useState(false);
 
-  async function search() {
-    if (!query.trim()) return;
+  // Autocomplete
+  const [suggestions, setSuggestions] = useState<{ address: string }[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestIdx, setSuggestIdx] = useState(-1);
+  const suggestTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
+  // Geolocation
+  const [locating, setLocating] = useState(false);
+  const [locError, setLocError] = useState("");
+
+  async function search(overrideQuery?: string) {
+    const q = (overrideQuery || query).trim();
+    if (!q) return;
+    if (!overrideQuery) setShowSuggestions(false);
     setSearching(true);
     setError("");
     setResult(null);
     try {
-      const res = await fetch(`/api/attom?address=${encodeURIComponent(query.trim())}`);
+      const res = await fetch(`/api/attom?address=${encodeURIComponent(q)}`);
       const data = await res.json();
       if (data.error) setError(data.error);
       else if (!data.basic && !data.detail) setError("No results found for this address.");
@@ -354,6 +368,99 @@ export default function AddressSearch({
       setError("Failed to search. Please try again.");
     }
     setSearching(false);
+  }
+
+  // Debounced autocomplete
+  const fetchSuggestions = useCallback(async (q: string) => {
+    if (q.length < 3) { setSuggestions([]); setShowSuggestions(false); return; }
+    try {
+      const res = await fetch(`/api/attom/suggest?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.suggestions?.length > 0) {
+        setSuggestions(data.suggestions);
+        setShowSuggestions(true);
+        setSuggestIdx(-1);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch {
+      setSuggestions([]);
+    }
+  }, []);
+
+  function handleInputChange(val: string) {
+    setQuery(val);
+    if (suggestTimer.current) clearTimeout(suggestTimer.current);
+    suggestTimer.current = setTimeout(() => fetchSuggestions(val), 300);
+  }
+
+  function selectSuggestion(addr: string) {
+    setQuery(addr);
+    setShowSuggestions(false);
+    setSuggestions([]);
+    search(addr);
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent) {
+    if (!showSuggestions || suggestions.length === 0) {
+      if (e.key === "Enter") search();
+      return;
+    }
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setSuggestIdx((i) => Math.min(i + 1, suggestions.length - 1));
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setSuggestIdx((i) => Math.max(i - 1, -1));
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (suggestIdx >= 0) selectSuggestion(suggestions[suggestIdx].address);
+      else { setShowSuggestions(false); search(); }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  }
+
+  // Close suggestions on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) setShowSuggestions(false);
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  // Geolocation
+  function detectLocation() {
+    if (!navigator.geolocation) { setLocError("Geolocation not supported"); return; }
+    setLocating(true);
+    setLocError("");
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const res = await fetch(`/api/attom/geocode?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+          const data = await res.json();
+          if (data.address) {
+            setQuery(data.address);
+            setLocating(false);
+            search(data.address);
+          } else {
+            setLocError("Couldn\u2019t find an address for your location");
+            setLocating(false);
+          }
+        } catch {
+          setLocError("Failed to detect address");
+          setLocating(false);
+        }
+      },
+      () => {
+        setLocError("Location access denied \u2014 type an address manually");
+        setLocating(false);
+        setTimeout(() => setLocError(""), 4000);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
   }
 
   useEffect(() => {
@@ -402,34 +509,77 @@ export default function AddressSearch({
           <span className="text-[8px] ml-auto uppercase tracking-[0.2em]" style={{ color: "#DDDDDD", fontFamily: "var(--font-geist-mono)" }}>ATTOM + COURTLISTENER</span>
         </div>
         <div className="flex gap-2">
-          <div className="relative flex-1">
+          <div className="relative flex-1" ref={wrapperRef}>
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#DDDDDD" }} />
             <input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && search()}
+              onChange={(e) => handleInputChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onFocus={() => { if (suggestions.length > 0) setShowSuggestions(true); }}
               placeholder="Enter any US address..."
-              className="w-full rounded-lg pl-11 pr-10 py-3.5 text-sm focus:outline-none"
+              className="w-full rounded-lg pl-11 pr-20 py-3.5 text-sm focus:outline-none"
               style={{
                 backgroundColor: "#FFFFFF",
                 border: `1px solid ${BORDER}`,
                 color: TEXT_PRIMARY,
-                fontFamily: "var(--font-geist-mono)",
+                fontFamily: "var(--font-inter)",
+                borderColor: showSuggestions ? GOLD : BORDER,
               }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = GOLD)}
-              onBlur={(e) => (e.currentTarget.style.borderColor = BORDER)}
             />
-            {query && (
-              <button onClick={() => { setQuery(""); setResult(null); setError(""); }} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "#CCCCCC" }} onMouseEnter={(e) => (e.currentTarget.style.color = TEXT_SECONDARY)} onMouseLeave={(e) => (e.currentTarget.style.color = "#CCCCCC")}>
-                <X className="w-4 h-4" />
-              </button>
+            <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {query && (
+                <button onClick={() => { setQuery(""); setResult(null); setError(""); setSuggestions([]); setShowSuggestions(false); }} className="p-1 rounded-md transition-colors" style={{ color: "#CCCCCC" }} onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = TEXT_SECONDARY; }} onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "#CCCCCC"; }}>
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+              <div className="relative">
+                <button
+                  onClick={detectLocation}
+                  disabled={locating}
+                  className="p-1.5 rounded-md transition-all"
+                  style={{ color: locating ? GOLD : "#CCCCCC" }}
+                  onMouseEnter={(e) => { if (!locating) (e.currentTarget as HTMLElement).style.color = GOLD; }}
+                  onMouseLeave={(e) => { if (!locating) (e.currentTarget as HTMLElement).style.color = "#CCCCCC"; }}
+                  title="Detect my location"
+                >
+                  {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
+                </button>
+                {locError && (
+                  <div className="absolute right-0 top-full mt-2 z-50 w-56 p-2.5 rounded-lg text-[11px] leading-snug shadow-lg" style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontFamily: "var(--font-inter)" }}>
+                    {locError}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Autocomplete dropdown */}
+            {showSuggestions && suggestions.length > 0 && (
+              <div className="absolute left-0 right-0 top-full mt-1 z-50 rounded-lg overflow-hidden" style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, boxShadow: "0 8px 32px rgba(0,0,0,0.08)" }}>
+                {suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => selectSuggestion(s.address)}
+                    onMouseEnter={() => setSuggestIdx(i)}
+                    className="w-full text-left px-4 py-3 flex items-center gap-3 transition-colors text-sm"
+                    style={{
+                      fontFamily: "var(--font-inter)",
+                      backgroundColor: suggestIdx === i ? `${ACCENT}18` : "#fff",
+                      color: TEXT_PRIMARY,
+                      borderBottom: i < suggestions.length - 1 ? `1px solid ${BORDER}` : "none",
+                    }}
+                  >
+                    <MapPin className="w-4 h-4 shrink-0" style={{ color: suggestIdx === i ? GOLD : "#ccc" }} />
+                    <span>{s.address}</span>
+                  </button>
+                ))}
+              </div>
             )}
           </div>
           <button
-            onClick={search}
+            onClick={() => { setShowSuggestions(false); search(); }}
             disabled={searching || !query.trim()}
             className="shrink-0 px-6 py-3.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 disabled:opacity-30 hover:brightness-110"
-            style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}
+            style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-inter)" }}
           >
             {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Query
