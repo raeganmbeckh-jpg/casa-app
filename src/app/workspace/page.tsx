@@ -32,6 +32,7 @@ import AIPanel from "@/components/AIPanel";
 import AddressSearch from "@/components/AddressSearch";
 import InvestorWorkspace from "@/components/InvestorWorkspace";
 import DeveloperWorkspace from "@/components/DeveloperWorkspace";
+import LandWorkspace from "@/components/LandWorkspace";
 import type {
   PortfolioProperty,
   Tenant,
@@ -1531,6 +1532,7 @@ export default function Workspace() {
   // ── Role-specific workspaces ──
   if (role === "investor") return <InvestorWorkspace role={role} />;
   if (role === "developer") return <DeveloperWorkspace role={role} />;
+  if (role === "land") return <LandWorkspace role={role} />;
 
   return (
     <div className="min-h-screen pb-16" style={{ backgroundColor: '#FFFFFF' }}>
