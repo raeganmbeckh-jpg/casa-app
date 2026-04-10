@@ -213,8 +213,9 @@ export default function LandingPage() {
           }`}
           style={{ color: "rgba(255,255,255,0.5)", fontFamily: "var(--font-inter)" }}
         >
-          The only platform that puts AI agents, live property intelligence,
-          and portfolio management in one place.
+          Search any US property.
+          <br />
+          Get the full picture in seconds.
         </p>
 
         {/* Search Bar */}
