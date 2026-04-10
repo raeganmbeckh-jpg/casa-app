@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Search,
   MapPin,
@@ -513,13 +513,16 @@ interface AttomData {
 
 export default function AddressSearch({
   onAddToPortfolio,
+  initialQuery,
 }: {
   onAddToPortfolio?: (basic: any, detail: any) => void;
+  initialQuery?: string;
 }) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery || "");
   const [result, setResult] = useState<AttomData | null>(null);
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState("");
+  const [autoSearched, setAutoSearched] = useState(false);
 
   async function search() {
     if (!query.trim()) return;
@@ -545,6 +548,15 @@ export default function AddressSearch({
     }
     setSearching(false);
   }
+
+  // Auto-search if initialQuery provided
+  useEffect(() => {
+    if (initialQuery && !autoSearched) {
+      setAutoSearched(true);
+      search();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialQuery]);
 
   const prop = result?.detail || result?.basic;
   const addr = prop?.address;

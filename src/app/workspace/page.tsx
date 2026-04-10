@@ -239,6 +239,7 @@ export default function Workspace() {
   const router = useRouter();
   const [role, setRole] = useState<RoleId>("manager");
   const [tab, setTab] = useState("dashboard");
+  const [initialSearch, setInitialSearch] = useState("");
 
   /* ── Data state ─────────────────────────────────────────────── */
   const [properties, setProperties] = useState<PortfolioProperty[]>([]);
@@ -313,6 +314,11 @@ export default function Workspace() {
   useEffect(() => {
     const saved = localStorage.getItem("casa-role") as RoleId | null;
     if (saved) setRole(saved);
+    const sq = localStorage.getItem("casa-search-query");
+    if (sq) {
+      setInitialSearch(sq);
+      localStorage.removeItem("casa-search-query");
+    }
     refreshData();
   }, [refreshData]);
 
@@ -498,7 +504,7 @@ export default function Workspace() {
   function renderDashboard() {
     return (
       <div className="space-y-4">
-        <AddressSearch onAddToPortfolio={handleAddToPortfolio} />
+        <AddressSearch onAddToPortfolio={handleAddToPortfolio} initialQuery={initialSearch} />
 
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
