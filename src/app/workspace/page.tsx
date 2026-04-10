@@ -30,6 +30,7 @@ import { type RoleId } from "@/lib/roles";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import AIPanel from "@/components/AIPanel";
 import AddressSearch from "@/components/AddressSearch";
+import InvestorWorkspace from "@/components/InvestorWorkspace";
 import type {
   PortfolioProperty,
   Tenant,
@@ -1527,6 +1528,11 @@ export default function Workspace() {
   }
 
   /* ── Layout ─────────────────────────────────────────────────── */
+  // ── Investor gets a completely separate workspace ──
+  if (role === "investor") {
+    return <InvestorWorkspace role={role} />;
+  }
+
   return (
     <div className="min-h-screen pb-16" style={{ backgroundColor: '#FFFFFF' }}>
       <header className="px-6 py-3" style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #F0F0F0' }}>
