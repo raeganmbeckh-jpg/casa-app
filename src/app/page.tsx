@@ -30,7 +30,7 @@ const TX2 = "#6B6B6B";     // secondary
 const BD = "#F0F0F0";      // border
 const GLOW = "0 8px 40px rgba(249,217,106,0.25)";
 const GLOW_SM = "0 4px 20px rgba(249,217,106,0.18)";
-const PF = "var(--font-playfair)";
+const PF = "var(--font-heading)";
 const IN = "var(--font-inter)";
 
 /* ═══════════════════════════════════════════════════════════════════

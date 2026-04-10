@@ -71,42 +71,42 @@ const TABS = [
 ];
 
 const STATUS_COLORS: Record<string, string> = {
-  occupied: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
-  vacant: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  overdue: "text-red-400 bg-red-500/10 border-red-500/20",
-  maintenance: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  prospecting: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  occupied: "text-emerald-600 bg-emerald-50 border-emerald-200",
+  vacant: "text-amber-600 bg-amber-50 border-amber-200",
+  overdue: "text-red-600 bg-red-50 border-red-200",
+  maintenance: "text-orange-600 bg-orange-50 border-orange-200",
+  prospecting: "text-blue-600 bg-blue-50 border-blue-200",
 };
 
 const SEVERITY_COLORS: Record<string, string> = {
-  info: "text-blue-400 bg-blue-500/10",
-  warning: "text-amber-400 bg-amber-500/10",
-  critical: "text-red-400 bg-red-500/10",
+  info: "text-blue-600 bg-blue-50",
+  warning: "text-amber-600 bg-amber-50",
+  critical: "text-red-600 bg-red-50",
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
-  emergency: "text-red-400 bg-red-500/10 border-red-500/20",
-  high: "text-orange-400 bg-orange-500/10 border-orange-500/20",
-  medium: "text-amber-400 bg-amber-500/10 border-amber-500/20",
-  low: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+  emergency: "text-red-600 bg-red-50 border-red-200",
+  high: "text-orange-600 bg-orange-50 border-orange-200",
+  medium: "text-amber-600 bg-amber-50 border-amber-200",
+  low: "text-blue-600 bg-blue-50 border-blue-200",
 };
 
 const WO_STATUS_COLORS: Record<string, string> = {
-  open: "text-amber-400 bg-amber-500/10",
-  in_progress: "text-blue-400 bg-blue-500/10",
-  completed: "text-emerald-400 bg-emerald-500/10",
+  open: "text-amber-600 bg-amber-50",
+  in_progress: "text-blue-600 bg-blue-50",
+  completed: "text-emerald-600 bg-emerald-50",
 };
 
 const ESIGN_COLORS: Record<string, string> = {
-  signed: "text-emerald-400 bg-emerald-500/10",
-  pending: "text-amber-400 bg-amber-500/10",
-  expired: "text-red-400 bg-red-500/10",
+  signed: "text-emerald-600 bg-emerald-50",
+  pending: "text-amber-600 bg-amber-50",
+  expired: "text-red-600 bg-red-50",
 };
 
 const BG_CHECK_COLORS: Record<string, string> = {
-  passed: "text-emerald-400 bg-emerald-500/10",
-  pending: "text-amber-400 bg-amber-500/10",
-  flagged: "text-red-400 bg-red-500/10",
+  passed: "text-emerald-600 bg-emerald-50",
+  pending: "text-amber-600 bg-amber-50",
+  flagged: "text-red-600 bg-red-50",
 };
 
 /* ── Helpers ───────────────────────────────────────────────────── */
@@ -145,7 +145,7 @@ function Badge({ text, colors }: { text: string; colors: string }) {
 function SectionCard({
   title,
   icon: Icon,
-  accent = "text-blue-400",
+  accent,
   children,
   actions,
 }: {
@@ -156,12 +156,13 @@ function SectionCard({
   actions?: React.ReactNode;
 }) {
   return (
-    <div className="bg-[#080a12] border border-[#1e2235] rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#131728] bg-[#0c0e18]">
+    <div className="rounded-lg overflow-hidden" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+      <div className="flex items-center justify-between px-4 py-3" style={{ borderBottom: '1px solid #F0F0F0', backgroundColor: '#FFFFFF' }}>
         <div className="flex items-center gap-2">
-          <Icon className={`w-4 h-4 ${accent}`} />
+          <Icon className="w-4 h-4" style={{ color: '#E8C84A' }} />
           <span
-            className={`text-[10px] font-bold uppercase tracking-[0.2em] font-mono ${accent}`}
+            className="text-[10px] font-bold uppercase tracking-[0.2em]"
+            style={{ color: '#E8C84A', fontFamily: 'var(--font-heading)' }}
           >
             {title}
           </span>
@@ -188,7 +189,7 @@ function InputField({
 }) {
   return (
     <div>
-      <label className="text-[9px] text-gray-500 font-mono uppercase tracking-widest block mb-1">
+      <label className="text-[9px] font-mono uppercase tracking-widest block mb-1" style={{ color: '#6B6B6B' }}>
         {label}
       </label>
       <input
@@ -196,7 +197,10 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full bg-[#04060c] border border-[#1e2235] rounded px-3 py-2 text-xs font-mono text-gray-200 focus:outline-none focus:border-blue-500/50"
+        className="w-full rounded px-3 py-2 text-xs font-mono focus:outline-none"
+        style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', color: '#1A1A1A' }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = '#E8C84A'; }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = '#F0F0F0'; }}
       />
     </div>
   );
@@ -215,13 +219,16 @@ function SelectField({
 }) {
   return (
     <div>
-      <label className="text-[9px] text-gray-500 font-mono uppercase tracking-widest block mb-1">
+      <label className="text-[9px] font-mono uppercase tracking-widest block mb-1" style={{ color: '#6B6B6B' }}>
         {label}
       </label>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full bg-[#04060c] border border-[#1e2235] rounded px-3 py-2 text-xs font-mono text-gray-200 focus:outline-none focus:border-blue-500/50"
+        className="w-full rounded px-3 py-2 text-xs font-mono focus:outline-none"
+        style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', color: '#1A1A1A' }}
+        onFocus={(e) => { e.currentTarget.style.borderColor = '#E8C84A'; }}
+        onBlur={(e) => { e.currentTarget.style.borderColor = '#F0F0F0'; }}
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
@@ -509,16 +516,16 @@ export default function Workspace() {
         {/* KPI strip */}
         <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
           {[
-            { label: "Portfolio Value", value: usd(totalValue), color: "text-white", sub: `${properties.length} properties` },
-            { label: "Monthly Rent", value: usd(totalRent), color: "text-emerald-400", sub: `${usd(totalRent * 12)}/yr` },
-            { label: "Occupancy", value: properties.length ? `${occupancyPct}%` : "\u2014", color: "text-blue-400", sub: `${occupiedCount}/${properties.length} occupied` },
-            { label: "Avg Cap Rate", value: avgCapRate ? pct(avgCapRate) : "\u2014", color: "text-purple-400", sub: "weighted avg" },
-            { label: "Open Work Orders", value: String(openWO), color: openWO > 0 ? "text-amber-400" : "text-gray-400", sub: "maintenance" },
+            { label: "Portfolio Value", value: usd(totalValue), color: '#1A1A1A', sub: `${properties.length} properties` },
+            { label: "Monthly Rent", value: usd(totalRent), color: '#16a34a', sub: `${usd(totalRent * 12)}/yr` },
+            { label: "Occupancy", value: properties.length ? `${occupancyPct}%` : "\u2014", color: '#2563eb', sub: `${occupiedCount}/${properties.length} occupied` },
+            { label: "Avg Cap Rate", value: avgCapRate ? pct(avgCapRate) : "\u2014", color: '#9333ea', sub: "weighted avg" },
+            { label: "Open Work Orders", value: String(openWO), color: openWO > 0 ? '#d97706' : '#6B6B6B', sub: "maintenance" },
           ].map((kpi) => (
-            <div key={kpi.label} className="bg-[#080a12] border border-[#1e2235] rounded-lg p-4">
-              <p className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1">{kpi.label}</p>
-              <p className={`text-2xl font-bold font-mono ${kpi.color}`}>{kpi.value}</p>
-              <p className="text-[10px] text-gray-600 font-mono mt-0.5">{kpi.sub}</p>
+            <div key={kpi.label} className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: '#6B6B6B' }}>{kpi.label}</p>
+              <p className="text-2xl font-bold font-mono" style={{ color: kpi.color }}>{kpi.value}</p>
+              <p className="text-[10px] font-mono mt-0.5" style={{ color: '#6B6B6B' }}>{kpi.sub}</p>
             </div>
           ))}
         </div>
@@ -527,11 +534,11 @@ export default function Workspace() {
         {properties.length > 0 ? (
           <div>
             <div className="flex items-center gap-2 mb-3">
-              <Building2 className="w-4 h-4 text-blue-400" />
-              <span className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.2em] font-mono">
+              <Building2 className="w-4 h-4" style={{ color: '#E8C84A' }} />
+              <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: '#E8C84A', fontFamily: 'var(--font-heading)' }}>
                 Portfolio Properties
               </span>
-              <span className="text-[10px] text-gray-600 font-mono ml-auto">{properties.length} TOTAL</span>
+              <span className="text-[10px] font-mono ml-auto" style={{ color: '#6B6B6B' }}>{properties.length} TOTAL</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
               {properties.map((p) => {
@@ -541,14 +548,17 @@ export default function Workspace() {
                   <div
                     key={p.id}
                     onClick={() => router.push(`/property?id=${p.id}`)}
-                    className="bg-[#080a12] border border-[#1e2235] rounded-lg p-4 cursor-pointer hover:border-blue-500/30 hover:bg-[#0a0d16] transition-all group"
+                    className="rounded-lg p-4 cursor-pointer transition-all group"
+                    style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.22)'; e.currentTarget.style.borderColor = '#F9D96A'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#F0F0F0'; }}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-mono text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">
+                        <p className="font-mono text-sm font-bold truncate transition-colors" style={{ color: '#1A1A1A' }}>
                           {p.address}
                         </p>
-                        <p className="text-[11px] text-gray-500 font-mono flex items-center gap-1 mt-0.5">
+                        <p className="text-[11px] font-mono flex items-center gap-1 mt-0.5" style={{ color: '#6B6B6B' }}>
                           <MapPin className="w-3 h-3" />
                           {p.city}, {p.state} {p.zip}
                         </p>
@@ -557,24 +567,24 @@ export default function Workspace() {
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-3">
                       <div>
-                        <p className="text-[8px] text-gray-600 font-mono tracking-widest">RENT/MO</p>
-                        <p className="text-sm font-mono font-bold text-emerald-400">{p.monthly_rent ? usd(p.monthly_rent) : "\u2014"}</p>
+                        <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>RENT/MO</p>
+                        <p className="text-sm font-mono font-bold" style={{ color: '#16a34a' }}>{p.monthly_rent ? usd(p.monthly_rent) : "\u2014"}</p>
                       </div>
                       <div>
-                        <p className="text-[8px] text-gray-600 font-mono tracking-widest">VALUE</p>
-                        <p className="text-sm font-mono font-bold text-white">{usd(p.estimated_value)}</p>
+                        <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>VALUE</p>
+                        <p className="text-sm font-mono font-bold" style={{ color: '#1A1A1A' }}>{usd(p.estimated_value)}</p>
                       </div>
                       <div>
-                        <p className="text-[8px] text-gray-600 font-mono tracking-widest">CAP RATE</p>
-                        <p className="text-sm font-mono font-bold text-purple-400">{cr ? pct(cr) : "\u2014"}</p>
+                        <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>CAP RATE</p>
+                        <p className="text-sm font-mono font-bold" style={{ color: '#9333ea' }}>{cr ? pct(cr) : "\u2014"}</p>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between pt-2 border-t border-[#131728]">
+                    <div className="flex items-center justify-between pt-2" style={{ borderTop: '1px solid #F0F0F0' }}>
                       <div className="flex items-center gap-2">
-                        <UserCircle className="w-3.5 h-3.5 text-gray-600" />
-                        <span className="text-[11px] font-mono text-gray-400">{tenant?.name || "No tenant"}</span>
+                        <UserCircle className="w-3.5 h-3.5" style={{ color: '#6B6B6B' }} />
+                        <span className="text-[11px] font-mono" style={{ color: '#6B6B6B' }}>{tenant?.name || "No tenant"}</span>
                       </div>
-                      <span className="text-[9px] font-mono text-gray-600">{p.property_type}</span>
+                      <span className="text-[9px] font-mono" style={{ color: '#6B6B6B' }}>{p.property_type}</span>
                     </div>
                   </div>
                 );
@@ -582,9 +592,9 @@ export default function Workspace() {
             </div>
           </div>
         ) : (
-          <div className="bg-[#080a12] border border-[#1e2235] rounded-lg p-12 text-center">
-            <Building2 className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">
+          <div className="rounded-lg p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <Building2 className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>
               Search any US address above to start building your portfolio
             </p>
           </div>
@@ -592,12 +602,12 @@ export default function Workspace() {
 
         {/* Alert strip */}
         {activeAlerts.length > 0 && (
-          <SectionCard title="Active Alerts" icon={Bell} accent="text-amber-400">
-            <div className="divide-y divide-[#131728]">
-              {activeAlerts.slice(0, 5).map((a) => (
-                <div key={a.id} className="flex items-center gap-3 px-4 py-3 text-sm font-mono">
-                  <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                  <span className="text-gray-300 flex-1">{a.message}</span>
+          <SectionCard title="Active Alerts" icon={Bell}>
+            <div style={{ borderColor: '#F0F0F0' }}>
+              {activeAlerts.slice(0, 5).map((a, i) => (
+                <div key={a.id} className="flex items-center gap-3 px-4 py-3 text-sm font-mono" style={{ borderBottom: i < Math.min(activeAlerts.length, 5) - 1 ? '1px solid #F0F0F0' : 'none' }}>
+                  <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="flex-1" style={{ color: '#1A1A1A' }}>{a.message}</span>
                   <Badge text={a.severity} colors={SEVERITY_COLORS[a.severity] || ""} />
                 </div>
               ))}
@@ -614,8 +624,8 @@ export default function Workspace() {
       return (
         <SectionCard title="Properties" icon={Building2}>
           <div className="p-12 text-center">
-            <Building2 className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">No properties yet. Search an address on the Dashboard to add one.</p>
+            <Building2 className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No properties yet. Search an address on the Dashboard to add one.</p>
           </div>
         </SectionCard>
       );
@@ -628,24 +638,27 @@ export default function Workspace() {
             <div
               key={p.id}
               onClick={() => router.push(`/property?id=${p.id}`)}
-              className="bg-[#080a12] border border-[#1e2235] rounded-lg p-4 cursor-pointer hover:border-blue-500/30 hover:bg-[#0a0d16] transition-all group"
+              className="rounded-lg p-4 cursor-pointer transition-all group"
+              style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = '0 8px 40px rgba(249,217,106,0.22)'; e.currentTarget.style.borderColor = '#F9D96A'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.04)'; e.currentTarget.style.borderColor = '#F0F0F0'; }}
             >
               <div className="flex items-start justify-between mb-2">
                 <div className="flex-1 min-w-0">
-                  <p className="font-mono text-sm font-bold text-white truncate group-hover:text-blue-400 transition-colors">{p.address}</p>
-                  <p className="text-[10px] text-gray-500 font-mono mt-0.5">{p.city}, {p.state} {p.zip}</p>
+                  <p className="font-mono text-sm font-bold truncate transition-colors" style={{ color: '#1A1A1A' }}>{p.address}</p>
+                  <p className="text-[10px] font-mono mt-0.5" style={{ color: '#6B6B6B' }}>{p.city}, {p.state} {p.zip}</p>
                 </div>
                 <Badge text={p.status} colors={STATUS_COLORS[p.status] || STATUS_COLORS.vacant} />
               </div>
               <div className="grid grid-cols-3 gap-2 text-[10px] font-mono mb-2">
-                <div><span className="text-gray-600 block text-[8px] tracking-widest">TYPE</span><span className="text-gray-300">{p.property_type}</span></div>
-                <div><span className="text-gray-600 block text-[8px] tracking-widest">BEDS/BATHS</span><span className="text-gray-300">{p.beds ?? "\u2014"}/{p.baths ?? "\u2014"}</span></div>
-                <div><span className="text-gray-600 block text-[8px] tracking-widest">SQFT</span><span className="text-gray-300">{p.sqft?.toLocaleString() ?? "\u2014"}</span></div>
+                <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>TYPE</span><span style={{ color: '#1A1A1A' }}>{p.property_type}</span></div>
+                <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>BEDS/BATHS</span><span style={{ color: '#1A1A1A' }}>{p.beds ?? "\u2014"}/{p.baths ?? "\u2014"}</span></div>
+                <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>SQFT</span><span style={{ color: '#1A1A1A' }}>{p.sqft?.toLocaleString() ?? "\u2014"}</span></div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
-                <div><span className="text-gray-600 block text-[8px] tracking-widest">VALUE</span><span className="text-white font-bold">{usd(p.estimated_value)}</span></div>
-                <div><span className="text-gray-600 block text-[8px] tracking-widest">RENT/MO</span><span className="text-emerald-400 font-bold">{p.monthly_rent ? usd(p.monthly_rent) : "\u2014"}</span></div>
-                <div><span className="text-gray-600 block text-[8px] tracking-widest">YEAR BUILT</span><span className="text-gray-300">{p.year_built ?? "\u2014"}</span></div>
+                <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>VALUE</span><span className="font-bold" style={{ color: '#1A1A1A' }}>{usd(p.estimated_value)}</span></div>
+                <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>RENT/MO</span><span className="font-bold" style={{ color: '#16a34a' }}>{p.monthly_rent ? usd(p.monthly_rent) : "\u2014"}</span></div>
+                <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>YEAR BUILT</span><span style={{ color: '#1A1A1A' }}>{p.year_built ?? "\u2014"}</span></div>
               </div>
             </div>
           );
@@ -663,7 +676,10 @@ export default function Workspace() {
         actions={
           <button
             onClick={() => setShowTenantForm(!showTenantForm)}
-            className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
+            className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors"
+            style={{ color: '#E8C84A' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#d4b43e'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#E8C84A'; }}
           >
             {showTenantForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
             {showTenantForm ? "Cancel" : "Add Tenant"}
@@ -671,7 +687,7 @@ export default function Workspace() {
         }
       >
         {showTenantForm && (
-          <div className="p-4 border-b border-[#131728] bg-[#0a0c16]">
+          <div className="p-4" style={{ borderBottom: '1px solid #F0F0F0', backgroundColor: '#FAFAFA' }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
               <SelectField label="Property" value={tenantForm.property_id} onChange={(v) => setTenantForm({ ...tenantForm, property_id: v })} options={propOptions} />
               <InputField label="Name" value={tenantForm.name} onChange={(v) => setTenantForm({ ...tenantForm, name: v })} placeholder="Full name" />
@@ -682,10 +698,10 @@ export default function Workspace() {
               <InputField label="Credit Score" value={tenantForm.credit_score} onChange={(v) => setTenantForm({ ...tenantForm, credit_score: v })} type="number" />
               <InputField label="Monthly Income" value={tenantForm.monthly_income} onChange={(v) => setTenantForm({ ...tenantForm, monthly_income: v })} type="number" />
               <div>
-                <label className="text-[9px] text-gray-500 font-mono uppercase tracking-widest block mb-1">Income Verified</label>
+                <label className="text-[9px] font-mono uppercase tracking-widest block mb-1" style={{ color: '#6B6B6B' }}>Income Verified</label>
                 <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                  <input type="checkbox" checked={tenantForm.income_verified} onChange={(e) => setTenantForm({ ...tenantForm, income_verified: e.target.checked })} className="rounded bg-[#04060c] border-[#1e2235]" />
-                  <span className="text-xs font-mono text-gray-400">Verified</span>
+                  <input type="checkbox" checked={tenantForm.income_verified} onChange={(e) => setTenantForm({ ...tenantForm, income_verified: e.target.checked })} className="rounded" style={{ backgroundColor: '#FFFFFF', borderColor: '#F0F0F0' }} />
+                  <span className="text-xs font-mono" style={{ color: '#6B6B6B' }}>Verified</span>
                 </label>
               </div>
               <SelectField
@@ -699,7 +715,7 @@ export default function Workspace() {
                 ]}
               />
             </div>
-            <button onClick={handleAddTenant} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] font-bold font-mono uppercase tracking-widest transition-colors">
+            <button onClick={handleAddTenant} className="px-4 py-2 rounded-xl text-[10px] font-bold font-mono uppercase tracking-widest transition-colors" style={{ backgroundColor: '#F9D96A', color: '#1A1A1A' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8C84A'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#F9D96A'; }}>
               Save Tenant
             </button>
           </div>
@@ -707,47 +723,47 @@ export default function Workspace() {
 
         {tenants.length === 0 && !showTenantForm ? (
           <div className="p-12 text-center">
-            <Users className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">No tenants yet</p>
+            <Users className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No tenants yet</p>
           </div>
         ) : tenants.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-[11px] font-mono">
               <thead>
-                <tr className="border-b border-[#131728]">
+                <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
                   {["Name", "Property", "Credit Score", "Monthly Income", "Verified", "Background", "Move-in", "Eviction Risk", "Payments"].map((h) => (
-                    <th key={h} className="text-left py-3 px-3 text-gray-600 font-medium uppercase tracking-widest text-[9px]">{h}</th>
+                    <th key={h} className="text-left py-3 px-3 font-medium uppercase tracking-widest text-[9px]" style={{ color: '#6B6B6B' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {tenants.map((t) => {
-                  const csColor = t.credit_score >= 750 ? "text-emerald-400" : t.credit_score >= 650 ? "text-amber-400" : "text-red-400";
-                  const riskColor = t.eviction_risk > 60 ? "bg-red-500" : t.eviction_risk > 30 ? "bg-amber-500" : "bg-emerald-500";
+                  const csColor = t.credit_score >= 750 ? "#16a34a" : t.credit_score >= 650 ? "#d97706" : "#dc2626";
+                  const riskColor = t.eviction_risk > 60 ? "bg-red-400" : t.eviction_risk > 30 ? "bg-amber-400" : "bg-emerald-400";
                   const paid = t.payment_history.filter((p: any) => p.status === "paid").length;
                   const total = t.payment_history.length;
                   return (
-                    <tr key={t.id} className="border-b border-[#131728] hover:bg-[#0e1020] transition-colors">
-                      <td className="py-3 px-3 text-gray-200 font-medium">{t.name}</td>
-                      <td className="py-3 px-3 text-gray-400">{getPropertyAddress(t.property_id)}</td>
-                      <td className={`py-3 px-3 font-bold ${csColor}`}>{t.credit_score}</td>
-                      <td className="py-3 px-3 text-gray-300">{usd(t.monthly_income)}</td>
+                    <tr key={t.id} className="transition-colors" style={{ borderBottom: '1px solid #F0F0F0' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FAFAFA'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                      <td className="py-3 px-3 font-medium" style={{ color: '#1A1A1A' }}>{t.name}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{getPropertyAddress(t.property_id)}</td>
+                      <td className="py-3 px-3 font-bold" style={{ color: csColor }}>{t.credit_score}</td>
+                      <td className="py-3 px-3" style={{ color: '#1A1A1A' }}>{usd(t.monthly_income)}</td>
                       <td className="py-3 px-3">
-                        {t.income_verified ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />}
+                        {t.income_verified ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <XCircle className="w-3.5 h-3.5 text-red-400" />}
                       </td>
                       <td className="py-3 px-3">
                         <Badge text={t.background_check} colors={BG_CHECK_COLORS[t.background_check] || ""} />
                       </td>
-                      <td className="py-3 px-3 text-gray-400">{t.move_in_date}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{t.move_in_date}</td>
                       <td className="py-3 px-3">
                         <div className="flex items-center gap-2">
-                          <div className="w-16 bg-[#0d0f17] rounded-full h-1.5">
+                          <div className="w-16 rounded-full h-1.5" style={{ backgroundColor: '#F0F0F0' }}>
                             <div className={`h-1.5 rounded-full ${riskColor}`} style={{ width: `${Math.max(4, t.eviction_risk)}%` }} />
                           </div>
-                          <span className="text-gray-500">{t.eviction_risk}</span>
+                          <span style={{ color: '#6B6B6B' }}>{t.eviction_risk}</span>
                         </div>
                       </td>
-                      <td className="py-3 px-3 text-gray-400">{total > 0 ? `${paid}/${total} paid` : "\u2014"}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{total > 0 ? `${paid}/${total} paid` : "\u2014"}</td>
                     </tr>
                   );
                 })}
@@ -768,7 +784,10 @@ export default function Workspace() {
         actions={
           <button
             onClick={() => setShowLeaseForm(!showLeaseForm)}
-            className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
+            className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors"
+            style={{ color: '#E8C84A' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#d4b43e'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#E8C84A'; }}
           >
             {showLeaseForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
             {showLeaseForm ? "Cancel" : "Add Lease"}
@@ -776,7 +795,7 @@ export default function Workspace() {
         }
       >
         {showLeaseForm && (
-          <div className="p-4 border-b border-[#131728] bg-[#0a0c16]">
+          <div className="p-4" style={{ borderBottom: '1px solid #F0F0F0', backgroundColor: '#FAFAFA' }}>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
               <SelectField label="Property" value={leaseForm.property_id} onChange={(v) => setLeaseForm({ ...leaseForm, property_id: v })} options={propOptions} />
               <SelectField label="Tenant" value={leaseForm.tenant_id} onChange={(v) => setLeaseForm({ ...leaseForm, tenant_id: v })} options={tenantOptions} />
@@ -801,14 +820,14 @@ export default function Workspace() {
                 ]}
               />
               <div>
-                <label className="text-[9px] text-gray-500 font-mono uppercase tracking-widest block mb-1">Auto-Renew</label>
+                <label className="text-[9px] font-mono uppercase tracking-widest block mb-1" style={{ color: '#6B6B6B' }}>Auto-Renew</label>
                 <label className="flex items-center gap-2 mt-2 cursor-pointer">
-                  <input type="checkbox" checked={leaseForm.auto_renew} onChange={(e) => setLeaseForm({ ...leaseForm, auto_renew: e.target.checked })} className="rounded bg-[#04060c] border-[#1e2235]" />
-                  <span className="text-xs font-mono text-gray-400">Enabled</span>
+                  <input type="checkbox" checked={leaseForm.auto_renew} onChange={(e) => setLeaseForm({ ...leaseForm, auto_renew: e.target.checked })} className="rounded" style={{ backgroundColor: '#FFFFFF', borderColor: '#F0F0F0' }} />
+                  <span className="text-xs font-mono" style={{ color: '#6B6B6B' }}>Enabled</span>
                 </label>
               </div>
             </div>
-            <button onClick={handleAddLease} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] font-bold font-mono uppercase tracking-widest transition-colors">
+            <button onClick={handleAddLease} className="px-4 py-2 rounded-xl text-[10px] font-bold font-mono uppercase tracking-widest transition-colors" style={{ backgroundColor: '#F9D96A', color: '#1A1A1A' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8C84A'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#F9D96A'; }}>
               Save Lease
             </button>
           </div>
@@ -816,39 +835,39 @@ export default function Workspace() {
 
         {leases.length === 0 && !showLeaseForm ? (
           <div className="p-12 text-center">
-            <FileText className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">No leases yet</p>
+            <FileText className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No leases yet</p>
           </div>
         ) : leases.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full text-[11px] font-mono">
               <thead>
-                <tr className="border-b border-[#131728]">
+                <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
                   {["Property", "Tenant", "Start", "End", "Rent/Mo", "Deposit", "Late Fee", "Grace", "E-Sign", "Auto-Renew", "Days Left"].map((h) => (
-                    <th key={h} className="text-left py-3 px-3 text-gray-600 font-medium uppercase tracking-widest text-[9px]">{h}</th>
+                    <th key={h} className="text-left py-3 px-3 font-medium uppercase tracking-widest text-[9px]" style={{ color: '#6B6B6B' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody>
                 {leases.map((l) => {
                   const days = daysUntil(l.end_date);
-                  const daysColor = days < 30 ? "text-red-400" : days < 60 ? "text-amber-400" : "text-emerald-400";
+                  const daysColor = days < 30 ? "#dc2626" : days < 60 ? "#d97706" : "#16a34a";
                   const tenant = tenants.find((t) => t.id === l.tenant_id);
                   return (
-                    <tr key={l.id} className="border-b border-[#131728] hover:bg-[#0e1020] transition-colors">
-                      <td className="py-3 px-3 text-gray-200">{getPropertyAddress(l.property_id)}</td>
-                      <td className="py-3 px-3 text-gray-400">{tenant?.name || "\u2014"}</td>
-                      <td className="py-3 px-3 text-gray-400">{l.start_date}</td>
-                      <td className="py-3 px-3 text-gray-400">{l.end_date}</td>
-                      <td className="py-3 px-3 text-emerald-400 font-bold">{usd(l.monthly_rent)}</td>
-                      <td className="py-3 px-3 text-gray-300">{usd(l.security_deposit)}</td>
-                      <td className="py-3 px-3 text-gray-400">{usd(l.late_fee)}</td>
-                      <td className="py-3 px-3 text-gray-400">{l.grace_days}d</td>
+                    <tr key={l.id} className="transition-colors" style={{ borderBottom: '1px solid #F0F0F0' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FAFAFA'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                      <td className="py-3 px-3" style={{ color: '#1A1A1A' }}>{getPropertyAddress(l.property_id)}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{tenant?.name || "\u2014"}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{l.start_date}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{l.end_date}</td>
+                      <td className="py-3 px-3 font-bold" style={{ color: '#16a34a' }}>{usd(l.monthly_rent)}</td>
+                      <td className="py-3 px-3" style={{ color: '#1A1A1A' }}>{usd(l.security_deposit)}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{usd(l.late_fee)}</td>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{l.grace_days}d</td>
                       <td className="py-3 px-3"><Badge text={l.esign_status} colors={ESIGN_COLORS[l.esign_status] || ""} /></td>
                       <td className="py-3 px-3">
-                        {l.auto_renew ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" /> : <XCircle className="w-3.5 h-3.5 text-gray-600" />}
+                        {l.auto_renew ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" /> : <XCircle className="w-3.5 h-3.5" style={{ color: '#6B6B6B' }} />}
                       </td>
-                      <td className={`py-3 px-3 font-bold ${daysColor}`}>{days > 0 ? `${days}d` : "Expired"}</td>
+                      <td className="py-3 px-3 font-bold" style={{ color: daysColor }}>{days > 0 ? `${days}d` : "Expired"}</td>
                     </tr>
                   );
                 })}
@@ -867,14 +886,14 @@ export default function Workspace() {
         {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
           {[
-            { label: "Total Income", value: usd(totalIncome), color: "text-emerald-400" },
-            { label: "Total Expenses", value: usd(totalExpenses), color: "text-red-400" },
-            { label: "Net Income", value: usd(totalIncome - totalExpenses), color: totalIncome - totalExpenses >= 0 ? "text-emerald-400" : "text-red-400" },
-            { label: "Transactions", value: String(transactions.length), color: "text-blue-400" },
+            { label: "Total Income", value: usd(totalIncome), color: '#16a34a' },
+            { label: "Total Expenses", value: usd(totalExpenses), color: '#dc2626' },
+            { label: "Net Income", value: usd(totalIncome - totalExpenses), color: totalIncome - totalExpenses >= 0 ? '#16a34a' : '#dc2626' },
+            { label: "Transactions", value: String(transactions.length), color: '#2563eb' },
           ].map((c) => (
-            <div key={c.label} className="bg-[#080a12] border border-[#1e2235] rounded-lg p-4">
-              <p className="text-[9px] text-gray-600 font-mono uppercase tracking-widest mb-1">{c.label}</p>
-              <p className={`text-xl font-bold font-mono ${c.color}`}>{c.value}</p>
+            <div key={c.label} className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+              <p className="text-[9px] font-mono uppercase tracking-widest mb-1" style={{ color: '#6B6B6B' }}>{c.label}</p>
+              <p className="text-xl font-bold font-mono" style={{ color: c.color }}>{c.value}</p>
             </div>
           ))}
         </div>
@@ -883,18 +902,23 @@ export default function Workspace() {
         <SectionCard
           title="Transaction Ledger"
           icon={DollarSign}
-          accent="text-emerald-400"
           actions={
             <div className="flex items-center gap-2">
               <button
                 onClick={exportCSV}
-                className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+                className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors"
+                style={{ color: '#6B6B6B' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#1A1A1A'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#6B6B6B'; }}
               >
                 <Download className="w-3 h-3" /> Export CSV
               </button>
               <button
                 onClick={() => setShowTxForm(!showTxForm)}
-                className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors"
+                className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors"
+                style={{ color: '#E8C84A' }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = '#d4b43e'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = '#E8C84A'; }}
               >
                 {showTxForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
                 {showTxForm ? "Cancel" : "Add Transaction"}
@@ -903,7 +927,7 @@ export default function Workspace() {
           }
         >
           {showTxForm && (
-            <div className="p-4 border-b border-[#131728] bg-[#0a0c16]">
+            <div className="p-4" style={{ borderBottom: '1px solid #F0F0F0', backgroundColor: '#FAFAFA' }}>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                 <SelectField label="Property" value={txForm.property_id} onChange={(v) => setTxForm({ ...txForm, property_id: v })} options={propOptions} />
                 <SelectField
@@ -922,7 +946,7 @@ export default function Workspace() {
                 <InputField label="Date" value={txForm.date} onChange={(v) => setTxForm({ ...txForm, date: v })} type="date" />
                 <InputField label="Description" value={txForm.description} onChange={(v) => setTxForm({ ...txForm, description: v })} placeholder="Monthly rent payment" />
               </div>
-              <button onClick={handleAddTransaction} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] font-bold font-mono uppercase tracking-widest transition-colors">
+              <button onClick={handleAddTransaction} className="px-4 py-2 rounded-xl text-[10px] font-bold font-mono uppercase tracking-widest transition-colors" style={{ backgroundColor: '#F9D96A', color: '#1A1A1A' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8C84A'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#F9D96A'; }}>
                 Save Transaction
               </button>
             </div>
@@ -930,32 +954,32 @@ export default function Workspace() {
 
           {transactions.length === 0 && !showTxForm ? (
             <div className="p-12 text-center">
-              <DollarSign className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-              <p className="text-sm text-gray-500 font-mono">No transactions yet</p>
+              <DollarSign className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+              <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No transactions yet</p>
             </div>
           ) : transactions.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-[11px] font-mono">
                 <thead>
-                  <tr className="border-b border-[#131728]">
+                  <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
                     {["Date", "Property", "Type", "Category", "Amount", "Description"].map((h) => (
-                      <th key={h} className="text-left py-3 px-3 text-gray-600 font-medium uppercase tracking-widest text-[9px]">{h}</th>
+                      <th key={h} className="text-left py-3 px-3 font-medium uppercase tracking-widest text-[9px]" style={{ color: '#6B6B6B' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {transactions.sort((a, b) => b.date.localeCompare(a.date)).map((t) => (
-                    <tr key={t.id} className="border-b border-[#131728] hover:bg-[#0e1020] transition-colors">
-                      <td className="py-3 px-3 text-gray-400">{t.date}</td>
-                      <td className="py-3 px-3 text-gray-300">{getPropertyAddress(t.property_id)}</td>
+                    <tr key={t.id} className="transition-colors" style={{ borderBottom: '1px solid #F0F0F0' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FAFAFA'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{t.date}</td>
+                      <td className="py-3 px-3" style={{ color: '#1A1A1A' }}>{getPropertyAddress(t.property_id)}</td>
                       <td className="py-3 px-3">
-                        <Badge text={t.type} colors={t.type === "income" ? "text-emerald-400 bg-emerald-500/10" : "text-red-400 bg-red-500/10"} />
+                        <Badge text={t.type} colors={t.type === "income" ? "text-emerald-600 bg-emerald-50" : "text-red-600 bg-red-50"} />
                       </td>
-                      <td className="py-3 px-3 text-gray-400">{t.category}</td>
-                      <td className={`py-3 px-3 font-bold ${t.type === "income" ? "text-emerald-400" : "text-red-400"}`}>
+                      <td className="py-3 px-3" style={{ color: '#6B6B6B' }}>{t.category}</td>
+                      <td className="py-3 px-3 font-bold" style={{ color: t.type === "income" ? '#16a34a' : '#dc2626' }}>
                         {t.type === "expense" ? "-" : ""}{usd(t.amount)}
                       </td>
-                      <td className="py-3 px-3 text-gray-400 truncate max-w-[200px]">{t.description}</td>
+                      <td className="py-3 px-3 truncate max-w-[200px]" style={{ color: '#6B6B6B' }}>{t.description}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -966,30 +990,30 @@ export default function Workspace() {
 
         {/* Rent Roll */}
         {properties.length > 0 && (
-          <SectionCard title="Rent Roll" icon={DollarSign} accent="text-purple-400">
+          <SectionCard title="Rent Roll" icon={DollarSign}>
             <div className="overflow-x-auto">
               <table className="w-full text-[11px] font-mono">
                 <thead>
-                  <tr className="border-b border-[#131728]">
+                  <tr style={{ borderBottom: '1px solid #F0F0F0' }}>
                     {["Property", "Status", "Monthly Rent", "Annual Rent"].map((h) => (
-                      <th key={h} className="text-left py-3 px-3 text-gray-600 font-medium uppercase tracking-widest text-[9px]">{h}</th>
+                      <th key={h} className="text-left py-3 px-3 font-medium uppercase tracking-widest text-[9px]" style={{ color: '#6B6B6B' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {properties.map((p) => (
-                    <tr key={p.id} className="border-b border-[#131728] hover:bg-[#0e1020] transition-colors">
-                      <td className="py-3 px-3 text-gray-200">{p.address}</td>
+                    <tr key={p.id} className="transition-colors" style={{ borderBottom: '1px solid #F0F0F0' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#FAFAFA'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; }}>
+                      <td className="py-3 px-3" style={{ color: '#1A1A1A' }}>{p.address}</td>
                       <td className="py-3 px-3"><Badge text={p.status} colors={STATUS_COLORS[p.status] || ""} /></td>
-                      <td className="py-3 px-3 text-emerald-400 font-bold">{usd(p.monthly_rent)}</td>
-                      <td className="py-3 px-3 text-gray-300">{usd(p.monthly_rent * 12)}</td>
+                      <td className="py-3 px-3 font-bold" style={{ color: '#16a34a' }}>{usd(p.monthly_rent)}</td>
+                      <td className="py-3 px-3" style={{ color: '#1A1A1A' }}>{usd(p.monthly_rent * 12)}</td>
                     </tr>
                   ))}
-                  <tr className="bg-[#0c0e18]">
-                    <td className="py-3 px-3 text-gray-200 font-bold">TOTAL</td>
+                  <tr style={{ backgroundColor: '#FAFAFA' }}>
+                    <td className="py-3 px-3 font-bold" style={{ color: '#1A1A1A' }}>TOTAL</td>
                     <td className="py-3 px-3" />
-                    <td className="py-3 px-3 text-emerald-400 font-bold">{usd(totalRent)}</td>
-                    <td className="py-3 px-3 text-gray-200 font-bold">{usd(totalRent * 12)}</td>
+                    <td className="py-3 px-3 font-bold" style={{ color: '#16a34a' }}>{usd(totalRent)}</td>
+                    <td className="py-3 px-3 font-bold" style={{ color: '#1A1A1A' }}>{usd(totalRent * 12)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -1009,14 +1033,19 @@ export default function Workspace() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1 bg-[#080a12] border border-[#1e2235] rounded-lg p-1">
+          <div className="flex items-center gap-1 rounded-lg p-1" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0' }}>
             {["all", "open", "in_progress", "completed"].map((f) => (
               <button
                 key={f}
                 onClick={() => setWoFilter(f)}
-                className={`text-[9px] font-bold font-mono uppercase tracking-widest px-3 py-1.5 rounded transition-colors ${
-                  woFilter === f ? "bg-blue-600/20 text-blue-400" : "text-gray-600 hover:text-gray-300"
-                }`}
+                className="text-[9px] font-bold font-mono uppercase tracking-widest px-3 py-1.5 rounded transition-colors"
+                style={
+                  woFilter === f
+                    ? { backgroundColor: 'rgba(249,217,106,0.13)', color: '#E8C84A' }
+                    : { color: '#6B6B6B' }
+                }
+                onMouseEnter={(e) => { if (woFilter !== f) e.currentTarget.style.color = '#1A1A1A'; }}
+                onMouseLeave={(e) => { if (woFilter !== f) e.currentTarget.style.color = '#6B6B6B'; }}
               >
                 {f === "all" ? "All" : f === "in_progress" ? "In Progress" : f.charAt(0).toUpperCase() + f.slice(1)}
               </button>
@@ -1024,7 +1053,10 @@ export default function Workspace() {
           </div>
           <button
             onClick={() => setShowWOForm(!showWOForm)}
-            className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-blue-400 hover:text-blue-300 transition-colors ml-auto"
+            className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors ml-auto"
+            style={{ color: '#E8C84A' }}
+            onMouseEnter={(e) => { e.currentTarget.style.color = '#d4b43e'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.color = '#E8C84A'; }}
           >
             {showWOForm ? <X className="w-3 h-3" /> : <Plus className="w-3 h-3" />}
             {showWOForm ? "Cancel" : "New Work Order"}
@@ -1032,7 +1064,7 @@ export default function Workspace() {
         </div>
 
         {showWOForm && (
-          <div className="bg-[#080a12] border border-[#1e2235] rounded-lg p-4">
+          <div className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
             <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
               <SelectField label="Property" value={woForm.property_id} onChange={(v) => setWoForm({ ...woForm, property_id: v })} options={propOptions} />
               <InputField label="Title" value={woForm.title} onChange={(v) => setWoForm({ ...woForm, title: v })} placeholder="Fix leaking faucet" />
@@ -1053,36 +1085,36 @@ export default function Workspace() {
               <InputField label="Estimated Cost" value={woForm.estimated_cost} onChange={(v) => setWoForm({ ...woForm, estimated_cost: v })} type="number" placeholder="500" />
               <InputField label="Description" value={woForm.description} onChange={(v) => setWoForm({ ...woForm, description: v })} placeholder="Details..." />
             </div>
-            <button onClick={handleAddWorkOrder} className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded text-[10px] font-bold font-mono uppercase tracking-widest transition-colors">
+            <button onClick={handleAddWorkOrder} className="px-4 py-2 rounded-xl text-[10px] font-bold font-mono uppercase tracking-widest transition-colors" style={{ backgroundColor: '#F9D96A', color: '#1A1A1A' }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8C84A'; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#F9D96A'; }}>
               Create Work Order
             </button>
           </div>
         )}
 
         {filtered.length === 0 ? (
-          <div className="bg-[#080a12] border border-[#1e2235] rounded-lg p-12 text-center">
-            <Wrench className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">No work orders{woFilter !== "all" ? ` with status "${woFilter}"` : ""}</p>
+          <div className="rounded-lg p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <Wrench className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No work orders{woFilter !== "all" ? ` with status "${woFilter}"` : ""}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {filtered.map((w) => (
-              <div key={w.id} className={`bg-[#080a12] border rounded-lg p-4 ${PRIORITY_COLORS[w.priority]?.includes("border") ? "" : "border-[#1e2235]"}`}>
+              <div key={w.id} className="rounded-lg p-4" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                 <div className="flex items-start justify-between mb-2">
                   <div className="flex-1 min-w-0">
-                    <p className="font-mono text-sm font-bold text-white">{w.title}</p>
-                    <p className="text-[10px] text-gray-500 font-mono mt-0.5">{getPropertyAddress(w.property_id)}</p>
+                    <p className="font-mono text-sm font-bold" style={{ color: '#1A1A1A' }}>{w.title}</p>
+                    <p className="text-[10px] font-mono mt-0.5" style={{ color: '#6B6B6B' }}>{getPropertyAddress(w.property_id)}</p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-2">
                     <Badge text={w.priority} colors={PRIORITY_COLORS[w.priority] || ""} />
                     <Badge text={w.status.replace("_", " ")} colors={WO_STATUS_COLORS[w.status] || ""} />
                   </div>
                 </div>
-                {w.description && <p className="text-[11px] text-gray-400 font-mono mb-2">{w.description}</p>}
+                {w.description && <p className="text-[11px] font-mono mb-2" style={{ color: '#6B6B6B' }}>{w.description}</p>}
                 <div className="grid grid-cols-3 gap-2 text-[10px] font-mono">
-                  <div><span className="text-gray-600 block text-[8px] tracking-widest">VENDOR</span><span className="text-gray-300">{w.vendor || "\u2014"}</span></div>
-                  <div><span className="text-gray-600 block text-[8px] tracking-widest">EST. COST</span><span className="text-gray-300">{usd(w.estimated_cost)}</span></div>
-                  <div><span className="text-gray-600 block text-[8px] tracking-widest">CREATED</span><span className="text-gray-300">{w.created_at.slice(0, 10)}</span></div>
+                  <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>VENDOR</span><span style={{ color: '#1A1A1A' }}>{w.vendor || "\u2014"}</span></div>
+                  <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>EST. COST</span><span style={{ color: '#1A1A1A' }}>{usd(w.estimated_cost)}</span></div>
+                  <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>CREATED</span><span style={{ color: '#1A1A1A' }}>{w.created_at.slice(0, 10)}</span></div>
                 </div>
               </div>
             ))}
@@ -1107,31 +1139,31 @@ export default function Workspace() {
         case "rent-roll":
           return (
             <div className="p-4">
-              <h3 className="text-sm font-mono font-bold text-white mb-3">RENT ROLL REPORT</h3>
-              <p className="text-[10px] text-gray-500 font-mono mb-4">Generated {new Date().toLocaleDateString()}</p>
+              <h3 className="text-sm font-mono font-bold mb-3" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>RENT ROLL REPORT</h3>
+              <p className="text-[10px] font-mono mb-4" style={{ color: '#6B6B6B' }}>Generated {new Date().toLocaleDateString()}</p>
               {properties.length === 0 ? (
-                <p className="text-sm text-gray-500 font-mono">No properties in portfolio</p>
+                <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No properties in portfolio</p>
               ) : (
                 <table className="w-full text-[11px] font-mono">
-                  <thead><tr className="border-b border-[#131728]">
+                  <thead><tr style={{ borderBottom: '1px solid #F0F0F0' }}>
                     {["Address", "City", "Status", "Rent/Mo", "Annual"].map((h) => (
-                      <th key={h} className="text-left py-2 px-3 text-gray-600 text-[9px] uppercase tracking-widest">{h}</th>
+                      <th key={h} className="text-left py-2 px-3 text-[9px] uppercase tracking-widest" style={{ color: '#6B6B6B' }}>{h}</th>
                     ))}
                   </tr></thead>
                   <tbody>
                     {properties.map((p) => (
-                      <tr key={p.id} className="border-b border-[#131728]">
-                        <td className="py-2 px-3 text-gray-200">{p.address}</td>
-                        <td className="py-2 px-3 text-gray-400">{p.city}, {p.state}</td>
+                      <tr key={p.id} style={{ borderBottom: '1px solid #F0F0F0' }}>
+                        <td className="py-2 px-3" style={{ color: '#1A1A1A' }}>{p.address}</td>
+                        <td className="py-2 px-3" style={{ color: '#6B6B6B' }}>{p.city}, {p.state}</td>
                         <td className="py-2 px-3"><Badge text={p.status} colors={STATUS_COLORS[p.status] || ""} /></td>
-                        <td className="py-2 px-3 text-emerald-400">{usd(p.monthly_rent)}</td>
-                        <td className="py-2 px-3 text-gray-300">{usd(p.monthly_rent * 12)}</td>
+                        <td className="py-2 px-3" style={{ color: '#16a34a' }}>{usd(p.monthly_rent)}</td>
+                        <td className="py-2 px-3" style={{ color: '#1A1A1A' }}>{usd(p.monthly_rent * 12)}</td>
                       </tr>
                     ))}
-                    <tr className="bg-[#0c0e18] font-bold">
-                      <td className="py-2 px-3 text-gray-200" colSpan={3}>TOTAL</td>
-                      <td className="py-2 px-3 text-emerald-400">{usd(totalRent)}</td>
-                      <td className="py-2 px-3 text-gray-200">{usd(totalRent * 12)}</td>
+                    <tr className="font-bold" style={{ backgroundColor: '#FAFAFA' }}>
+                      <td className="py-2 px-3" style={{ color: '#1A1A1A' }} colSpan={3}>TOTAL</td>
+                      <td className="py-2 px-3" style={{ color: '#16a34a' }}>{usd(totalRent)}</td>
+                      <td className="py-2 px-3" style={{ color: '#1A1A1A' }}>{usd(totalRent * 12)}</td>
                     </tr>
                   </tbody>
                 </table>
@@ -1141,94 +1173,94 @@ export default function Workspace() {
         case "owner-statement":
           return (
             <div className="p-4">
-              <h3 className="text-sm font-mono font-bold text-white mb-3">OWNER STATEMENT</h3>
-              <p className="text-[10px] text-gray-500 font-mono mb-4">Period: YTD {new Date().getFullYear()}</p>
+              <h3 className="text-sm font-mono font-bold mb-3" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>OWNER STATEMENT</h3>
+              <p className="text-[10px] font-mono mb-4" style={{ color: '#6B6B6B' }}>Period: YTD {new Date().getFullYear()}</p>
               {properties.map((p) => {
                 const pIncome = transactions.filter((t) => t.property_id === p.id && t.type === "income").reduce((s, t) => s + t.amount, 0);
                 const pExpense = transactions.filter((t) => t.property_id === p.id && t.type === "expense").reduce((s, t) => s + t.amount, 0);
                 return (
-                  <div key={p.id} className="mb-4 pb-4 border-b border-[#131728] last:border-0">
-                    <p className="text-xs font-mono text-white font-bold">{p.address}</p>
+                  <div key={p.id} className="mb-4 pb-4 last:border-0" style={{ borderBottom: '1px solid #F0F0F0' }}>
+                    <p className="text-xs font-mono font-bold" style={{ color: '#1A1A1A' }}>{p.address}</p>
                     <div className="grid grid-cols-3 gap-3 mt-2 text-[10px] font-mono">
-                      <div><span className="text-gray-600 block">INCOME</span><span className="text-emerald-400">{usd(pIncome)}</span></div>
-                      <div><span className="text-gray-600 block">EXPENSES</span><span className="text-red-400">{usd(pExpense)}</span></div>
-                      <div><span className="text-gray-600 block">NET</span><span className={pIncome - pExpense >= 0 ? "text-emerald-400" : "text-red-400"}>{usd(pIncome - pExpense)}</span></div>
+                      <div><span className="block" style={{ color: '#6B6B6B' }}>INCOME</span><span style={{ color: '#16a34a' }}>{usd(pIncome)}</span></div>
+                      <div><span className="block" style={{ color: '#6B6B6B' }}>EXPENSES</span><span style={{ color: '#dc2626' }}>{usd(pExpense)}</span></div>
+                      <div><span className="block" style={{ color: '#6B6B6B' }}>NET</span><span style={{ color: pIncome - pExpense >= 0 ? '#16a34a' : '#dc2626' }}>{usd(pIncome - pExpense)}</span></div>
                     </div>
                   </div>
                 );
               })}
-              {properties.length === 0 && <p className="text-sm text-gray-500 font-mono">No properties in portfolio</p>}
+              {properties.length === 0 && <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No properties in portfolio</p>}
             </div>
           );
         case "cash-flow":
           return (
             <div className="p-4">
-              <h3 className="text-sm font-mono font-bold text-white mb-3">CASH FLOW ANALYSIS</h3>
+              <h3 className="text-sm font-mono font-bold mb-3" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>CASH FLOW ANALYSIS</h3>
               <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">TOTAL INFLOW</p>
-                  <p className="text-lg font-mono font-bold text-emerald-400">{usd(totalIncome)}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>TOTAL INFLOW</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#16a34a' }}>{usd(totalIncome)}</p>
                 </div>
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">TOTAL OUTFLOW</p>
-                  <p className="text-lg font-mono font-bold text-red-400">{usd(totalExpenses)}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>TOTAL OUTFLOW</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#dc2626' }}>{usd(totalExpenses)}</p>
                 </div>
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">NET CASH FLOW</p>
-                  <p className={`text-lg font-mono font-bold ${totalIncome - totalExpenses >= 0 ? "text-emerald-400" : "text-red-400"}`}>{usd(totalIncome - totalExpenses)}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>NET CASH FLOW</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: totalIncome - totalExpenses >= 0 ? '#16a34a' : '#dc2626' }}>{usd(totalIncome - totalExpenses)}</p>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-500 font-mono">Monthly rent potential: {usd(totalRent)} | Annual potential: {usd(totalRent * 12)}</p>
+              <p className="text-[10px] font-mono" style={{ color: '#6B6B6B' }}>Monthly rent potential: {usd(totalRent)} | Annual potential: {usd(totalRent * 12)}</p>
             </div>
           );
         case "occupancy":
           return (
             <div className="p-4">
-              <h3 className="text-sm font-mono font-bold text-white mb-3">OCCUPANCY REPORT</h3>
+              <h3 className="text-sm font-mono font-bold mb-3" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>OCCUPANCY REPORT</h3>
               <div className="grid grid-cols-3 gap-4 mb-4">
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">OCCUPANCY RATE</p>
-                  <p className="text-lg font-mono font-bold text-blue-400">{occupancyPct}%</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>OCCUPANCY RATE</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#2563eb' }}>{occupancyPct}%</p>
                 </div>
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">OCCUPIED</p>
-                  <p className="text-lg font-mono font-bold text-emerald-400">{occupiedCount}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>OCCUPIED</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#16a34a' }}>{occupiedCount}</p>
                 </div>
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">VACANT</p>
-                  <p className="text-lg font-mono font-bold text-amber-400">{properties.length - occupiedCount}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>VACANT</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#d97706' }}>{properties.length - occupiedCount}</p>
                 </div>
               </div>
               {properties.map((p) => (
-                <div key={p.id} className="flex items-center justify-between py-2 border-b border-[#131728] text-[11px] font-mono">
-                  <span className="text-gray-300">{p.address}</span>
+                <div key={p.id} className="flex items-center justify-between py-2 text-[11px] font-mono" style={{ borderBottom: '1px solid #F0F0F0' }}>
+                  <span style={{ color: '#1A1A1A' }}>{p.address}</span>
                   <Badge text={p.status} colors={STATUS_COLORS[p.status] || ""} />
                 </div>
               ))}
-              {properties.length === 0 && <p className="text-sm text-gray-500 font-mono">No properties in portfolio</p>}
+              {properties.length === 0 && <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No properties in portfolio</p>}
             </div>
           );
         case "tax-export":
           return (
             <div className="p-4">
-              <h3 className="text-sm font-mono font-bold text-white mb-3">TAX EXPORT - {new Date().getFullYear()}</h3>
+              <h3 className="text-sm font-mono font-bold mb-3" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>TAX EXPORT - {new Date().getFullYear()}</h3>
               <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">TOTAL RENTAL INCOME</p>
-                  <p className="text-lg font-mono font-bold text-emerald-400">{usd(totalIncome)}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>TOTAL RENTAL INCOME</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#16a34a' }}>{usd(totalIncome)}</p>
                 </div>
-                <div className="bg-[#0a0c16] rounded p-3">
-                  <p className="text-[9px] text-gray-600 font-mono tracking-widest">TOTAL DEDUCTIONS</p>
-                  <p className="text-lg font-mono font-bold text-red-400">{usd(totalExpenses)}</p>
+                <div className="rounded p-3" style={{ backgroundColor: '#FAFAFA' }}>
+                  <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>TOTAL DEDUCTIONS</p>
+                  <p className="text-lg font-mono font-bold" style={{ color: '#dc2626' }}>{usd(totalExpenses)}</p>
                 </div>
               </div>
-              <div className="bg-[#0a0c16] rounded p-3 mb-4">
-                <p className="text-[9px] text-gray-600 font-mono tracking-widest">PROPERTY TAX (ANNUAL)</p>
-                <p className="text-lg font-mono font-bold text-amber-400">
+              <div className="rounded p-3 mb-4" style={{ backgroundColor: '#FAFAFA' }}>
+                <p className="text-[9px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>PROPERTY TAX (ANNUAL)</p>
+                <p className="text-lg font-mono font-bold" style={{ color: '#d97706' }}>
                   {usd(properties.reduce((s, p) => s + (p.annual_taxes || 0), 0))}
                 </p>
               </div>
-              <p className="text-[10px] text-gray-500 font-mono">Properties: {properties.length} | Transactions: {transactions.length}</p>
+              <p className="text-[10px] font-mono" style={{ color: '#6B6B6B' }}>Properties: {properties.length} | Transactions: {transactions.length}</p>
             </div>
           );
         default:
@@ -1242,15 +1274,21 @@ export default function Workspace() {
           <div>
             <button
               onClick={() => setActiveReport(null)}
-              className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-gray-400 hover:text-white transition-colors mb-3"
+              className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors mb-3"
+              style={{ color: '#6B6B6B' }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#1A1A1A'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#6B6B6B'; }}
             >
               <X className="w-3 h-3" /> Back to Reports
             </button>
-            <SectionCard title={reports.find((r) => r.id === activeReport)?.title || "Report"} icon={BarChart3} accent="text-purple-400"
+            <SectionCard title={reports.find((r) => r.id === activeReport)?.title || "Report"} icon={BarChart3}
               actions={
                 <button
                   onClick={() => window.print()}
-                  className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest text-gray-400 hover:text-white transition-colors"
+                  className="flex items-center gap-1 text-[9px] font-bold font-mono uppercase tracking-widest transition-colors"
+                  style={{ color: '#6B6B6B' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#1A1A1A'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#6B6B6B'; }}
                 >
                   <Printer className="w-3 h-3" /> Print
                 </button>
@@ -1264,15 +1302,18 @@ export default function Workspace() {
             {reports.map((r) => {
               const Icon = r.icon;
               return (
-                <div key={r.id} className="bg-[#080a12] border border-[#1e2235] rounded-lg p-5">
+                <div key={r.id} className="rounded-lg p-5" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-5 h-5 text-blue-400" />
-                    <h3 className="text-sm font-mono font-bold text-white">{r.title}</h3>
+                    <Icon className="w-5 h-5" style={{ color: '#E8C84A' }} />
+                    <h3 className="text-sm font-bold" style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)' }}>{r.title}</h3>
                   </div>
-                  <p className="text-[11px] text-gray-500 font-mono mb-4">{r.desc}</p>
+                  <p className="text-[11px] font-mono mb-4" style={{ color: '#6B6B6B' }}>{r.desc}</p>
                   <button
                     onClick={() => setActiveReport(r.id)}
-                    className="bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 px-4 py-2 rounded text-[10px] font-bold font-mono uppercase tracking-widest transition-colors w-full"
+                    className="px-4 py-2 rounded-xl text-[10px] font-bold font-mono uppercase tracking-widest transition-colors w-full"
+                    style={{ backgroundColor: '#F9D96A', color: '#1A1A1A' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#E8C84A'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#F9D96A'; }}
                   >
                     Generate
                   </button>
@@ -1291,8 +1332,8 @@ export default function Workspace() {
       return (
         <SectionCard title="Owner Portal" icon={UserCircle}>
           <div className="p-12 text-center">
-            <UserCircle className="w-10 h-10 text-gray-700 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">No properties in portfolio</p>
+            <UserCircle className="w-10 h-10 mx-auto mb-3" style={{ color: '#F0F0F0' }} />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No properties in portfolio</p>
           </div>
         </SectionCard>
       );
@@ -1308,52 +1349,52 @@ export default function Workspace() {
           const annualYield = p.estimated_value ? ((pIncome / (p.estimated_value || 1)) * 100) : null;
 
           return (
-            <SectionCard key={p.id} title={p.address} icon={Building2} accent="text-blue-400">
+            <SectionCard key={p.id} title={p.address} icon={Building2}>
               <div className="p-4">
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">VALUE</p>
-                    <p className="text-lg font-mono font-bold text-white">{usd(p.estimated_value)}</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>VALUE</p>
+                    <p className="text-lg font-mono font-bold" style={{ color: '#1A1A1A' }}>{usd(p.estimated_value)}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">MONTHLY RENT</p>
-                    <p className="text-lg font-mono font-bold text-emerald-400">{usd(p.monthly_rent)}</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>MONTHLY RENT</p>
+                    <p className="text-lg font-mono font-bold" style={{ color: '#16a34a' }}>{usd(p.monthly_rent)}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">STATUS</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>STATUS</p>
                     <div className="mt-1"><Badge text={p.status} colors={STATUS_COLORS[p.status] || ""} /></div>
                   </div>
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">CAP RATE</p>
-                    <p className="text-lg font-mono font-bold text-purple-400">{cr ? pct(cr) : "\u2014"}</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>CAP RATE</p>
+                    <p className="text-lg font-mono font-bold" style={{ color: '#9333ea' }}>{cr ? pct(cr) : "\u2014"}</p>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-3 gap-4 pt-3 border-t border-[#131728]">
+                <div className="grid grid-cols-3 gap-4 pt-3" style={{ borderTop: '1px solid #F0F0F0' }}>
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">YTD INCOME</p>
-                    <p className="text-sm font-mono font-bold text-emerald-400">{usd(pIncome)}</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>YTD INCOME</p>
+                    <p className="text-sm font-mono font-bold" style={{ color: '#16a34a' }}>{usd(pIncome)}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">YTD EXPENSES</p>
-                    <p className="text-sm font-mono font-bold text-red-400">{usd(pExpense)}</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>YTD EXPENSES</p>
+                    <p className="text-sm font-mono font-bold" style={{ color: '#dc2626' }}>{usd(pExpense)}</p>
                   </div>
                   <div>
-                    <p className="text-[8px] text-gray-600 font-mono tracking-widest">NET INCOME</p>
-                    <p className={`text-sm font-mono font-bold ${netIncome >= 0 ? "text-emerald-400" : "text-red-400"}`}>{usd(netIncome)}</p>
+                    <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>NET INCOME</p>
+                    <p className="text-sm font-mono font-bold" style={{ color: netIncome >= 0 ? '#16a34a' : '#dc2626' }}>{usd(netIncome)}</p>
                   </div>
                 </div>
 
                 {annualYield !== null && (
-                  <div className="mt-3 pt-3 border-t border-[#131728]">
+                  <div className="mt-3 pt-3" style={{ borderTop: '1px solid #F0F0F0' }}>
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <p className="text-[8px] text-gray-600 font-mono tracking-widest">YTD YIELD</p>
-                        <p className="text-sm font-mono font-bold text-cyan-400">{pct(annualYield)}</p>
+                        <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>YTD YIELD</p>
+                        <p className="text-sm font-mono font-bold" style={{ color: '#0891b2' }}>{pct(annualYield)}</p>
                       </div>
                       <div>
-                        <p className="text-[8px] text-gray-600 font-mono tracking-widest">CASH-ON-CASH</p>
-                        <p className="text-sm font-mono font-bold text-cyan-400">
+                        <p className="text-[8px] font-mono tracking-widest" style={{ color: '#6B6B6B' }}>CASH-ON-CASH</p>
+                        <p className="text-sm font-mono font-bold" style={{ color: '#0891b2' }}>
                           {p.last_sale_price ? pct((netIncome / p.last_sale_price) * 100) : "\u2014"}
                         </p>
                       </div>
@@ -1377,11 +1418,14 @@ export default function Workspace() {
     return (
       <div className="space-y-4">
         <div className="flex items-center gap-3">
-          <Filter className="w-3.5 h-3.5 text-gray-500" />
+          <Filter className="w-3.5 h-3.5" style={{ color: '#6B6B6B' }} />
           <select
             value={alertFilter}
             onChange={(e) => setAlertFilter(e.target.value)}
-            className="bg-[#080a12] border border-[#1e2235] rounded px-3 py-1.5 text-[10px] font-mono text-gray-300 focus:outline-none focus:border-blue-500/50"
+            className="rounded px-3 py-1.5 text-[10px] font-mono focus:outline-none"
+            style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', color: '#1A1A1A' }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = '#E8C84A'; }}
+            onBlur={(e) => { e.currentTarget.style.borderColor = '#F0F0F0'; }}
           >
             {alertTypes.map((t) => (
               <option key={t} value={t}>
@@ -1389,38 +1433,42 @@ export default function Workspace() {
               </option>
             ))}
           </select>
-          <span className="text-[10px] text-gray-600 font-mono ml-auto">
+          <span className="text-[10px] font-mono ml-auto" style={{ color: '#6B6B6B' }}>
             {visible.length} ALERT{visible.length !== 1 ? "S" : ""}
           </span>
         </div>
 
         {visible.length === 0 ? (
-          <div className="bg-[#080a12] border border-[#1e2235] rounded-lg p-12 text-center">
-            <CheckCircle2 className="w-10 h-10 text-emerald-500/30 mx-auto mb-3" />
-            <p className="text-sm text-gray-500 font-mono">No alerts {"\u2014"} your portfolio is in good shape</p>
+          <div className="rounded-lg p-12 text-center" style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}>
+            <CheckCircle2 className="w-10 h-10 text-emerald-300 mx-auto mb-3" />
+            <p className="text-sm font-mono" style={{ color: '#6B6B6B' }}>No alerts {"\u2014"} your portfolio is in good shape</p>
           </div>
         ) : (
           <div className="space-y-2">
             {visible.map((a) => (
               <div
                 key={a.id}
-                className="bg-[#080a12] border border-[#1e2235] rounded-lg flex items-center gap-3 px-4 py-3"
+                className="rounded-lg flex items-center gap-3 px-4 py-3"
+                style={{ backgroundColor: '#FFFFFF', border: '1px solid #F0F0F0', boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
               >
                 <AlertTriangle
                   className={`w-4 h-4 shrink-0 ${
-                    a.severity === "critical" ? "text-red-400" : a.severity === "warning" ? "text-amber-400" : "text-blue-400"
+                    a.severity === "critical" ? "text-red-500" : a.severity === "warning" ? "text-amber-500" : "text-blue-500"
                   }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-mono text-gray-200">{a.message}</p>
-                  <p className="text-[9px] font-mono text-gray-600 mt-0.5">
+                  <p className="text-[11px] font-mono" style={{ color: '#1A1A1A' }}>{a.message}</p>
+                  <p className="text-[9px] font-mono mt-0.5" style={{ color: '#6B6B6B' }}>
                     {a.type.replace(/_/g, " ").toUpperCase()} {"\u00b7"} {a.created_at.slice(0, 10)}
                   </p>
                 </div>
                 <Badge text={a.severity} colors={SEVERITY_COLORS[a.severity] || ""} />
                 <button
                   onClick={() => handleDismissAlert(a.id)}
-                  className="text-gray-600 hover:text-white transition-colors shrink-0"
+                  className="transition-colors shrink-0"
+                  style={{ color: '#6B6B6B' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = '#1A1A1A'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = '#6B6B6B'; }}
                   title="Dismiss"
                 >
                   <X className="w-4 h-4" />
@@ -1451,24 +1499,27 @@ export default function Workspace() {
 
   /* ── Layout ─────────────────────────────────────────────────── */
   return (
-    <div className="min-h-screen pb-16 bg-[#080a12]">
-      <header className="border-b border-[#1e2235] bg-[#080a12] px-6 py-3">
+    <div className="min-h-screen pb-16" style={{ backgroundColor: '#FFFFFF' }}>
+      <header className="px-6 py-3" style={{ backgroundColor: '#FFFFFF', borderBottom: '1px solid #F0F0F0' }}>
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-3">
             <h1
-              className="text-lg font-bold tracking-tight cursor-pointer font-mono hover:text-blue-400 transition-colors"
+              className="text-lg tracking-tight cursor-pointer transition-colors"
+              style={{ color: '#1A1A1A', fontFamily: 'var(--font-heading)', fontWeight: 700 }}
               onClick={() => router.push("/")}
+              onMouseEnter={(e) => { e.currentTarget.style.color = '#E8C84A'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = '#1A1A1A'; }}
             >
               CASA
             </h1>
-            <div className="w-px h-5 bg-[#1e2235]" />
-            <span className="text-[9px] text-gray-600 font-mono uppercase tracking-widest">
+            <div className="w-px h-5" style={{ backgroundColor: '#F0F0F0' }} />
+            <span className="text-[9px] font-mono uppercase tracking-widest" style={{ color: '#6B6B6B' }}>
               Real Estate Intelligence
             </span>
           </div>
           <div className="flex items-center gap-2">
             <CircleDot className="w-3 h-3 text-emerald-500" />
-            <span className="text-[10px] text-gray-500 font-mono capitalize">{role}</span>
+            <span className="text-[10px] font-mono capitalize" style={{ color: '#6B6B6B' }}>{role}</span>
           </div>
         </div>
       </header>
@@ -1479,15 +1530,19 @@ export default function Workspace() {
           {TABS.map((t) => {
             const Icon = t.icon;
             const alertCount = t.id === "alerts" ? activeAlerts.length : 0;
+            const isActive = tab === t.id;
             return (
               <button
                 key={t.id}
                 onClick={() => setTab(t.id)}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider whitespace-nowrap transition-all ${
-                  tab === t.id
-                    ? "bg-blue-600/15 text-blue-400 border border-blue-500/20"
-                    : "text-gray-600 hover:text-gray-300 hover:bg-[#0e1020] border border-transparent"
-                }`}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded text-[9px] font-bold uppercase tracking-wider whitespace-nowrap transition-all"
+                style={
+                  isActive
+                    ? { backgroundColor: 'rgba(249,217,106,0.13)', color: '#E8C84A', border: '1px solid rgba(249,217,106,0.19)', fontFamily: 'var(--font-inter)' }
+                    : { color: '#6B6B6B', border: '1px solid transparent', fontFamily: 'var(--font-inter)' }
+                }
+                onMouseEnter={(e) => { if (!isActive) { e.currentTarget.style.color = '#1A1A1A'; e.currentTarget.style.backgroundColor = '#FAFAFA'; } }}
+                onMouseLeave={(e) => { if (!isActive) { e.currentTarget.style.color = '#6B6B6B'; e.currentTarget.style.backgroundColor = 'transparent'; } }}
               >
                 <Icon className="w-3 h-3" />
                 {t.label}

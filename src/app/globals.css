@@ -3,22 +3,34 @@
 @tailwind utilities;
 
 :root {
-  --background: #0f1117;
-  --foreground: #e5e7eb;
-  --card: #1a1d2e;
-  --card-hover: #232740;
-  --border: #2a2d3e;
-  --accent: #3b82f6;
+  --bg: #FFFFFF;
+  --tx: #1A1A1A;
+  --tx2: #6B6B6B;
+  --accent: #F9D96A;
+  --accent-dark: #E8C84A;
+  --accent-tint: #FFFDF0;
+  --border: #F0F0F0;
+  --glow: 0 8px 40px rgba(249, 217, 106, 0.22);
+  --glow-sm: 0 4px 20px rgba(249, 217, 106, 0.15);
+  --card-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  --font-h: var(--font-heading);
+  --font-b: var(--font-inter);
 }
 
 body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  color: var(--tx);
+  background: var(--bg);
+  font-family: var(--font-b), system-ui, sans-serif;
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+  .font-heading {
+    font-family: var(--font-h);
+  }
+  .font-body {
+    font-family: var(--font-b);
   }
 }

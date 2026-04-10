@@ -12,12 +12,7 @@ import {
 import { ROLES, type RoleId } from "@/lib/roles";
 
 const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
-  Building2,
-  TrendingUp,
-  BarChart3,
-  Home,
-  Wrench,
-  Search,
+  Building2, TrendingUp, BarChart3, Home, Wrench, Search,
 };
 
 export default function RoleSwitcher({ currentRole }: { currentRole: RoleId }) {
@@ -31,7 +26,7 @@ export default function RoleSwitcher({ currentRole }: { currentRole: RoleId }) {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-[#0d0f1a] border-t border-[var(--border)] px-4 py-2 z-50">
+    <div className="fixed bottom-0 left-0 right-0 z-50 px-4 py-2" style={{ backgroundColor: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", borderTop: "1px solid #F0F0F0" }}>
       <div className="flex items-center justify-center gap-1 max-w-4xl mx-auto">
         {ROLES.map((role) => {
           const Icon = iconMap[role.icon];
@@ -40,11 +35,13 @@ export default function RoleSwitcher({ currentRole }: { currentRole: RoleId }) {
             <button
               key={role.id}
               onClick={() => switchRole(role.id)}
-              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                active
-                  ? "bg-blue-600/20 text-blue-400 border border-blue-500/30"
-                  : "text-gray-500 hover:text-gray-300 hover:bg-white/5"
-              }`}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-all"
+              style={{
+                fontFamily: "var(--font-inter)",
+                backgroundColor: active ? "#F9D96A20" : "transparent",
+                color: active ? "#E8C84A" : "#6B6B6B",
+                border: active ? "1px solid #F9D96A30" : "1px solid transparent",
+              }}
             >
               <Icon className="w-4 h-4" />
               <span className="hidden sm:inline">{role.label}</span>

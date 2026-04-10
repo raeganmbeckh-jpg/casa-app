@@ -79,15 +79,22 @@ function fmtPct(n: number): string {
 /* ── Status Badge ────────────────────────────────────────────────── */
 
 function StatusBadge({ status }: { status: PortfolioProperty["status"] }) {
-  const colors: Record<string, string> = {
-    occupied: "bg-emerald-500/20 text-emerald-400 border-emerald-500/30",
-    vacant: "bg-amber-500/20 text-amber-400 border-amber-500/30",
-    maintenance: "bg-red-500/20 text-red-400 border-red-500/30",
-    prospecting: "bg-blue-500/20 text-blue-400 border-blue-500/30",
+  const colors: Record<string, { bg: string; text: string; border: string }> = {
+    occupied: { bg: "#ecfdf5", text: "#059669", border: "#a7f3d0" },
+    vacant: { bg: "#fffbeb", text: "#d97706", border: "#fde68a" },
+    maintenance: { bg: "#fef2f2", text: "#dc2626", border: "#fecaca" },
+    prospecting: { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" },
   };
+  const c = colors[status] || colors.vacant;
   return (
     <span
-      className={`px-3 py-1 rounded text-[10px] font-mono uppercase tracking-widest border ${colors[status] || colors.vacant}`}
+      className="px-3 py-1 rounded text-[10px] uppercase tracking-widest border"
+      style={{
+        fontFamily: "var(--font-geist-mono)",
+        backgroundColor: c.bg,
+        color: c.text,
+        borderColor: c.border,
+      }}
     >
       {status}
     </span>
@@ -98,8 +105,11 @@ function StatusBadge({ status }: { status: PortfolioProperty["status"] }) {
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <h2 className="text-[11px] font-mono uppercase tracking-[0.2em] text-gray-500 mb-4 flex items-center gap-2">
-      <span className="w-2 h-2 rounded-full bg-blue-500/60" />
+    <h2
+      className="text-sm uppercase tracking-[0.2em] mb-4 flex items-center gap-2"
+      style={{ fontFamily: "var(--font-heading)", color: "#E8C84A" }}
+    >
+      <span className="w-2 h-2 rounded-full" style={{ backgroundColor: "#F9D96A" }} />
       {children}
     </h2>
   );
@@ -109,7 +119,14 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
 
 function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-[#0c0e18] border border-[#1e2235] rounded-lg ${className}`}>
+    <div
+      className={`rounded-lg ${className}`}
+      style={{
+        backgroundColor: "#FFFFFF",
+        border: "1px solid #F0F0F0",
+        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+      }}
+    >
       {children}
     </div>
   );
@@ -134,39 +151,48 @@ function SystemBar({
   const pct = Math.max(0, Math.min(100, (remaining / lifespan) * 100));
   const urgency =
     pct <= 10
-      ? { label: "REPLACE", color: "text-red-400 bg-red-500/20 border-red-500/30" }
+      ? { label: "REPLACE", bg: "#fef2f2", text: "#dc2626", border: "#fecaca" }
       : pct <= 30
-        ? { label: "AGING", color: "text-amber-400 bg-amber-500/20 border-amber-500/30" }
-        : { label: "GOOD", color: "text-emerald-400 bg-emerald-500/20 border-emerald-500/30" };
+        ? { label: "AGING", bg: "#fffbeb", text: "#d97706", border: "#fde68a" }
+        : { label: "GOOD", bg: "#ecfdf5", text: "#059669", border: "#a7f3d0" };
   const barColor =
-    pct <= 10 ? "bg-red-500" : pct <= 30 ? "bg-amber-500" : "bg-emerald-500";
+    pct <= 10 ? "#ef4444" : pct <= 30 ? "#f59e0b" : "#10b981";
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Icon className="w-4 h-4 text-gray-500" />
-          <span className="text-xs font-mono uppercase tracking-wider text-gray-300">
+          <Icon className="w-4 h-4" style={{ color: "#6B6B6B" }} />
+          <span
+            className="text-xs uppercase tracking-wider"
+            style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}
+          >
             {label}
           </span>
         </div>
         <span
-          className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border ${urgency.color}`}
+          className="text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border"
+          style={{
+            fontFamily: "var(--font-geist-mono)",
+            backgroundColor: urgency.bg,
+            color: urgency.text,
+            borderColor: urgency.border,
+          }}
         >
           {urgency.label}
         </span>
       </div>
-      <div className="w-full h-2 bg-[#1e2235] rounded-full overflow-hidden">
+      <div className="w-full h-2 rounded-full overflow-hidden" style={{ backgroundColor: "#F0F0F0" }}>
         <div
-          className={`h-full ${barColor} rounded-full transition-all`}
-          style={{ width: `${pct}%` }}
+          className="h-full rounded-full transition-all"
+          style={{ width: `${pct}%`, backgroundColor: barColor }}
         />
       </div>
-      <div className="flex justify-between text-[10px] font-mono text-gray-600">
+      <div className="flex justify-between text-[10px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
         <span>Est. {ageYears}y old / {lifespan}y life</span>
         <span>{remaining}y remaining</span>
       </div>
-      <p className="text-[10px] font-mono text-gray-500">
+      <p className="text-[10px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
         Replacement est. {costEstimate}
       </p>
     </div>
@@ -233,10 +259,10 @@ function PropertyContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#080a12] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FFFFFF" }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
-          <span className="text-[10px] font-mono uppercase tracking-widest text-gray-600">
+          <div className="animate-spin w-6 h-6 border-2 rounded-full" style={{ borderColor: "#F9D96A", borderTopColor: "transparent" }} />
+          <span className="text-[10px] uppercase tracking-widest" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
             Loading property data
           </span>
         </div>
@@ -246,12 +272,13 @@ function PropertyContent() {
 
   if (!property) {
     return (
-      <div className="min-h-screen bg-[#080a12] flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FFFFFF" }}>
         <div className="text-center space-y-3">
-          <p className="text-gray-500 font-mono text-sm">Property not found</p>
+          <p className="text-sm" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Property not found</p>
           <button
             onClick={() => router.back()}
-            className="text-blue-400 text-xs font-mono uppercase tracking-wider hover:text-blue-300"
+            className="text-xs uppercase tracking-wider hover:opacity-70"
+            style={{ fontFamily: "var(--font-geist-mono)", color: "#E8C84A" }}
           >
             Go back
           </button>
@@ -282,30 +309,34 @@ function PropertyContent() {
   );
 
   return (
-    <div className="min-h-screen bg-[#080a12] text-gray-200 pb-12">
+    <div className="min-h-screen pb-12" style={{ backgroundColor: "#FFFFFF", color: "#1A1A1A", fontFamily: "var(--font-inter)" }}>
       {/* ─── 1. HEADER ─────────────────────────────────────────────── */}
-      <header className="border-b border-[#1e2235] px-6 py-5">
+      <header className="px-6 py-5" style={{ backgroundColor: "#FFFFFF", borderBottom: "1px solid #F0F0F0" }}>
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center gap-4 mb-3">
             <button
               onClick={() => router.back()}
-              className="p-2 rounded-lg border border-[#1e2235] hover:border-gray-600 hover:bg-white/5 transition-colors"
+              className="p-2 rounded-lg transition-colors hover:bg-gray-100"
+              style={{ border: "1px solid #F0F0F0" }}
             >
-              <ArrowLeft className="w-4 h-4 text-gray-400" />
+              <ArrowLeft className="w-4 h-4" style={{ color: "#6B6B6B" }} />
             </button>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-3 flex-wrap">
-                <h1 className="text-lg font-mono font-bold tracking-tight truncate">
+                <h1
+                  className="text-lg font-bold tracking-tight truncate"
+                  style={{ fontFamily: "var(--font-heading)", color: "#1A1A1A" }}
+                >
                   {property.address}
                 </h1>
                 <StatusBadge status={property.status} />
               </div>
-              <p className="text-xs font-mono text-gray-500 mt-1 flex items-center gap-1.5">
+              <p className="text-xs mt-1 flex items-center gap-1.5" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 <MapPin className="w-3 h-3" />
                 {property.city}, {property.state} {property.zip}
                 {property.property_type && (
                   <>
-                    <span className="text-gray-700 mx-1">|</span>
+                    <span className="mx-1" style={{ color: "#F0F0F0" }}>|</span>
                     <Home className="w-3 h-3" />
                     {property.property_type}
                   </>
@@ -318,7 +349,7 @@ function PropertyContent() {
 
       <div className="max-w-7xl mx-auto px-6 pt-6 space-y-8">
         {/* ─── 2. KEY METRICS BAR ──────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px bg-[#1e2235] rounded-lg overflow-hidden">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-px rounded-lg overflow-hidden" style={{ backgroundColor: "#F0F0F0" }}>
           {[
             { label: "Market Value", value: fmt$(property.estimated_value), sub: property.assessed_value ? `Assessed ${fmt$(property.assessed_value)}` : null },
             { label: "Monthly Rent", value: fmt$(property.monthly_rent || null), sub: property.monthly_rent ? `${fmt$(property.monthly_rent * 12)}/yr` : null },
@@ -327,15 +358,15 @@ function PropertyContent() {
             { label: "Living Area", value: property.sqft ? `${fmtNum(property.sqft)} sf` : "---", sub: property.lot_sqft ? `${fmtNum(property.lot_sqft)} sf lot` : null },
             { label: "Year Built", value: property.year_built?.toString() || "---", sub: age != null ? `${age} years old` : null },
           ].map((m, i) => (
-            <div key={i} className="bg-[#0c0e18] p-4 text-center">
-              <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600 mb-2">
+            <div key={i} className="p-4 text-center" style={{ backgroundColor: "#FFFFFF" }}>
+              <p className="text-[9px] uppercase tracking-[0.2em] mb-2" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 {m.label}
               </p>
-              <p className="text-xl font-mono font-bold text-gray-100">
+              <p className="text-xl font-bold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                 {m.value}
               </p>
               {m.sub && (
-                <p className="text-[10px] font-mono text-gray-600 mt-1">{m.sub}</p>
+                <p className="text-[10px] mt-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>{m.sub}</p>
               )}
             </div>
           ))}
@@ -359,12 +390,12 @@ function PropertyContent() {
               return (
                 <Card key={i} className="p-4">
                   <div className="flex items-center gap-2 mb-2">
-                    <Icon className="w-3.5 h-3.5 text-gray-600" />
-                    <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600">
+                    <Icon className="w-3.5 h-3.5" style={{ color: "#6B6B6B" }} />
+                    <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                       {item.label}
                     </span>
                   </div>
-                  <p className="text-sm font-mono font-semibold text-gray-200">
+                  <p className="text-sm font-semibold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                     {item.value}
                   </p>
                 </Card>
@@ -389,11 +420,11 @@ function PropertyContent() {
                   { label: "Stories", value: attomBuilding.summary?.levels || "---" },
                   { label: "Units", value: attomBuilding.summary?.unitsCount || "1" },
                 ].map((r, i) => (
-                  <div key={i} className="bg-[#080a12] rounded-lg p-3 border border-[#1e2235]/50">
-                    <p className="text-[9px] font-mono uppercase tracking-[0.15em] text-gray-600 mb-1">
+                  <div key={i} className="rounded-lg p-3" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                    <p className="text-[9px] uppercase tracking-[0.15em] mb-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                       {r.label}
                     </p>
-                    <p className="text-base font-mono font-semibold text-gray-200">
+                    <p className="text-base font-semibold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                       {r.value}
                     </p>
                   </div>
@@ -402,12 +433,12 @@ function PropertyContent() {
             </Card>
           ) : (
             <Card className="p-5 flex items-center gap-3">
-              <CircleDot className="w-4 h-4 text-gray-600 shrink-0" />
+              <CircleDot className="w-4 h-4 shrink-0" style={{ color: "#6B6B6B" }} />
               <div>
-                <p className="text-xs font-mono text-gray-400">
+                <p className="text-xs" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                   Room data available with property inspection
                 </p>
-                <p className="text-[10px] font-mono text-gray-600 mt-0.5">
+                <p className="text-[10px] mt-0.5" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   Connect ATTOM data or add manual inspection to populate room breakdown
                 </p>
               </div>
@@ -460,8 +491,8 @@ function PropertyContent() {
             </Card>
           ) : (
             <Card className="p-5 flex items-center gap-3">
-              <AlertTriangle className="w-4 h-4 text-amber-500/60 shrink-0" />
-              <p className="text-xs font-mono text-gray-500">
+              <AlertTriangle className="w-4 h-4 shrink-0" style={{ color: "#d97706" }} />
+              <p className="text-xs" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 Year built unknown -- unable to estimate system ages
               </p>
             </Card>
@@ -474,63 +505,64 @@ function PropertyContent() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Footprints className="w-4 h-4 text-blue-400/60" />
-                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600">
+                <Footprints className="w-4 h-4" style={{ color: "#E8C84A" }} />
+                <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   Walk Score
                 </span>
               </div>
-              <p className="text-3xl font-mono font-bold text-gray-100">
+              <p className="text-3xl font-bold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                 {walkScore}
-                <span className="text-sm text-gray-600 ml-1">/ 100</span>
+                <span className="text-sm ml-1" style={{ color: "#6B6B6B" }}>/ 100</span>
               </p>
-              <div className="w-full h-1.5 bg-[#1e2235] rounded-full mt-3 overflow-hidden">
+              <div className="w-full h-1.5 rounded-full mt-3 overflow-hidden" style={{ backgroundColor: "#F0F0F0" }}>
                 <div
-                  className="h-full bg-blue-500 rounded-full"
-                  style={{ width: `${walkScore}%` }}
+                  className="h-full rounded-full"
+                  style={{ width: `${walkScore}%`, backgroundColor: "#E8C84A" }}
                 />
               </div>
-              <p className="text-[10px] font-mono text-gray-600 mt-2">
+              <p className="text-[10px] mt-2" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 {walkScore >= 70 ? "Very Walkable" : walkScore >= 50 ? "Somewhat Walkable" : "Car-Dependent"}
               </p>
             </Card>
 
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <GraduationCap className="w-4 h-4 text-emerald-400/60" />
-                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600">
+                <GraduationCap className="w-4 h-4" style={{ color: "#10b981" }} />
+                <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   School Rating
                 </span>
               </div>
-              <p className="text-3xl font-mono font-bold text-gray-100">
-                7<span className="text-sm text-gray-600 ml-1">/ 10</span>
+              <p className="text-3xl font-bold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
+                7<span className="text-sm ml-1" style={{ color: "#6B6B6B" }}>/ 10</span>
               </p>
               <div className="flex gap-1 mt-3">
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div
                     key={i}
-                    className={`h-1.5 flex-1 rounded-full ${i < 7 ? "bg-emerald-500" : "bg-[#1e2235]"}`}
+                    className="h-1.5 flex-1 rounded-full"
+                    style={{ backgroundColor: i < 7 ? "#10b981" : "#F0F0F0" }}
                   />
                 ))}
               </div>
-              <p className="text-[10px] font-mono text-gray-600 mt-2">
+              <p className="text-[10px] mt-2" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 Above Average (nearby district)
               </p>
             </Card>
 
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-3">
-                <Sun className="w-4 h-4 text-amber-400/60" />
-                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600">
+                <Sun className="w-4 h-4" style={{ color: "#F9D96A" }} />
+                <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   Sun Exposure
                 </span>
               </div>
-              <p className="text-lg font-mono font-bold text-gray-100 mt-1">
+              <p className="text-lg font-bold mt-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                 Good
               </p>
-              <p className="text-xs font-mono text-gray-400 mt-2">
+              <p className="text-xs mt-2" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                 Southern exposure estimated
               </p>
-              <p className="text-[10px] font-mono text-gray-600 mt-1">
+              <p className="text-[10px] mt-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 Solar potential: ~5.2 kWh/m2/day
               </p>
             </Card>
@@ -544,64 +576,68 @@ function PropertyContent() {
             {/* Tenant */}
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4">
-                <User className="w-4 h-4 text-gray-500" />
-                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600">
+                <User className="w-4 h-4" style={{ color: "#6B6B6B" }} />
+                <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   Current Tenant
                 </span>
               </div>
               {activeTenant ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-mono font-semibold text-gray-200">
+                    <p className="text-sm font-semibold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                       {activeTenant.name}
                     </p>
                     <span
-                      className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border ${
-                        activeTenant.background_check === "passed"
-                          ? "text-emerald-400 bg-emerald-500/20 border-emerald-500/30"
+                      className="text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border"
+                      style={{
+                        fontFamily: "var(--font-geist-mono)",
+                        ...(activeTenant.background_check === "passed"
+                          ? { color: "#059669", backgroundColor: "#ecfdf5", borderColor: "#a7f3d0" }
                           : activeTenant.background_check === "flagged"
-                            ? "text-red-400 bg-red-500/20 border-red-500/30"
-                            : "text-amber-400 bg-amber-500/20 border-amber-500/30"
-                      }`}
+                            ? { color: "#dc2626", backgroundColor: "#fef2f2", borderColor: "#fecaca" }
+                            : { color: "#d97706", backgroundColor: "#fffbeb", borderColor: "#fde68a" }),
+                      }}
                     >
                       BG: {activeTenant.background_check}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Credit Score</p>
-                      <p className={`text-base font-mono font-bold ${
-                        activeTenant.credit_score >= 700
-                          ? "text-emerald-400"
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Credit Score</p>
+                      <p className="text-base font-bold" style={{
+                        fontFamily: "var(--font-geist-mono)",
+                        color: activeTenant.credit_score >= 700
+                          ? "#059669"
                           : activeTenant.credit_score >= 600
-                            ? "text-amber-400"
-                            : "text-red-400"
-                      }`}>
+                            ? "#d97706"
+                            : "#dc2626",
+                      }}>
                         {activeTenant.credit_score}
                       </p>
                     </div>
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Move-In</p>
-                      <p className="text-sm font-mono text-gray-300">{fmtDate(activeTenant.move_in_date)}</p>
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Move-In</p>
+                      <p className="text-sm" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>{fmtDate(activeTenant.move_in_date)}</p>
                     </div>
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Monthly Income</p>
-                      <p className="text-sm font-mono text-gray-300">
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Monthly Income</p>
+                      <p className="text-sm" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                         {fmt$(activeTenant.monthly_income)}
                         {activeTenant.income_verified && (
-                          <CheckCircle2 className="w-3 h-3 text-emerald-400 inline ml-1" />
+                          <CheckCircle2 className="w-3 h-3 inline ml-1" style={{ color: "#059669" }} />
                         )}
                       </p>
                     </div>
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Eviction Risk</p>
-                      <p className={`text-sm font-mono ${
-                        activeTenant.eviction_risk <= 3
-                          ? "text-emerald-400"
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Eviction Risk</p>
+                      <p className="text-sm" style={{
+                        fontFamily: "var(--font-geist-mono)",
+                        color: activeTenant.eviction_risk <= 3
+                          ? "#059669"
                           : activeTenant.eviction_risk <= 6
-                            ? "text-amber-400"
-                            : "text-red-400"
-                      }`}>
+                            ? "#d97706"
+                            : "#dc2626",
+                      }}>
                         {activeTenant.eviction_risk}/10
                       </p>
                     </div>
@@ -609,7 +645,7 @@ function PropertyContent() {
                   {/* Payment History */}
                   {activeTenant.payment_history && activeTenant.payment_history.length > 0 && (
                     <div>
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600 mb-2">
+                      <p className="text-[9px] uppercase tracking-wider mb-2" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                         Recent Payments
                       </p>
                       <div className="flex gap-1">
@@ -617,77 +653,81 @@ function PropertyContent() {
                           <div
                             key={i}
                             title={`${fmtDate(p.date)}: ${fmt$(p.amount)} (${p.status})`}
-                            className={`h-5 flex-1 rounded-sm ${
-                              p.status === "paid"
-                                ? "bg-emerald-500/40"
-                                : p.status === "late"
-                                  ? "bg-amber-500/40"
-                                  : "bg-red-500/40"
-                            }`}
+                            className="h-5 flex-1 rounded-sm"
+                            style={{
+                              backgroundColor:
+                                p.status === "paid"
+                                  ? "#d1fae5"
+                                  : p.status === "late"
+                                    ? "#fef3c7"
+                                    : "#fee2e2",
+                            }}
                           />
                         ))}
                       </div>
                       <div className="flex justify-between mt-1">
-                        <span className="text-[8px] font-mono text-gray-700">12 mo history</span>
+                        <span className="text-[8px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>12 mo history</span>
                         <div className="flex gap-3">
-                          <span className="text-[8px] font-mono text-emerald-500/60">Paid</span>
-                          <span className="text-[8px] font-mono text-amber-500/60">Late</span>
-                          <span className="text-[8px] font-mono text-red-500/60">Missed</span>
+                          <span className="text-[8px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#059669" }}>Paid</span>
+                          <span className="text-[8px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#d97706" }}>Late</span>
+                          <span className="text-[8px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#dc2626" }}>Missed</span>
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
               ) : (
-                <p className="text-xs font-mono text-gray-600">No active tenant on file</p>
+                <p className="text-xs" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>No active tenant on file</p>
               )}
             </Card>
 
             {/* Lease */}
             <Card className="p-5">
               <div className="flex items-center gap-2 mb-4">
-                <FileText className="w-4 h-4 text-gray-500" />
-                <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600">
+                <FileText className="w-4 h-4" style={{ color: "#6B6B6B" }} />
+                <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   Current Lease
                 </span>
               </div>
               {activeLease ? (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-mono font-semibold text-gray-200">
+                    <p className="text-sm font-semibold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                       {fmtDate(activeLease.start_date)} - {fmtDate(activeLease.end_date)}
                     </p>
                     <span
-                      className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border flex items-center gap-1 ${
-                        activeLease.esign_status === "signed"
-                          ? "text-emerald-400 bg-emerald-500/20 border-emerald-500/30"
+                      className="text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border flex items-center gap-1"
+                      style={{
+                        fontFamily: "var(--font-geist-mono)",
+                        ...(activeLease.esign_status === "signed"
+                          ? { color: "#059669", backgroundColor: "#ecfdf5", borderColor: "#a7f3d0" }
                           : activeLease.esign_status === "expired"
-                            ? "text-red-400 bg-red-500/20 border-red-500/30"
-                            : "text-amber-400 bg-amber-500/20 border-amber-500/30"
-                      }`}
+                            ? { color: "#dc2626", backgroundColor: "#fef2f2", borderColor: "#fecaca" }
+                            : { color: "#d97706", backgroundColor: "#fffbeb", borderColor: "#fde68a" }),
+                      }}
                     >
                       <PenLine className="w-3 h-3" />
                       {activeLease.esign_status}
                     </span>
                   </div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Monthly Rent</p>
-                      <p className="text-base font-mono font-bold text-gray-200">{fmt$(activeLease.monthly_rent)}</p>
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Monthly Rent</p>
+                      <p className="text-base font-bold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>{fmt$(activeLease.monthly_rent)}</p>
                     </div>
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Security Deposit</p>
-                      <p className="text-sm font-mono text-gray-300">{fmt$(activeLease.security_deposit)}</p>
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Security Deposit</p>
+                      <p className="text-sm" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>{fmt$(activeLease.security_deposit)}</p>
                     </div>
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Late Fee</p>
-                      <p className="text-sm font-mono text-gray-300">
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Late Fee</p>
+                      <p className="text-sm" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                         {fmt$(activeLease.late_fee)} after {activeLease.grace_days}d
                       </p>
                     </div>
-                    <div className="bg-[#080a12] rounded p-2.5 border border-[#1e2235]/50">
-                      <p className="text-[9px] font-mono uppercase tracking-wider text-gray-600">Auto Renew</p>
-                      <p className="text-sm font-mono text-gray-300">
+                    <div className="rounded p-2.5" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                      <p className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Auto Renew</p>
+                      <p className="text-sm" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                         {activeLease.auto_renew ? "Yes" : "No"}
                       </p>
                     </div>
@@ -698,18 +738,20 @@ function PropertyContent() {
                       (new Date(activeLease.end_date).getTime() - Date.now()) / 86400000
                     );
                     return (
-                      <div className="bg-[#080a12] rounded p-3 border border-[#1e2235]/50 flex items-center justify-between">
-                        <span className="text-[9px] font-mono uppercase tracking-wider text-gray-600">
+                      <div className="rounded p-3 flex items-center justify-between" style={{ backgroundColor: "#FAFAFA", border: "1px solid #F0F0F0" }}>
+                        <span className="text-[9px] uppercase tracking-wider" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                           Lease Remaining
                         </span>
                         <span
-                          className={`text-sm font-mono font-bold ${
-                            daysLeft <= 30
-                              ? "text-red-400"
+                          className="text-sm font-bold"
+                          style={{
+                            fontFamily: "var(--font-geist-mono)",
+                            color: daysLeft <= 30
+                              ? "#dc2626"
                               : daysLeft <= 90
-                                ? "text-amber-400"
-                                : "text-gray-300"
-                          }`}
+                                ? "#d97706"
+                                : "#1A1A1A",
+                          }}
                         >
                           {daysLeft > 0 ? `${daysLeft} days` : "Expired"}
                         </span>
@@ -718,7 +760,7 @@ function PropertyContent() {
                   })()}
                 </div>
               ) : (
-                <p className="text-xs font-mono text-gray-600">No active lease on file</p>
+                <p className="text-xs" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>No active lease on file</p>
               )}
             </Card>
           </div>
@@ -731,25 +773,27 @@ function PropertyContent() {
             {/* Totals row */}
             <div className="grid grid-cols-3 gap-4 mb-6">
               <div className="text-center">
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600 mb-1">Total Income</p>
-                <p className="text-xl font-mono font-bold text-emerald-400 flex items-center justify-center gap-1">
+                <p className="text-[9px] uppercase tracking-[0.2em] mb-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Total Income</p>
+                <p className="text-xl font-bold flex items-center justify-center gap-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#059669" }}>
                   <TrendingUp className="w-4 h-4" />
                   {fmt$(financials.income)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600 mb-1">Total Expenses</p>
-                <p className="text-xl font-mono font-bold text-red-400 flex items-center justify-center gap-1">
+                <p className="text-[9px] uppercase tracking-[0.2em] mb-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Total Expenses</p>
+                <p className="text-xl font-bold flex items-center justify-center gap-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#dc2626" }}>
                   <TrendingDown className="w-4 h-4" />
                   {fmt$(financials.expenses)}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600 mb-1">Net</p>
+                <p className="text-[9px] uppercase tracking-[0.2em] mb-1" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>Net</p>
                 <p
-                  className={`text-xl font-mono font-bold ${
-                    financials.net >= 0 ? "text-emerald-400" : "text-red-400"
-                  }`}
+                  className="text-xl font-bold"
+                  style={{
+                    fontFamily: "var(--font-geist-mono)",
+                    color: financials.net >= 0 ? "#059669" : "#dc2626",
+                  }}
                 >
                   {fmt$(financials.net)}
                 </p>
@@ -758,8 +802,8 @@ function PropertyContent() {
 
             {/* Transaction list */}
             {transactions.length > 0 ? (
-              <div className="border-t border-[#1e2235] pt-4">
-                <p className="text-[9px] font-mono uppercase tracking-[0.2em] text-gray-600 mb-3">
+              <div className="pt-4" style={{ borderTop: "1px solid #F0F0F0" }}>
+                <p className="text-[9px] uppercase tracking-[0.2em] mb-3" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   Recent Transactions
                 </p>
                 <div className="space-y-1 max-h-64 overflow-y-auto">
@@ -769,27 +813,30 @@ function PropertyContent() {
                     .map((tx) => (
                       <div
                         key={tx.id}
-                        className="flex items-center justify-between py-2 px-3 rounded hover:bg-white/[0.02] transition-colors"
+                        className="flex items-center justify-between py-2 px-3 rounded hover:bg-gray-50 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <span
-                            className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                              tx.type === "income" ? "bg-emerald-500" : "bg-red-500"
-                            }`}
+                            className="w-1.5 h-1.5 rounded-full shrink-0"
+                            style={{
+                              backgroundColor: tx.type === "income" ? "#10b981" : "#ef4444",
+                            }}
                           />
                           <div className="min-w-0">
-                            <p className="text-xs font-mono text-gray-300 truncate">
+                            <p className="text-xs truncate" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                               {tx.description}
                             </p>
-                            <p className="text-[10px] font-mono text-gray-600">
+                            <p className="text-[10px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                               {tx.category} / {fmtDate(tx.date)}
                             </p>
                           </div>
                         </div>
                         <p
-                          className={`text-sm font-mono font-semibold shrink-0 ml-4 ${
-                            tx.type === "income" ? "text-emerald-400" : "text-red-400"
-                          }`}
+                          className="text-sm font-semibold shrink-0 ml-4"
+                          style={{
+                            fontFamily: "var(--font-geist-mono)",
+                            color: tx.type === "income" ? "#059669" : "#dc2626",
+                          }}
                         >
                           {tx.type === "income" ? "+" : "-"}{fmt$(tx.amount)}
                         </p>
@@ -798,8 +845,8 @@ function PropertyContent() {
                 </div>
               </div>
             ) : (
-              <div className="border-t border-[#1e2235] pt-4">
-                <p className="text-xs font-mono text-gray-600 text-center">
+              <div className="pt-4" style={{ borderTop: "1px solid #F0F0F0" }}>
+                <p className="text-xs text-center" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                   No transactions recorded for this property
                 </p>
               </div>
@@ -818,37 +865,38 @@ function PropertyContent() {
                   return (pri[a.priority] ?? 4) - (pri[b.priority] ?? 4);
                 })
                 .map((wo) => {
-                  const priorityStyle: Record<string, string> = {
-                    emergency: "text-red-400 bg-red-500/20 border-red-500/30",
-                    high: "text-amber-400 bg-amber-500/20 border-amber-500/30",
-                    medium: "text-blue-400 bg-blue-500/20 border-blue-500/30",
-                    low: "text-gray-400 bg-gray-500/20 border-gray-500/30",
+                  const priorityStyle: Record<string, { bg: string; text: string; border: string }> = {
+                    emergency: { bg: "#fef2f2", text: "#dc2626", border: "#fecaca" },
+                    high: { bg: "#fffbeb", text: "#d97706", border: "#fde68a" },
+                    medium: { bg: "#eff6ff", text: "#2563eb", border: "#bfdbfe" },
+                    low: { bg: "#f9fafb", text: "#6B6B6B", border: "#e5e7eb" },
                   };
-                  const statusStyle: Record<string, string> = {
-                    open: "text-amber-400",
-                    in_progress: "text-blue-400",
-                    completed: "text-emerald-400",
+                  const statusColors: Record<string, string> = {
+                    open: "#d97706",
+                    in_progress: "#2563eb",
+                    completed: "#059669",
                   };
+                  const ps = priorityStyle[wo.priority] || priorityStyle.low;
                   return (
                     <Card key={wo.id} className="p-4">
                       <div className="flex items-start justify-between gap-4">
                         <div className="flex items-start gap-3 min-w-0">
-                          <Wrench className="w-4 h-4 text-gray-500 mt-0.5 shrink-0" />
+                          <Wrench className="w-4 h-4 mt-0.5 shrink-0" style={{ color: "#6B6B6B" }} />
                           <div className="min-w-0">
-                            <p className="text-sm font-mono font-semibold text-gray-200">
+                            <p className="text-sm font-semibold" style={{ fontFamily: "var(--font-geist-mono)", color: "#1A1A1A" }}>
                               {wo.title}
                             </p>
-                            <p className="text-xs font-mono text-gray-500 mt-0.5 truncate">
+                            <p className="text-xs mt-0.5 truncate" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                               {wo.description}
                             </p>
                             <div className="flex items-center gap-3 mt-2 flex-wrap">
-                              <span className="text-[10px] font-mono text-gray-600">
+                              <span className="text-[10px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                                 Vendor: {wo.vendor || "Unassigned"}
                               </span>
-                              <span className="text-[10px] font-mono text-gray-600">
+                              <span className="text-[10px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                                 Est. {fmt$(wo.estimated_cost)}
                               </span>
-                              <span className="text-[10px] font-mono text-gray-600">
+                              <span className="text-[10px]" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                                 {fmtDate(wo.created_at)}
                               </span>
                             </div>
@@ -856,16 +904,22 @@ function PropertyContent() {
                         </div>
                         <div className="flex flex-col items-end gap-2 shrink-0">
                           <span
-                            className={`text-[9px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border ${
-                              priorityStyle[wo.priority] || priorityStyle.low
-                            }`}
+                            className="text-[9px] uppercase tracking-widest px-2 py-0.5 rounded border"
+                            style={{
+                              fontFamily: "var(--font-geist-mono)",
+                              backgroundColor: ps.bg,
+                              color: ps.text,
+                              borderColor: ps.border,
+                            }}
                           >
                             {wo.priority}
                           </span>
                           <span
-                            className={`text-[10px] font-mono uppercase tracking-wider flex items-center gap-1 ${
-                              statusStyle[wo.status] || "text-gray-400"
-                            }`}
+                            className="text-[10px] uppercase tracking-wider flex items-center gap-1"
+                            style={{
+                              fontFamily: "var(--font-geist-mono)",
+                              color: statusColors[wo.status] || "#6B6B6B",
+                            }}
                           >
                             <Clock className="w-3 h-3" />
                             {wo.status.replace("_", " ")}
@@ -878,15 +932,15 @@ function PropertyContent() {
             </div>
           ) : workOrders.length > 0 ? (
             <Card className="p-5 flex items-center gap-3">
-              <CheckCircle2 className="w-4 h-4 text-emerald-500/60 shrink-0" />
-              <p className="text-xs font-mono text-gray-500">
+              <CheckCircle2 className="w-4 h-4 shrink-0" style={{ color: "#059669" }} />
+              <p className="text-xs" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 All {workOrders.length} work order(s) completed -- no active requests
               </p>
             </Card>
           ) : (
             <Card className="p-5 flex items-center gap-3">
-              <Wrench className="w-4 h-4 text-gray-600 shrink-0" />
-              <p className="text-xs font-mono text-gray-600">
+              <Wrench className="w-4 h-4 shrink-0" style={{ color: "#6B6B6B" }} />
+              <p className="text-xs" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
                 No work orders for this property
               </p>
             </Card>
@@ -905,10 +959,10 @@ export default function PropertyPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#080a12] flex items-center justify-center">
+        <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: "#FFFFFF" }}>
           <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full" />
-            <span className="text-[10px] font-mono uppercase tracking-widest text-gray-600">
+            <div className="animate-spin w-6 h-6 border-2 rounded-full" style={{ borderColor: "#F9D96A", borderTopColor: "transparent" }} />
+            <span className="text-[10px] uppercase tracking-widest" style={{ fontFamily: "var(--font-geist-mono)", color: "#6B6B6B" }}>
               Loading property data
             </span>
           </div>

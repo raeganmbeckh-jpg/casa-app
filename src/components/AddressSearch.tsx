@@ -26,7 +26,12 @@ import {
   Layers,
 } from "lucide-react";
 
-const GOLD = "#C9A84C";
+const GOLD = "#E8C84A";
+const ACCENT = "#F9D96A";
+const TEXT_PRIMARY = "#1A1A1A";
+const TEXT_SECONDARY = "#6B6B6B";
+const BORDER = "#F0F0F0";
+const CARD_SHADOW = "0 1px 3px rgba(0,0,0,0.04)";
 
 /* ═══════════════════════════════════════════════════════════════════
    CONFIDENCE SCORING
@@ -45,7 +50,7 @@ function conf(value: any): { pct: number; label: string; cls: string } {
 function Badge({ value }: { value: any }) {
   const c = conf(value);
   return (
-    <span className={`text-[7px] font-bold px-1.5 py-[2px] rounded ${c.cls} tracking-[0.15em] font-mono leading-none`}>
+    <span className={`text-[7px] font-bold px-1.5 py-[2px] rounded ${c.cls} tracking-[0.15em] leading-none`} style={{ fontFamily: "var(--font-geist-mono)" }}>
       {c.pct}%
     </span>
   );
@@ -69,13 +74,13 @@ function Row({ label, value, fmt, icon: Icon, accent }: {
     else display = String(value);
   }
   return (
-    <div className="flex items-center justify-between py-[6px] border-b border-white/[0.03] last:border-0">
+    <div className="flex items-center justify-between py-[6px] last:border-0" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
       <div className="flex items-center gap-2">
-        {Icon && <Icon className="w-3 h-3 text-white/20" />}
-        <span className="text-[10px] text-white/35 uppercase tracking-[0.15em] font-mono">{label}</span>
+        {Icon && <Icon className="w-3 h-3" style={{ color: "#CCCCCC" }} />}
+        <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>{label}</span>
       </div>
       <div className="flex items-center gap-2.5">
-        <span className={`text-[13px] font-mono ${accent ? "font-bold" : "text-white/90"}`} style={accent ? { color: GOLD } : undefined}>
+        <span className={`text-[13px] ${accent ? "font-bold" : ""}`} style={{ color: accent ? GOLD : TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>
           {display}
         </span>
         <Badge value={value} />
@@ -90,9 +95,9 @@ function Row({ label, value, fmt, icon: Icon, accent }: {
 
 function Hdr({ icon: Icon, label, color }: { icon: any; label: string; color: string }) {
   return (
-    <div className="flex items-center gap-2 pb-2 mb-1 border-b border-white/[0.04]">
+    <div className="flex items-center gap-2 pb-2 mb-1" style={{ borderBottom: `1px solid ${BORDER}` }}>
       <Icon className="w-3.5 h-3.5" style={{ color }} />
-      <span className="text-[9px] font-bold uppercase tracking-[0.2em] font-mono" style={{ color }}>{label}</span>
+      <span className="text-[9px] font-bold uppercase tracking-[0.2em]" style={{ color, fontFamily: "var(--font-heading)" }}>{label}</span>
     </div>
   );
 }
@@ -115,20 +120,20 @@ function SystemHealth({ detail }: { detail: any }) {
   ];
 
   return (
-    <div className="border border-white/[0.06] bg-black rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04] bg-white/[0.02]">
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <div className="flex items-center gap-2">
           <Activity className="w-4 h-4" style={{ color: GOLD }} />
-          <span className="text-[10px] font-bold uppercase tracking-[0.2em] font-mono" style={{ color: GOLD }}>
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: GOLD, fontFamily: "var(--font-heading)" }}>
             AI System Health Analysis
           </span>
         </div>
         {yearBuilt > 0 && (
-          <span className="text-[10px] text-white/25 font-mono">BUILT {yearBuilt} &middot; {age}Y</span>
+          <span className="text-[10px]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>BUILT {yearBuilt} &middot; {age}Y</span>
         )}
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/[0.04]">
-        {systems.map((sys) => {
+      <div className="grid grid-cols-1 md:grid-cols-2" style={{ borderColor: BORDER }}>
+        {systems.map((sys, idx) => {
           const remaining = Math.max(0, sys.life - sys.estAge);
           const pct = (remaining / sys.life) * 100;
           const cost = Math.round((sqft * sys.costPerSqft) / 100) * 100;
@@ -140,42 +145,42 @@ function SystemHealth({ detail }: { detail: any }) {
           const statusLabel = critical ? "REPLACE NOW" : warning ? "MONITOR" : "GOOD";
 
           return (
-            <div key={sys.name} className="p-4">
+            <div key={sys.name} className="p-4" style={{ borderBottom: idx < 2 ? `1px solid ${BORDER}` : undefined, borderRight: idx % 2 === 0 ? `1px solid ${BORDER}` : undefined }}>
               <div className="flex items-center justify-between mb-2.5">
                 <div className="flex items-center gap-2">
                   <SysIcon className="w-3.5 h-3.5" style={{ color: statusColor }} />
-                  <span className="text-[10px] font-bold font-mono text-white/70 tracking-wider">{sys.name}</span>
+                  <span className="text-[10px] font-bold tracking-wider" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>{sys.name}</span>
                 </div>
                 <span
-                  className="text-[8px] font-bold px-2 py-0.5 rounded font-mono tracking-wider"
-                  style={{ backgroundColor: `${statusColor}20`, color: statusColor }}
+                  className="text-[8px] font-bold px-2 py-0.5 rounded tracking-wider"
+                  style={{ backgroundColor: `${statusColor}20`, color: statusColor, fontFamily: "var(--font-geist-mono)" }}
                 >
                   {statusLabel}
                 </span>
               </div>
 
-              <div className="w-full bg-white/[0.04] rounded-full h-1.5 mb-3">
+              <div className="w-full rounded-full h-1.5 mb-3" style={{ backgroundColor: BORDER }}>
                 <div className="h-1.5 rounded-full transition-all" style={{ width: `${Math.max(4, pct)}%`, backgroundColor: statusColor }} />
               </div>
 
-              <div className="grid grid-cols-3 gap-3 text-[9px] font-mono">
+              <div className="grid grid-cols-3 gap-3 text-[9px]" style={{ fontFamily: "var(--font-geist-mono)" }}>
                 <div>
-                  <span className="text-white/20 block uppercase tracking-[0.15em]">Est. Age</span>
-                  <span className="text-white/60">{sys.estAge}y</span>
+                  <span className="block uppercase tracking-[0.15em]" style={{ color: "#CCCCCC" }}>Est. Age</span>
+                  <span style={{ color: TEXT_SECONDARY }}>{sys.estAge}y</span>
                 </div>
                 <div>
-                  <span className="text-white/20 block uppercase tracking-[0.15em]">Remaining</span>
+                  <span className="block uppercase tracking-[0.15em]" style={{ color: "#CCCCCC" }}>Remaining</span>
                   <span style={{ color: statusColor }}>~{remaining}y</span>
                 </div>
                 <div>
-                  <span className="text-white/20 block uppercase tracking-[0.15em]">Replace Cost</span>
-                  <span className="text-white/60">${cost.toLocaleString()}</span>
+                  <span className="block uppercase tracking-[0.15em]" style={{ color: "#CCCCCC" }}>Replace Cost</span>
+                  <span style={{ color: TEXT_SECONDARY }}>${cost.toLocaleString()}</span>
                 </div>
               </div>
 
               {(critical || warning) && (
-                <div className="mt-2.5 rounded p-2.5 border" style={{ borderColor: `${GOLD}20`, backgroundColor: `${GOLD}05` }}>
-                  <p className="text-[9px] font-mono text-white/40">
+                <div className="mt-2.5 rounded p-2.5" style={{ border: `1px solid ${GOLD}20`, backgroundColor: `${GOLD}08` }}>
+                  <p className="text-[9px]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>
                     <span className="font-bold" style={{ color: GOLD }}>SAVE ${savings.toLocaleString()}</span>
                     {" "}by scheduling proactive replacement. Emergency repairs add {Math.round(sys.emergMult * 100)}% to total cost.
                   </p>
@@ -196,20 +201,20 @@ function SystemHealth({ detail }: { detail: any }) {
 function CompsTable({ comps }: { comps: any[] }) {
   if (!comps || comps.length === 0) return null;
   return (
-    <div className="border border-white/[0.06] bg-black rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.04] bg-white/[0.02]">
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+      <div className="flex items-center justify-between px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-cyan-400" />
-          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em] font-mono">
+          <span className="text-[10px] font-bold text-cyan-400 uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)" }}>
             Comparable Sales &middot; 0.5mi &middot; 24mo
           </span>
         </div>
-        <span className="text-[10px] text-white/25 font-mono">{comps.length} COMP{comps.length !== 1 ? "S" : ""}</span>
+        <span className="text-[10px]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>{comps.length} COMP{comps.length !== 1 ? "S" : ""}</span>
       </div>
       <div className="overflow-x-auto">
-        <table className="w-full text-[11px] font-mono">
+        <table className="w-full text-[11px]" style={{ fontFamily: "var(--font-geist-mono)" }}>
           <thead>
-            <tr className="border-b border-white/[0.04] text-white/25">
+            <tr style={{ borderBottom: `1px solid ${BORDER}`, color: "#AAAAAA" }}>
               {["ADDRESS", "SALE PRICE", "DATE", "SQFT", "$/SQFT", "BEDS", "BATHS"].map((h, i) => (
                 <th key={h} className={`${i === 0 ? "text-left" : "text-right"} px-4 py-2.5 font-medium uppercase tracking-[0.15em] text-[8px]`}>{h}</th>
               ))}
@@ -224,14 +229,14 @@ function CompsTable({ comps }: { comps: any[] }) {
               const sf = c.building?.size?.livingSize || c.building?.size?.bldgSize || 0;
               const ppsf = price && sf ? Math.round(price / sf) : 0;
               return (
-                <tr key={i} className="border-b border-white/[0.03] hover:bg-white/[0.02] transition-colors">
-                  <td className="px-4 py-2.5 text-white/70 max-w-[200px] truncate">{line}</td>
+                <tr key={i} className="transition-colors" style={{ borderBottom: `1px solid ${BORDER}` }} onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "#FAFAFA")} onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}>
+                  <td className="px-4 py-2.5 max-w-[200px] truncate" style={{ color: TEXT_PRIMARY }}>{line}</td>
                   <td className="px-4 py-2.5 text-right font-medium" style={{ color: GOLD }}>{price ? `$${Number(price).toLocaleString()}` : "\u2014"}</td>
-                  <td className="px-4 py-2.5 text-right text-white/30">{date || "\u2014"}</td>
-                  <td className="px-4 py-2.5 text-right text-white/50">{sf ? sf.toLocaleString() : "\u2014"}</td>
+                  <td className="px-4 py-2.5 text-right" style={{ color: "#9B9B9B" }}>{date || "\u2014"}</td>
+                  <td className="px-4 py-2.5 text-right" style={{ color: TEXT_SECONDARY }}>{sf ? sf.toLocaleString() : "\u2014"}</td>
                   <td className="px-4 py-2.5 text-right text-cyan-400">{ppsf ? `$${ppsf}` : "\u2014"}</td>
-                  <td className="px-4 py-2.5 text-right text-white/50">{c.building?.rooms?.beds || "\u2014"}</td>
-                  <td className="px-4 py-2.5 text-right text-white/50">{c.building?.rooms?.bathsFull || "\u2014"}</td>
+                  <td className="px-4 py-2.5 text-right" style={{ color: TEXT_SECONDARY }}>{c.building?.rooms?.beds || "\u2014"}</td>
+                  <td className="px-4 py-2.5 text-right" style={{ color: TEXT_SECONDARY }}>{c.building?.rooms?.bathsFull || "\u2014"}</td>
                 </tr>
               );
             })}
@@ -250,13 +255,13 @@ function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
   const p = detail || basic;
   if (!p) return null;
   return (
-    <div className="border border-white/[0.06] bg-black rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/[0.04] bg-white/[0.02]">
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+      <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
         <FileText className="w-4 h-4 text-purple-400" />
-        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.2em] font-mono">Public Records</span>
+        <span className="text-[10px] font-bold text-purple-400 uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)" }}>Public Records</span>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-white/[0.04]">
-        <div className="p-4">
+      <div className="grid grid-cols-1 md:grid-cols-2" style={{ backgroundColor: "#FFFFFF" }}>
+        <div className="p-4" style={{ borderRight: `1px solid ${BORDER}` }}>
           <Hdr icon={MapPin} label="Land & Zoning" color="#a78bfa" />
           <Row label="Zoning Code" value={p?.lot?.siteZoningIdent} icon={FileText} />
           <Row label="Lot Acres" value={p?.lot?.lotSize1} fmt="num" icon={Ruler} />
@@ -285,28 +290,28 @@ function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
 
 function LitigationCheck({ address }: { address: string }) {
   return (
-    <div className="border border-white/[0.06] bg-black rounded-lg overflow-hidden">
-      <div className="flex items-center gap-2 px-5 py-3 border-b border-white/[0.04] bg-white/[0.02]">
-        <Scale className="w-4 h-4 text-white/40" />
-        <span className="text-[10px] font-bold text-white/40 uppercase tracking-[0.2em] font-mono">Litigation &amp; Legal Check</span>
+    <div className="rounded-lg overflow-hidden" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF", boxShadow: CARD_SHADOW }}>
+      <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
+        <Scale className="w-4 h-4" style={{ color: TEXT_SECONDARY }} />
+        <span className="text-[10px] font-bold uppercase tracking-[0.2em]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>Litigation &amp; Legal Check</span>
       </div>
       <div className="p-5">
         <div className="flex items-start gap-3 p-4 rounded-lg border border-emerald-500/10 bg-emerald-500/[0.03]">
           <CheckCircle2 className="w-5 h-5 text-emerald-400 mt-0.5 shrink-0" />
           <div>
-            <p className="text-sm font-mono text-emerald-400 font-bold">No litigation records found</p>
-            <p className="text-[10px] font-mono text-white/30 mt-1 leading-relaxed">
-              Searched CourtListener federal &amp; state records for <span className="text-white/50">{address}</span>.
+            <p className="text-sm text-emerald-400 font-bold" style={{ fontFamily: "var(--font-geist-mono)" }}>No litigation records found</p>
+            <p className="text-[10px] mt-1 leading-relaxed" style={{ color: "#9B9B9B", fontFamily: "var(--font-geist-mono)" }}>
+              Searched CourtListener federal &amp; state records for <span style={{ color: TEXT_SECONDARY }}>{address}</span>.
               No active cases, liens, or judgments identified. This is a point-in-time check — recommend periodic re-screening.
             </p>
           </div>
         </div>
         <div className="mt-4 grid grid-cols-3 gap-3">
           {["Federal Courts", "State Courts", "Tax Liens"].map((src) => (
-            <div key={src} className="rounded-lg p-3 text-center border border-white/[0.04] bg-white/[0.01]">
+            <div key={src} className="rounded-lg p-3 text-center" style={{ border: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
               <CheckCircle2 className="w-4 h-4 text-emerald-500 mx-auto mb-1.5" />
-              <p className="text-[8px] font-mono text-white/25 uppercase tracking-[0.15em]">{src}</p>
-              <p className="text-[11px] font-mono text-emerald-400 font-bold mt-0.5">CLEAR</p>
+              <p className="text-[8px] uppercase tracking-[0.15em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>{src}</p>
+              <p className="text-[11px] text-emerald-400 font-bold mt-0.5" style={{ fontFamily: "var(--font-geist-mono)" }}>CLEAR</p>
             </div>
           ))}
         </div>
@@ -388,26 +393,34 @@ export default function AddressSearch({
   return (
     <div className="mb-6">
       {/* ── Search Bar ──────────────────────────────────────────── */}
-      <div className="bg-black border border-white/[0.06] rounded-xl p-5">
+      <div className="rounded-xl p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
         <div className="flex items-center gap-2 mb-4">
-          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: GOLD }} />
-          <span className="text-[10px] font-bold uppercase tracking-[0.25em] font-mono" style={{ color: GOLD }}>
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: ACCENT }} />
+          <span className="text-[10px] font-bold uppercase tracking-[0.25em]" style={{ color: GOLD, fontFamily: "var(--font-geist-mono)" }}>
             Property Intelligence Terminal
           </span>
-          <span className="text-[8px] text-white/15 font-mono ml-auto uppercase tracking-[0.2em]">ATTOM + COURTLISTENER</span>
+          <span className="text-[8px] ml-auto uppercase tracking-[0.2em]" style={{ color: "#DDDDDD", fontFamily: "var(--font-geist-mono)" }}>ATTOM + COURTLISTENER</span>
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/15" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: "#DDDDDD" }} />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && search()}
               placeholder="Enter any US address..."
-              className="w-full bg-white/[0.02] border border-white/[0.06] rounded-lg pl-11 pr-10 py-3.5 text-sm font-mono focus:outline-none focus:border-white/10 placeholder:text-white/15 text-white/90"
+              className="w-full rounded-lg pl-11 pr-10 py-3.5 text-sm focus:outline-none"
+              style={{
+                backgroundColor: "#FFFFFF",
+                border: `1px solid ${BORDER}`,
+                color: TEXT_PRIMARY,
+                fontFamily: "var(--font-geist-mono)",
+              }}
+              onFocus={(e) => (e.currentTarget.style.borderColor = GOLD)}
+              onBlur={(e) => (e.currentTarget.style.borderColor = BORDER)}
             />
             {query && (
-              <button onClick={() => { setQuery(""); setResult(null); setError(""); }} className="absolute right-3 top-1/2 -translate-y-1/2 text-white/20 hover:text-white/60">
+              <button onClick={() => { setQuery(""); setResult(null); setError(""); }} className="absolute right-3 top-1/2 -translate-y-1/2" style={{ color: "#CCCCCC" }} onMouseEnter={(e) => (e.currentTarget.style.color = TEXT_SECONDARY)} onMouseLeave={(e) => (e.currentTarget.style.color = "#CCCCCC")}>
                 <X className="w-4 h-4" />
               </button>
             )}
@@ -415,8 +428,8 @@ export default function AddressSearch({
           <button
             onClick={search}
             disabled={searching || !query.trim()}
-            className="shrink-0 px-6 py-3.5 rounded-lg text-[10px] font-bold font-mono uppercase tracking-[0.2em] transition-all flex items-center gap-2 disabled:opacity-30 hover:brightness-110"
-            style={{ backgroundColor: GOLD, color: "#000" }}
+            className="shrink-0 px-6 py-3.5 rounded-lg text-[10px] font-bold uppercase tracking-[0.2em] transition-all flex items-center gap-2 disabled:opacity-30 hover:brightness-110"
+            style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}
           >
             {searching ? <Loader2 className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
             Query
@@ -425,7 +438,7 @@ export default function AddressSearch({
       </div>
 
       {error && (
-        <div className="mt-3 text-sm text-red-400 bg-red-500/5 border border-red-500/15 rounded-lg p-4 font-mono">{error}</div>
+        <div className="mt-3 text-sm text-red-400 bg-red-500/5 border border-red-500/15 rounded-lg p-4" style={{ fontFamily: "var(--font-geist-mono)" }}>{error}</div>
       )}
 
       {/* ═══ RESULTS ══════════════════════════════════════════════ */}
@@ -433,14 +446,14 @@ export default function AddressSearch({
         <div className="mt-4 space-y-3">
 
           {/* ── 1. HEADER ─────────────────────────────────────── */}
-          <div className="bg-black border border-white/[0.06] rounded-lg overflow-hidden">
+          <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
             {/* Address bar */}
-            <div className="flex flex-wrap items-center justify-between px-5 py-4 border-b border-white/[0.04] bg-white/[0.02]">
+            <div className="flex flex-wrap items-center justify-between px-5 py-4" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFFFF" }}>
               <div className="flex items-center gap-3 min-w-0">
                 <MapPin className="w-5 h-5 shrink-0" style={{ color: GOLD }} />
-                <h2 className="font-mono text-base md:text-lg font-bold text-white truncate">{fullAddress}</h2>
+                <h2 className="text-base md:text-lg font-bold truncate" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>{fullAddress}</h2>
                 {propType && (
-                  <span className="text-[8px] font-mono font-bold px-2.5 py-1 rounded tracking-[0.15em] uppercase shrink-0" style={{ backgroundColor: `${GOLD}15`, color: GOLD }}>
+                  <span className="text-[8px] font-bold px-2.5 py-1 rounded tracking-[0.15em] uppercase shrink-0" style={{ backgroundColor: `${GOLD}15`, color: GOLD, fontFamily: "var(--font-geist-mono)" }}>
                     {propType}
                   </span>
                 )}
@@ -449,8 +462,8 @@ export default function AddressSearch({
                 {onAddToPortfolio && (
                   <button
                     onClick={() => onAddToPortfolio(result.basic, result.detail)}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[9px] font-bold font-mono uppercase tracking-[0.15em] transition-all hover:brightness-110"
-                    style={{ backgroundColor: GOLD, color: "#000" }}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-[9px] font-bold uppercase tracking-[0.15em] transition-all hover:brightness-110"
+                    style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}
                   >
                     <Plus className="w-3.5 h-3.5" />
                     Add to Portfolio
@@ -458,27 +471,27 @@ export default function AddressSearch({
                 )}
                 <div className="flex items-center gap-1.5">
                   <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                  <span className="text-[8px] font-mono text-emerald-400 font-bold tracking-[0.15em] uppercase">ATTOM VERIFIED</span>
+                  <span className="text-[8px] text-emerald-400 font-bold tracking-[0.15em] uppercase" style={{ fontFamily: "var(--font-geist-mono)" }}>ATTOM VERIFIED</span>
                 </div>
               </div>
             </div>
 
             {/* Key stats: beds / baths / sqft / year built */}
-            <div className="grid grid-cols-4 divide-x divide-white/[0.04]">
+            <div className="grid grid-cols-4" style={{ borderColor: BORDER }}>
               {[
                 { icon: Bed, label: "BEDS", val: beds, fmtNum: true },
                 { icon: Bath, label: "BATHS", val: bathsFull, fmtNum: true },
                 { icon: Ruler, label: "SQFT", val: sqft, fmtNum: true },
                 { icon: Calendar, label: "YEAR BUILT", val: yearBuilt, fmtNum: false },
-              ].map((s) => {
+              ].map((s, idx) => {
                 const SIcon = s.icon;
                 return (
-                  <div key={s.label} className="px-5 py-4 text-center">
+                  <div key={s.label} className="px-5 py-4 text-center" style={{ borderRight: idx < 3 ? `1px solid ${BORDER}` : undefined }}>
                     <div className="flex items-center justify-center gap-1.5 mb-1">
-                      <SIcon className="w-3.5 h-3.5 text-white/20" />
-                      <span className="text-[7px] text-white/25 font-mono uppercase tracking-[0.2em]">{s.label}</span>
+                      <SIcon className="w-3.5 h-3.5" style={{ color: "#CCCCCC" }} />
+                      <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>{s.label}</span>
                     </div>
-                    <p className="text-2xl font-mono font-bold text-white">
+                    <p className="text-2xl font-bold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>
                       {s.val !== null && s.val !== undefined ? (s.fmtNum && typeof s.val === "number" ? s.val.toLocaleString() : s.val) : "\u2014"}
                     </p>
                   </div>
@@ -489,7 +502,7 @@ export default function AddressSearch({
 
           {/* ── 2 & 3. OWNERSHIP + PHYSICAL ───────────────────── */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <div className="bg-black border border-white/[0.06] rounded-lg p-5">
+            <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
               <Hdr icon={DollarSign} label="Ownership & Valuation" color={GOLD} />
               <Row label="Owner" value={owner} icon={Shield} />
               <Row label="APN" value={apn} icon={FileText} />
@@ -499,7 +512,7 @@ export default function AddressSearch({
               <Row label="Last Sale Price" value={lastSalePrice} fmt="usd" icon={DollarSign} />
               <Row label="Annual Taxes" value={annualTax} fmt="usd" icon={FileText} />
             </div>
-            <div className="bg-black border border-white/[0.06] rounded-lg p-5">
+            <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW }}>
               <Hdr icon={Home} label="Physical & Risk" color="#60a5fa" />
               <Row label="Year Built" value={yearBuilt} icon={Calendar} />
               <Row label="Bedrooms" value={beds} fmt="num" icon={Bed} />
