@@ -17,18 +17,31 @@ import {
   Clock,
   Home,
   Droplets,
+  Plus,
 } from "lucide-react";
 
 /* ── Confidence scoring ─────────────────────────────────────────── */
 
-function confidence(value: any): { score: number; label: string; color: string } {
+function confidence(value: any): {
+  score: number;
+  label: string;
+  color: string;
+} {
   if (value === null || value === undefined || value === "" || value === 0)
     return { score: 0, label: "NO DATA", color: "text-red-500 bg-red-500/10" };
   if (typeof value === "string" && value === "Not reported")
-    return { score: 20, label: "UNVERIFIED", color: "text-amber-500 bg-amber-500/10" };
+    return {
+      score: 20,
+      label: "UNVERIFIED",
+      color: "text-amber-500 bg-amber-500/10",
+    };
   if (typeof value === "string" && value.length < 2)
     return { score: 40, label: "LOW", color: "text-amber-500 bg-amber-500/10" };
-  return { score: 95, label: "HIGH", color: "text-emerald-400 bg-emerald-500/10" };
+  return {
+    score: 95,
+    label: "HIGH",
+    color: "text-emerald-400 bg-emerald-500/10",
+  };
 }
 
 function ConfBadge({ value }: { value: any }) {
@@ -37,7 +50,7 @@ function ConfBadge({ value }: { value: any }) {
     <span
       className={`text-[8px] font-bold px-1.5 py-0.5 rounded ${c.color} tracking-widest font-mono`}
     >
-      {c.score}%
+      {c.score}% {c.label}
     </span>
   );
 }
@@ -57,7 +70,7 @@ function Row({
   icon?: any;
   highlight?: boolean;
 }) {
-  let display = "—";
+  let display = "\u2014";
   if (value !== null && value !== undefined && value !== "") {
     if (fmt === "usd" && typeof value === "number")
       display = `$${value.toLocaleString()}`;
@@ -228,11 +241,15 @@ function SystemHealth({ detail }: { detail: any }) {
 
               <div className="grid grid-cols-3 gap-2 text-[9px] font-mono mb-2">
                 <div>
-                  <span className="text-gray-600 block">AGE</span>
+                  <span className="text-gray-600 block uppercase tracking-widest">
+                    AGE
+                  </span>
                   <span className="text-gray-400">{sys.estAge}y</span>
                 </div>
                 <div>
-                  <span className="text-gray-600 block">LEFT</span>
+                  <span className="text-gray-600 block uppercase tracking-widest">
+                    LEFT
+                  </span>
                   <span
                     className={
                       critical
@@ -246,7 +263,9 @@ function SystemHealth({ detail }: { detail: any }) {
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-600 block">COST</span>
+                  <span className="text-gray-600 block uppercase tracking-widest">
+                    COST
+                  </span>
                   <span className="text-gray-400">
                     ${replaceCost.toLocaleString()}
                   </span>
@@ -294,21 +313,37 @@ function CompsTable({ comps }: { comps: any[] }) {
         <table className="w-full text-[11px] font-mono">
           <thead>
             <tr className="border-b border-[#131728] text-gray-600">
-              <th className="text-left px-4 py-2 font-medium">ADDRESS</th>
-              <th className="text-right px-4 py-2 font-medium">SALE PRICE</th>
-              <th className="text-right px-4 py-2 font-medium">DATE</th>
-              <th className="text-right px-4 py-2 font-medium">SQFT</th>
-              <th className="text-right px-4 py-2 font-medium">$/SQFT</th>
-              <th className="text-right px-4 py-2 font-medium">BEDS</th>
-              <th className="text-right px-4 py-2 font-medium">BATHS</th>
+              <th className="text-left px-4 py-2 font-medium uppercase tracking-widest">
+                ADDRESS
+              </th>
+              <th className="text-right px-4 py-2 font-medium uppercase tracking-widest">
+                SALE PRICE
+              </th>
+              <th className="text-right px-4 py-2 font-medium uppercase tracking-widest">
+                DATE
+              </th>
+              <th className="text-right px-4 py-2 font-medium uppercase tracking-widest">
+                SQFT
+              </th>
+              <th className="text-right px-4 py-2 font-medium uppercase tracking-widest">
+                $/SQFT
+              </th>
+              <th className="text-right px-4 py-2 font-medium uppercase tracking-widest">
+                BEDS
+              </th>
+              <th className="text-right px-4 py-2 font-medium uppercase tracking-widest">
+                BATHS
+              </th>
             </tr>
           </thead>
           <tbody>
             {comps.map((c: any, i: number) => {
-              const addr = c.address;
-              const line = addr
-                ? [addr.line1, addr.locality].filter(Boolean).join(", ")
-                : "—";
+              const compAddr = c.address;
+              const line = compAddr
+                ? [compAddr.line1, compAddr.locality]
+                    .filter(Boolean)
+                    .join(", ")
+                : "\u2014";
               const price =
                 c.sale?.amount?.saleAmt ||
                 c.sale?.saleAmountData?.saleAmt ||
@@ -322,8 +357,8 @@ function CompsTable({ comps }: { comps: any[] }) {
                 c.building?.size?.bldgSize ||
                 0;
               const ppsf = price && sf ? Math.round(price / sf) : 0;
-              const beds = c.building?.rooms?.beds || "—";
-              const baths = c.building?.rooms?.bathsFull || "—";
+              const compBeds = c.building?.rooms?.beds || "\u2014";
+              const compBaths = c.building?.rooms?.bathsFull || "\u2014";
 
               return (
                 <tr
@@ -334,22 +369,22 @@ function CompsTable({ comps }: { comps: any[] }) {
                     {line}
                   </td>
                   <td className="px-4 py-2.5 text-right text-emerald-400 font-medium">
-                    {price ? `$${Number(price).toLocaleString()}` : "—"}
+                    {price ? `$${Number(price).toLocaleString()}` : "\u2014"}
                   </td>
                   <td className="px-4 py-2.5 text-right text-gray-500">
-                    {date || "—"}
+                    {date || "\u2014"}
                   </td>
                   <td className="px-4 py-2.5 text-right text-gray-400">
-                    {sf ? sf.toLocaleString() : "—"}
+                    {sf ? sf.toLocaleString() : "\u2014"}
                   </td>
                   <td className="px-4 py-2.5 text-right text-blue-400">
-                    {ppsf ? `$${ppsf}` : "—"}
+                    {ppsf ? `$${ppsf}` : "\u2014"}
                   </td>
                   <td className="px-4 py-2.5 text-right text-gray-400">
-                    {beds}
+                    {compBeds}
                   </td>
                   <td className="px-4 py-2.5 text-right text-gray-400">
-                    {baths}
+                    {compBaths}
                   </td>
                 </tr>
               );
@@ -390,7 +425,11 @@ function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-[#131728]">
         <div className="p-4">
-          <SectionHeader icon={MapPin} label="Land & Zoning" accent="text-purple-400" />
+          <SectionHeader
+            icon={MapPin}
+            label="Land & Zoning"
+            accent="text-purple-400"
+          />
           <Row label="Zoning" value={zoning} icon={FileText} />
           <Row label="Lot Acres" value={lotAcres} fmt="num" />
           <Row label="Lot Sqft" value={lotSqft} fmt="num" />
@@ -399,7 +438,11 @@ function PublicRecords({ detail, basic }: { detail: any; basic: any }) {
           <Row label="Jurisdiction" value={legalDesc} />
         </div>
         <div className="p-4">
-          <SectionHeader icon={Home} label="Structure" accent="text-purple-400" />
+          <SectionHeader
+            icon={Home}
+            label="Structure"
+            accent="text-purple-400"
+          />
           <Row label="Stories" value={stories} fmt="num" />
           <Row label="Condition" value={condition} />
           <Row label="Quality" value={quality} />
@@ -432,9 +475,9 @@ function LitigationCheck({ address }: { address: string }) {
             </p>
             <p className="text-[10px] font-mono text-gray-500 mt-1">
               Searched CourtListener federal &amp; state records for{" "}
-              <span className="text-gray-400">{address}</span>. No active
-              cases, liens, or judgments identified. This is a point-in-time
-              check — recommend periodic re-screening.
+              <span className="text-gray-400">{address}</span>. No active cases,
+              liens, or judgments identified. This is a point-in-time check —
+              recommend periodic re-screening.
             </p>
           </div>
         </div>
@@ -445,7 +488,9 @@ function LitigationCheck({ address }: { address: string }) {
               className="bg-[#0a0c14] rounded p-2 text-center border border-[#131728]"
             >
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 mx-auto mb-1" />
-              <p className="text-[9px] font-mono text-gray-500">{src}</p>
+              <p className="text-[9px] font-mono text-gray-500 uppercase tracking-widest">
+                {src}
+              </p>
               <p className="text-[10px] font-mono text-emerald-400 font-bold">
                 CLEAR
               </p>
@@ -466,7 +511,11 @@ interface AttomData {
   status?: any;
 }
 
-export default function AddressSearch() {
+export default function AddressSearch({
+  onAddToPortfolio,
+}: {
+  onAddToPortfolio?: (basic: any, detail: any) => void;
+}) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<AttomData | null>(null);
   const [searching, setSearching] = useState(false);
@@ -532,9 +581,12 @@ export default function AddressSearch() {
     prop?.building?.size?.livingSize || prop?.building?.size?.bldgSize || null;
   const annualTax = result?.detail?.assessment?.tax?.taxAmt || null;
   const floodZone =
-    result?.detail?.lot?.floodZoneCode || result?.detail?.lot?.floodZone || null;
+    result?.detail?.lot?.floodZoneCode ||
+    result?.detail?.lot?.floodZone ||
+    null;
   const propType =
     prop?.summary?.proptype || prop?.summary?.propsubtype || null;
+  const lotSize = prop?.lot?.lotSize2 || prop?.lot?.lotSize1 || null;
 
   return (
     <div className="mb-6">
@@ -545,7 +597,7 @@ export default function AddressSearch() {
           <span className="text-[10px] font-bold text-blue-400 uppercase tracking-[0.25em] font-mono">
             Property Intelligence Terminal
           </span>
-          <span className="text-[9px] text-gray-700 font-mono ml-auto">
+          <span className="text-[9px] text-gray-700 font-mono ml-auto uppercase tracking-widest">
             ATTOM + COURTLISTENER
           </span>
         </div>
@@ -606,16 +658,29 @@ export default function AddressSearch() {
                   {fullAddress}
                 </span>
                 {propType && (
-                  <span className="text-[8px] font-mono font-bold bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded tracking-widest">
+                  <span className="text-[8px] font-mono font-bold bg-blue-500/15 text-blue-400 px-2 py-0.5 rounded tracking-widest uppercase">
                     {propType}
                   </span>
                 )}
               </div>
-              <div className="flex items-center gap-1.5">
-                <Shield className="w-3.5 h-3.5 text-emerald-400" />
-                <span className="text-[8px] font-mono text-emerald-400 font-bold tracking-widest">
-                  VERIFIED
-                </span>
+              <div className="flex items-center gap-4">
+                {onAddToPortfolio && (
+                  <button
+                    onClick={() =>
+                      onAddToPortfolio(result.basic, result.detail)
+                    }
+                    className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-500 text-white px-4 py-1.5 rounded text-[10px] font-bold font-mono uppercase tracking-widest transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Add to Portfolio
+                  </button>
+                )}
+                <div className="flex items-center gap-1.5">
+                  <Shield className="w-3.5 h-3.5 text-emerald-400" />
+                  <span className="text-[8px] font-mono text-emerald-400 font-bold tracking-widest uppercase">
+                    VERIFIED
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -644,7 +709,7 @@ export default function AddressSearch() {
                 },
               ].map((m) => (
                 <div key={m.label} className="px-4 py-3 text-center">
-                  <p className="text-[8px] text-gray-600 font-mono tracking-widest mb-0.5">
+                  <p className="text-[8px] text-gray-600 font-mono uppercase tracking-widest mb-0.5">
                     {m.label}
                   </p>
                   <p className="text-lg font-mono font-bold text-white">
@@ -652,7 +717,7 @@ export default function AddressSearch() {
                       ? m.fmt
                         ? `$${Number(m.val).toLocaleString()}`
                         : Number(m.val).toLocaleString()
-                      : "—"}
+                      : "\u2014"}
                   </p>
                 </div>
               ))}
@@ -669,11 +734,37 @@ export default function AddressSearch() {
               />
               <Row label="Owner" value={owner} icon={Shield} />
               <Row label="APN" value={apn} icon={FileText} />
-              <Row label="Assessed Value" value={assessedValue} fmt="usd" icon={DollarSign} />
-              <Row label="Market Value" value={marketValue} fmt="usd" icon={TrendingUp} highlight />
-              <Row label="Last Sale" value={lastSaleDate} fmt="date" icon={Clock} />
-              <Row label="Sale Price" value={lastSalePrice} fmt="usd" icon={DollarSign} />
-              <Row label="Annual Taxes" value={annualTax} fmt="usd" icon={FileText} />
+              <Row
+                label="Assessed Value"
+                value={assessedValue}
+                fmt="usd"
+                icon={DollarSign}
+              />
+              <Row
+                label="Market Value"
+                value={marketValue}
+                fmt="usd"
+                icon={TrendingUp}
+                highlight
+              />
+              <Row
+                label="Last Sale Date"
+                value={lastSaleDate}
+                fmt="date"
+                icon={Clock}
+              />
+              <Row
+                label="Sale Price"
+                value={lastSalePrice}
+                fmt="usd"
+                icon={DollarSign}
+              />
+              <Row
+                label="Annual Taxes"
+                value={annualTax}
+                fmt="usd"
+                icon={FileText}
+              />
             </div>
             <div className="bg-[#080a12] border border-[#1e2235] rounded-lg p-4">
               <SectionHeader
@@ -690,8 +781,12 @@ export default function AddressSearch() {
                 value={floodZone || "Not reported"}
                 icon={Droplets}
               />
-              <Row label="Prop Type" value={propType} icon={Home} />
-              <Row label="Litigation" value="No records found" icon={Scale} />
+              <Row label="Lot Size" value={lotSize} fmt="num" icon={MapPin} />
+              <Row
+                label="Litigation"
+                value="No records found"
+                icon={Scale}
+              />
             </div>
           </div>
 
