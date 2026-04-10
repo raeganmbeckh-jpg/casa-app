@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import {
   Search,
   ChevronDown,
-  Cpu,
   Globe,
   Building2,
   TrendingUp,
@@ -20,7 +19,22 @@ import {
 } from "lucide-react";
 
 /* ═══════════════════════════════════════════════════════════════════
-   INTERSECTION OBSERVER HOOK
+   TOKENS
+   ═══════════════════════════════════════════════════════════════════ */
+
+const Y = "#F9D96A";       // butter yellow
+const YD = "#E8C84A";      // hover
+const YBG = "#FFFDF0";     // tint
+const TX = "#1A1A1A";      // primary text
+const TX2 = "#6B6B6B";     // secondary
+const BD = "#F0F0F0";      // border
+const GLOW = "0 8px 40px rgba(249,217,106,0.25)";
+const GLOW_SM = "0 4px 20px rgba(249,217,106,0.18)";
+const PF = "var(--font-playfair)";
+const IN = "var(--font-inter)";
+
+/* ═══════════════════════════════════════════════════════════════════
+   HOOKS
    ═══════════════════════════════════════════════════════════════════ */
 
 function useInView(threshold = 0.15) {
@@ -39,22 +53,18 @@ function useInView(threshold = 0.15) {
   return { ref, visible };
 }
 
-/* ═══════════════════════════════════════════════════════════════════
-   ANIMATED COUNTER
-   ═══════════════════════════════════════════════════════════════════ */
-
 function Counter({ target, suffix = "", visible }: { target: number; suffix?: string; visible: boolean }) {
   const [count, setCount] = useState(0);
   useEffect(() => {
     if (!visible) return;
     let frame: number;
-    const duration = 1600;
+    const dur = 2000;
     const start = performance.now();
     function tick(now: number) {
-      const progress = Math.min((now - start) / duration, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
       setCount(Math.round(target * ease));
-      if (progress < 1) frame = requestAnimationFrame(tick);
+      if (p < 1) frame = requestAnimationFrame(tick);
     }
     frame = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(frame);
@@ -63,26 +73,13 @@ function Counter({ target, suffix = "", visible }: { target: number; suffix?: st
 }
 
 /* ═══════════════════════════════════════════════════════════════════
-   CONSTANTS
+   DATA
    ═══════════════════════════════════════════════════════════════════ */
 
-const GOLD = "#C9A84C";
 const FEATURES = [
-  {
-    icon: Globe,
-    title: "Property Intelligence Terminal",
-    desc: "Search any US address. Get owner, value, taxes, sale history, litigation status, and AI system health analysis in seconds.",
-  },
-  {
-    icon: Brain,
-    title: "50 AI Agents Working Together",
-    desc: "From predictive maintenance to eviction risk scoring to off-market deal sourcing. Agents that work while you sleep.",
-  },
-  {
-    icon: Users,
-    title: "6 Role Workspaces",
-    desc: "Switch between Manager, Investor, Broker, Developer, Lender, and Land Acquisition with one click.",
-  },
+  { icon: Globe, title: "Property Intelligence Terminal", desc: "Search any US address. Get owner, value, taxes, sale history, litigation status, and AI system health analysis in seconds." },
+  { icon: Brain, title: "50 AI Agents Working Together", desc: "From predictive maintenance to eviction risk scoring to off-market deal sourcing. Agents that work while you sleep." },
+  { icon: Users, title: "6 Role Workspaces", desc: "Switch between Manager, Investor, Broker, Developer, Lender, and Land Acquisition with one click." },
 ];
 
 const STEPS = [
@@ -101,7 +98,7 @@ const ROLES = [
 ];
 
 /* ═══════════════════════════════════════════════════════════════════
-   MAIN COMPONENT
+   PAGE
    ═══════════════════════════════════════════════════════════════════ */
 
 export default function LandingPage() {
@@ -119,10 +116,10 @@ export default function LandingPage() {
   const ctaView = useInView(0.2);
 
   useEffect(() => {
-    setHeroVisible(true);
-    const onScroll = () => setScrolled(window.scrollY > 40);
+    const t = setTimeout(() => setHeroVisible(true), 100);
+    const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
+    return () => { clearTimeout(t); window.removeEventListener("scroll", onScroll); };
   }, []);
 
   function handleSearch() {
@@ -132,39 +129,25 @@ export default function LandingPage() {
     router.push("/workspace");
   }
 
-  /* ── Navbar ─────────────────────────────────────────────────── */
+  /* ── 1. NAVBAR ──────────────────────────────────────────────── */
 
   const navbar = (
     <nav
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-        scrolled
-          ? "bg-black/90 backdrop-blur-xl border-b border-white/5"
-          : "bg-transparent"
-      }`}
+      className="fixed top-0 left-0 right-0 z-50 transition-all duration-500"
+      style={{
+        backgroundColor: scrolled ? "rgba(255,255,255,0.95)" : "rgba(255,255,255,0.8)",
+        backdropFilter: "blur(20px)",
+        borderBottom: `1px solid ${scrolled ? BD : "transparent"}`,
+      }}
     >
-      <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-        <span
-          className="text-white font-bold text-xl tracking-tight cursor-pointer"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          CASA
-        </span>
+      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+        <span style={{ fontFamily: PF, color: TX, fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>CASA</span>
         <div className="flex items-center gap-6">
+          <a href="/select-role" className="text-sm transition-colors hover:opacity-70" style={{ fontFamily: IN, color: TX2 }}>Sign in</a>
           <a
             href="/select-role"
-            className="text-sm text-white/50 hover:text-white transition-colors"
-            style={{ fontFamily: "var(--font-inter)" }}
-          >
-            Sign in
-          </a>
-          <a
-            href="/select-role"
-            className="text-sm font-semibold px-5 py-2 rounded-full transition-all hover:brightness-110"
-            style={{
-              fontFamily: "var(--font-inter)",
-              backgroundColor: GOLD,
-              color: "#000",
-            }}
+            className="text-sm font-semibold px-5 py-2.5 rounded-full transition-all hover:brightness-95"
+            style={{ fontFamily: IN, backgroundColor: Y, color: TX, boxShadow: GLOW_SM }}
           >
             Get started
           </a>
@@ -173,104 +156,66 @@ export default function LandingPage() {
     </nav>
   );
 
-  /* ── Hero ────────────────────────────────────────────────────── */
+  /* ── 2. HERO ────────────────────────────────────────────────── */
 
   const hero = (
-    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 overflow-hidden">
-      {/* Gradient orb */}
-      <div
-        className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-[0.07] blur-[120px] pointer-events-none"
-        style={{ background: `radial-gradient(circle, ${GOLD}, transparent 70%)` }}
-      />
-
-      <div className="relative text-center max-w-4xl mx-auto">
-        {/* Eyebrow */}
+    <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-16" style={{ backgroundColor: "#fff" }}>
+      <div className="relative text-center max-w-3xl mx-auto">
         <p
-          className={`text-xs font-semibold uppercase tracking-[0.35em] mb-8 transition-all duration-700 ${
-            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"
-          }`}
-          style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
+          className={`text-xs font-semibold uppercase tracking-[0.3em] mb-6 transition-all duration-800 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
+          style={{ fontFamily: IN, color: TX2 }}
         >
           The Bloomberg Terminal for Real Estate
         </p>
-
-        {/* Headline */}
         <h1
-          className={`text-6xl sm:text-7xl md:text-[96px] font-bold leading-[1.05] tracking-tight mb-6 transition-all duration-700 delay-200 ${
-            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-          style={{ fontFamily: "var(--font-inter)", color: "#fff" }}
+          className={`text-5xl sm:text-6xl md:text-[80px] leading-[1.08] mb-6 transition-all duration-800 delay-200 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          style={{ fontFamily: PF, color: TX, fontWeight: 700, letterSpacing: -1 }}
         >
-          Manage. Invest.
-          <br />
-          Acquire.
+          Search any US property.{" "}
+          <span style={{ color: YD }}>Get the full picture</span>{" "}
+          in seconds.
         </h1>
-
-        {/* Subtext */}
         <p
-          className={`text-lg md:text-xl max-w-2xl mx-auto mb-12 leading-relaxed transition-all duration-700 delay-[400ms] ${
-            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-          style={{ color: "rgba(255,255,255,0.5)", fontFamily: "var(--font-inter)" }}
+          className={`text-lg md:text-xl leading-relaxed max-w-xl mx-auto mb-12 transition-all duration-800 delay-[400ms] ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}
+          style={{ fontFamily: IN, color: TX2 }}
         >
-          Search any US property.
-          <br />
-          Get the full picture in seconds.
+          AI agents, live property intelligence, and portfolio management — one platform for every real estate workflow.
         </p>
 
         {/* Search Bar */}
-        <div
-          className={`relative max-w-2xl mx-auto transition-all duration-700 delay-[600ms] ${
-            heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"
-          }`}
-        >
-          <div
-            className="relative rounded-2xl p-[1px] overflow-hidden"
-            style={{
-              background: `linear-gradient(135deg, ${GOLD}40, transparent 50%, ${GOLD}20)`,
-              animation: "glow 3s ease-in-out infinite",
-            }}
-          >
-            <div className="flex items-center bg-black rounded-2xl">
-              <Search className="w-5 h-5 text-white/30 ml-5 shrink-0" />
-              <input
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                placeholder="Search any US address to begin..."
-                className="flex-1 bg-transparent border-0 px-4 py-5 text-white text-base placeholder:text-white/25 focus:outline-none"
-                style={{ fontFamily: "var(--font-inter)" }}
-              />
-              <button
-                onClick={handleSearch}
-                className="shrink-0 mr-2 px-6 py-3 rounded-xl text-sm font-semibold text-black transition-all hover:brightness-110"
-                style={{
-                  backgroundColor: GOLD,
-                  fontFamily: "var(--font-inter)",
-                }}
-              >
-                Query
-              </button>
-            </div>
+        <div className={`relative max-w-xl mx-auto transition-all duration-800 delay-[600ms] ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4"}`}>
+          <div className="flex items-center rounded-2xl border overflow-hidden transition-shadow focus-within:shadow-lg" style={{ borderColor: BD, backgroundColor: "#fff", boxShadow: "0 2px 20px rgba(0,0,0,0.04)" }}>
+            <Search className="w-5 h-5 ml-5 shrink-0" style={{ color: "#ccc" }} />
+            <input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              placeholder="Search any US address to begin..."
+              className="flex-1 bg-transparent border-0 px-4 py-5 text-base focus:outline-none"
+              style={{ fontFamily: IN, color: TX, caretColor: YD }}
+            />
+            <button
+              onClick={handleSearch}
+              className="shrink-0 mr-2.5 px-6 py-3 rounded-xl text-sm font-semibold transition-all hover:brightness-95"
+              style={{ backgroundColor: Y, color: TX, fontFamily: IN, boxShadow: GLOW_SM }}
+            >
+              Query
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Scroll indicator */}
       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 animate-bounce">
-        <ChevronDown className="w-6 h-6 text-white/20" />
+        <ChevronDown className="w-5 h-5" style={{ color: "#ddd" }} />
       </div>
     </section>
   );
 
-  /* ── Stats Bar ──────────────────────────────────────────────── */
+  /* ── 3. STATS BAR ───────────────────────────────────────────── */
 
   const statsBar = (
-    <section
-      ref={statsView.ref}
-      className="border-y border-white/5 py-16 bg-black"
-    >
-      <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8">
+    <section ref={statsView.ref} className="py-20" style={{ backgroundColor: "#fff", borderTop: `1px solid ${BD}`, borderBottom: `1px solid ${BD}` }}>
+      <div className="max-w-5xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-10">
         {[
           { target: 50, suffix: "+", label: "AI Agents" },
           { target: 100, suffix: "%", label: "US Coverage" },
@@ -278,48 +223,24 @@ export default function LandingPage() {
           { target: 6, suffix: "", label: "Role Workspaces" },
         ].map((s) => (
           <div key={s.label} className="text-center">
-            <p
-              className="text-4xl md:text-5xl font-bold mb-2"
-              style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
-            >
-              <Counter
-                target={s.target}
-                suffix={s.suffix}
-                visible={statsView.visible}
-              />
+            <p className="text-5xl md:text-6xl mb-2" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>
+              <Counter target={s.target} suffix={s.suffix} visible={statsView.visible} />
             </p>
-            <p
-              className="text-sm uppercase tracking-widest"
-              style={{
-                color: "rgba(255,255,255,0.4)",
-                fontFamily: "var(--font-inter)",
-              }}
-            >
-              {s.label}
-            </p>
+            <div className="w-8 h-[2px] mx-auto mb-2 rounded-full" style={{ backgroundColor: Y }} />
+            <p className="text-xs uppercase tracking-[0.2em]" style={{ fontFamily: IN, color: TX2 }}>{s.label}</p>
           </div>
         ))}
       </div>
     </section>
   );
 
-  /* ── Features Grid ──────────────────────────────────────────── */
+  /* ── 4. FEATURES ────────────────────────────────────────────── */
 
   const featuresGrid = (
-    <section ref={featuresView.ref} className="py-32 bg-black px-6">
+    <section ref={featuresView.ref} className="py-28 px-6" style={{ backgroundColor: "#fff" }}>
       <div className="max-w-6xl mx-auto">
-        <p
-          className="text-xs font-semibold uppercase tracking-[0.35em] text-center mb-4"
-          style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
-        >
-          Platform
-        </p>
-        <h2
-          className="text-4xl md:text-5xl font-bold text-center text-white mb-20"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          Built for every angle
-        </h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-center mb-3" style={{ fontFamily: IN, color: TX2 }}>Platform</p>
+        <h2 className="text-4xl md:text-5xl text-center mb-20" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>Built for every angle</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {FEATURES.map((f, i) => {
@@ -327,34 +248,25 @@ export default function LandingPage() {
             return (
               <div
                 key={f.title}
-                className={`group p-8 rounded-2xl border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] hover:border-white/10 hover:-translate-y-1 transition-all duration-500 ${
-                  featuresView.visible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-10"
-                }`}
-                style={{ transitionDelay: `${i * 150}ms` }}
+                className={`group p-8 rounded-2xl border transition-all duration-700 cursor-default hover:-translate-y-1`}
+                style={{
+                  borderColor: BD,
+                  backgroundColor: "#fff",
+                  transitionDelay: `${i * 150}ms`,
+                  opacity: featuresView.visible ? 1 : 0,
+                  transform: featuresView.visible ? "translateY(0)" : "translateY(24px)",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = GLOW; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
               >
                 <div
-                  className="w-12 h-12 rounded-xl flex items-center justify-center mb-6"
-                  style={{ backgroundColor: `${GOLD}15` }}
+                  className="w-14 h-14 rounded-2xl flex items-center justify-center mb-6 transition-all duration-500 group-hover:scale-110"
+                  style={{ backgroundColor: `${Y}30` }}
                 >
-                  <Icon className="w-6 h-6" style={{ color: GOLD }} />
+                  <Icon className="w-7 h-7" style={{ color: YD }} />
                 </div>
-                <h3
-                  className="text-xl font-bold text-white mb-3"
-                  style={{ fontFamily: "var(--font-inter)" }}
-                >
-                  {f.title}
-                </h3>
-                <p
-                  className="text-sm leading-relaxed"
-                  style={{
-                    color: "rgba(255,255,255,0.45)",
-                    fontFamily: "var(--font-inter)",
-                  }}
-                >
-                  {f.desc}
-                </p>
+                <h3 className="text-xl mb-3" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>{f.title}</h3>
+                <p className="text-sm leading-relaxed" style={{ fontFamily: IN, color: TX2 }}>{f.desc}</p>
               </div>
             );
           })}
@@ -363,73 +275,36 @@ export default function LandingPage() {
     </section>
   );
 
-  /* ── How It Works ───────────────────────────────────────────── */
+  /* ── 5. HOW IT WORKS ────────────────────────────────────────── */
 
   const howItWorks = (
-    <section ref={stepsView.ref} className="py-32 bg-black px-6">
-      <div className="max-w-4xl mx-auto">
-        <p
-          className="text-xs font-semibold uppercase tracking-[0.35em] text-center mb-4"
-          style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
-        >
-          How It Works
-        </p>
-        <h2
-          className="text-4xl md:text-5xl font-bold text-center text-white mb-20"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          Three steps to clarity
-        </h2>
+    <section ref={stepsView.ref} className="py-28 px-6" style={{ backgroundColor: "#FAFAFA" }}>
+      <div className="max-w-3xl mx-auto">
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-center mb-3" style={{ fontFamily: IN, color: TX2 }}>How It Works</p>
+        <h2 className="text-4xl md:text-5xl text-center mb-20" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>Three steps to clarity</h2>
 
         <div className="relative">
-          {/* Connecting line */}
-          <div
-            className={`absolute left-8 top-0 bottom-0 w-px transition-all duration-1000 ${
-              stepsView.visible ? "opacity-100" : "opacity-0"
-            }`}
-            style={{
-              background: `linear-gradient(to bottom, transparent, ${GOLD}40, ${GOLD}40, transparent)`,
-            }}
-          />
-
+          <div className="absolute left-8 top-0 bottom-0 w-px" style={{ backgroundColor: BD, opacity: stepsView.visible ? 1 : 0, transition: "opacity 1s" }} />
           <div className="space-y-16">
             {STEPS.map((step, i) => (
               <div
                 key={step.num}
-                className={`relative flex items-start gap-8 transition-all duration-700 ${
-                  stepsView.visible
-                    ? "opacity-100 translate-x-0"
-                    : "opacity-0 -translate-x-8"
-                }`}
-                style={{ transitionDelay: `${i * 200}ms` }}
+                className="relative flex items-start gap-8 transition-all duration-800"
+                style={{
+                  transitionDelay: `${i * 200}ms`,
+                  opacity: stepsView.visible ? 1 : 0,
+                  transform: stepsView.visible ? "translateX(0)" : "translateX(-20px)",
+                }}
               >
                 <div
-                  className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold border-2 relative z-10"
-                  style={{
-                    borderColor: `${GOLD}50`,
-                    color: GOLD,
-                    backgroundColor: "#000",
-                    fontFamily: "var(--font-inter)",
-                  }}
+                  className="shrink-0 w-16 h-16 rounded-full flex items-center justify-center text-lg font-bold relative z-10"
+                  style={{ fontFamily: PF, backgroundColor: Y, color: TX, boxShadow: GLOW_SM }}
                 >
                   {step.num}
                 </div>
                 <div className="pt-3">
-                  <h3
-                    className="text-2xl font-bold text-white mb-2"
-                    style={{ fontFamily: "var(--font-inter)" }}
-                  >
-                    {step.title}
-                  </h3>
-                  <p
-                    className="text-base leading-relaxed"
-                    style={{
-                      color: "rgba(255,255,255,0.45)",
-                      fontFamily: "var(--font-inter)",
-                    }}
-                  >
-                    {step.desc}
-                  </p>
+                  <h3 className="text-2xl mb-2" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>{step.title}</h3>
+                  <p className="text-base leading-relaxed" style={{ fontFamily: IN, color: TX2 }}>{step.desc}</p>
                 </div>
               </div>
             ))}
@@ -439,23 +314,13 @@ export default function LandingPage() {
     </section>
   );
 
-  /* ── Roles ──────────────────────────────────────────────────── */
+  /* ── 6. ROLES ───────────────────────────────────────────────── */
 
   const rolesSection = (
-    <section ref={rolesView.ref} className="py-32 bg-black px-6">
+    <section ref={rolesView.ref} className="py-28 px-6" style={{ backgroundColor: "#fff" }}>
       <div className="max-w-6xl mx-auto">
-        <p
-          className="text-xs font-semibold uppercase tracking-[0.35em] text-center mb-4"
-          style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
-        >
-          Workspaces
-        </p>
-        <h2
-          className="text-4xl md:text-5xl font-bold text-center text-white mb-20"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          One platform, every role
-        </h2>
+        <p className="text-xs font-semibold uppercase tracking-[0.3em] text-center mb-3" style={{ fontFamily: IN, color: TX2 }}>Workspaces</p>
+        <h2 className="text-4xl md:text-5xl text-center mb-20" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>One platform, every role</h2>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {ROLES.map((role, i) => {
@@ -463,49 +328,34 @@ export default function LandingPage() {
             return (
               <div
                 key={role.name}
-                className={`group relative p-6 rounded-2xl border border-white/5 bg-white/[0.02] hover:border-white/10 transition-all duration-500 overflow-hidden ${
-                  rolesView.visible
-                    ? "opacity-100 translate-y-0"
-                    : "opacity-0 translate-y-8"
-                }`}
-                style={{ transitionDelay: `${i * 100}ms` }}
+                className="group relative p-7 rounded-2xl border transition-all duration-700 overflow-hidden cursor-default hover:-translate-y-1"
+                style={{
+                  borderColor: BD,
+                  backgroundColor: "#fff",
+                  transitionDelay: `${i * 80}ms`,
+                  opacity: rolesView.visible ? 1 : 0,
+                  transform: rolesView.visible ? "translateY(0)" : "translateY(20px)",
+                }}
+                onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = GLOW; }}
+                onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "none"; }}
               >
-                {/* Default view */}
-                <div className="transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-4">
-                  <Icon
-                    className="w-8 h-8 mb-4"
-                    style={{ color: GOLD }}
-                  />
-                  <h3
-                    className="text-lg font-bold text-white"
-                    style={{ fontFamily: "var(--font-inter)" }}
+                {/* Default */}
+                <div className="transition-all duration-300 group-hover:opacity-0 group-hover:-translate-y-3">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center mb-5 transition-all duration-500 group-hover:scale-110"
+                    style={{ backgroundColor: `${Y}25` }}
                   >
-                    {role.name}
-                  </h3>
+                    <Icon className="w-6 h-6" style={{ color: YD }} />
+                  </div>
+                  <h3 className="text-lg" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>{role.name}</h3>
                 </div>
-
-                {/* Hover reveal */}
-                <div className="absolute inset-0 p-6 flex flex-col justify-center opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
-                  <h3
-                    className="text-lg font-bold mb-3"
-                    style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
-                  >
-                    {role.name}
-                  </h3>
-                  <ul className="space-y-2">
+                {/* Hover */}
+                <div className="absolute inset-0 p-7 flex flex-col justify-center opacity-0 translate-y-3 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300">
+                  <h3 className="text-lg mb-4" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>{role.name}</h3>
+                  <ul className="space-y-2.5">
                     {role.features.map((f) => (
-                      <li
-                        key={f}
-                        className="flex items-center gap-2 text-sm"
-                        style={{
-                          color: "rgba(255,255,255,0.6)",
-                          fontFamily: "var(--font-inter)",
-                        }}
-                      >
-                        <ArrowRight
-                          className="w-3 h-3 shrink-0"
-                          style={{ color: GOLD }}
-                        />
+                      <li key={f} className="flex items-center gap-2 text-sm" style={{ fontFamily: IN, color: TX2 }}>
+                        <ArrowRight className="w-3.5 h-3.5 shrink-0" style={{ color: YD }} />
                         {f}
                       </li>
                     ))}
@@ -519,40 +369,18 @@ export default function LandingPage() {
     </section>
   );
 
-  /* ── CTA ────────────────────────────────────────────────────── */
+  /* ── 7. CTA ─────────────────────────────────────────────────── */
 
   const ctaSection = (
-    <section ref={ctaView.ref} className="py-32 bg-black px-6">
-      <div
-        className={`max-w-3xl mx-auto text-center transition-all duration-700 ${
-          ctaView.visible
-            ? "opacity-100 translate-y-0"
-            : "opacity-0 translate-y-8"
-        }`}
-      >
-        <h2
-          className="text-4xl md:text-5xl font-bold text-white mb-4"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
+    <section ref={ctaView.ref} className="py-28 px-6" style={{ backgroundColor: YBG }}>
+      <div className={`max-w-2xl mx-auto text-center transition-all duration-800 ${ctaView.visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
+        <h2 className="text-4xl md:text-5xl mb-4" style={{ fontFamily: PF, color: TX, fontWeight: 700 }}>
           The future of real estate intelligence.
         </h2>
-        <p
-          className="text-lg mb-10"
-          style={{
-            color: "rgba(255,255,255,0.45)",
-            fontFamily: "var(--font-inter)",
-          }}
-        >
-          Join the waitlist.
-        </p>
+        <p className="text-lg mb-10" style={{ fontFamily: IN, color: TX2 }}>Join the waitlist.</p>
 
         {submitted ? (
-          <p
-            className="text-lg font-semibold"
-            style={{ color: GOLD, fontFamily: "var(--font-inter)" }}
-          >
-            You&apos;re on the list. We&apos;ll be in touch.
-          </p>
+          <p className="text-lg font-semibold" style={{ fontFamily: IN, color: YD }}>You&apos;re on the list. We&apos;ll be in touch.</p>
         ) : (
           <div className="flex items-center gap-3 max-w-md mx-auto">
             <input
@@ -561,16 +389,13 @@ export default function LandingPage() {
               onKeyDown={(e) => e.key === "Enter" && email && setSubmitted(true)}
               placeholder="you@company.com"
               type="email"
-              className="flex-1 bg-white/5 border border-white/10 rounded-full px-6 py-4 text-white text-sm placeholder:text-white/25 focus:outline-none focus:border-white/20"
-              style={{ fontFamily: "var(--font-inter)" }}
+              className="flex-1 border rounded-full px-6 py-4 text-sm focus:outline-none transition-shadow focus:shadow-md"
+              style={{ fontFamily: IN, color: TX, borderColor: BD, backgroundColor: "#fff" }}
             />
             <button
               onClick={() => email && setSubmitted(true)}
-              className="shrink-0 px-8 py-4 rounded-full text-sm font-semibold text-black transition-all hover:brightness-110"
-              style={{
-                backgroundColor: GOLD,
-                fontFamily: "var(--font-inter)",
-              }}
+              className="shrink-0 px-8 py-4 rounded-full text-sm font-semibold transition-all hover:brightness-95"
+              style={{ backgroundColor: Y, color: TX, fontFamily: IN, boxShadow: GLOW_SM }}
             >
               Join
             </button>
@@ -580,57 +405,26 @@ export default function LandingPage() {
     </section>
   );
 
-  /* ── Footer ─────────────────────────────────────────────────── */
+  /* ── 8. FOOTER ──────────────────────────────────────────────── */
 
   const footer = (
-    <footer className="border-t border-white/5 py-12 bg-black px-6">
-      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
-        <span
-          className="text-white font-bold text-lg tracking-tight"
-          style={{ fontFamily: "var(--font-inter)" }}
-        >
-          CASA
-        </span>
-        <div
-          className="flex items-center gap-8 text-sm"
-          style={{
-            color: "rgba(255,255,255,0.35)",
-            fontFamily: "var(--font-inter)",
-          }}
-        >
-          <span className="hover:text-white/60 cursor-pointer transition-colors">
-            Product
-          </span>
-          <span className="hover:text-white/60 cursor-pointer transition-colors">
-            Company
-          </span>
-          <span className="hover:text-white/60 cursor-pointer transition-colors">
-            Legal
-          </span>
+    <footer className="py-12 px-6" style={{ backgroundColor: "#fff", borderTop: `1px solid ${BD}` }}>
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6">
+        <span style={{ fontFamily: PF, color: TX, fontSize: 18, fontWeight: 700 }}>CASA</span>
+        <div className="flex items-center gap-8 text-sm" style={{ fontFamily: IN, color: TX2 }}>
+          <span className="cursor-pointer hover:opacity-70 transition-opacity">Product</span>
+          <span className="cursor-pointer hover:opacity-70 transition-opacity">Company</span>
+          <span className="cursor-pointer hover:opacity-70 transition-opacity">Legal</span>
         </div>
-        <p
-          className="text-xs"
-          style={{
-            color: "rgba(255,255,255,0.2)",
-            fontFamily: "var(--font-inter)",
-          }}
-        >
-          &copy; {new Date().getFullYear()} CASA. All rights reserved.
-        </p>
+        <p className="text-xs" style={{ fontFamily: IN, color: "#bbb" }}>&copy; {new Date().getFullYear()} CASA. All rights reserved.</p>
       </div>
     </footer>
   );
 
-  /* ── Render ─────────────────────────────────────────────────── */
+  /* ── RENDER ─────────────────────────────────────────────────── */
 
   return (
-    <main className="bg-black min-h-screen">
-      <style jsx global>{`
-        @keyframes glow {
-          0%, 100% { opacity: 0.6; }
-          50% { opacity: 1; }
-        }
-      `}</style>
+    <main style={{ backgroundColor: "#fff" }}>
       {navbar}
       {hero}
       {statsBar}
