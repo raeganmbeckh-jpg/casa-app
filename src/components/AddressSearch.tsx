@@ -1,6 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { createClient } from "@supabase/supabase-js";
+
+const correctionsDb = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+);
 import {
   Search,
   MapPin,
@@ -27,6 +33,8 @@ import {
   LocateFixed,
   Zap,
   Cloud,
+  Pencil,
+  Check,
 } from "lucide-react";
 
 const GOLD = "#E8C84A";
@@ -41,6 +49,8 @@ const CARD_SHADOW = "0 4px 24px rgba(0,0,0,0.06)";
    ═══════════════════════════════════════════════════════════════════ */
 
 function conf(value: any): { pct: number; label: string; cls: string; color: string } {
+  if (value === "corrected")
+    return { pct: 92, label: "VERIFIED", cls: "text-emerald-500/80 bg-emerald-500/10", color: "#10b981" };
   if (value === null || value === undefined || value === "" || value === 0)
     return { pct: 0, label: "NO DATA", cls: "text-red-500/80 bg-red-500/10", color: "#ef4444" };
   if (typeof value === "string" && value === "Not reported")
@@ -92,28 +102,33 @@ function Badge({ value, pulse }: { value: any; pulse: boolean }) {
    DATA ROW
    ═══════════════════════════════════════════════════════════════════ */
 
-function Row({ label, value, fmt, icon: Icon, accent, pulse }: {
+function Row({ label, value, fmt, icon: Icon, accent, pulse, correction }: {
   label: string;
   value: any;
   fmt?: "usd" | "num";
   icon?: any;
   accent?: boolean;
   pulse?: boolean;
+  correction?: { correct_value: string; correction_type: string } | null;
 }) {
   const [hovered, setHovered] = useState(false);
-  const isEmpty = value === null || value === undefined || value === "" || value === 0;
+  const hasCorrected = !!correction;
+  const displayValue = hasCorrected ? correction.correct_value : value;
+  const isEmpty = displayValue === null || displayValue === undefined || displayValue === "" || displayValue === 0;
   let display: string;
   let isPlaceholder = false;
   if (isEmpty) {
     display = "Not in county records";
     isPlaceholder = true;
-  } else if (fmt === "usd" && typeof value === "number") {
-    display = `$${value.toLocaleString()}`;
-  } else if (fmt === "num" && typeof value === "number") {
-    display = value.toLocaleString();
+  } else if (fmt === "usd" && typeof displayValue === "number") {
+    display = `$${displayValue.toLocaleString()}`;
+  } else if (fmt === "num" && typeof displayValue === "number") {
+    display = displayValue.toLocaleString();
   } else {
-    display = String(value);
+    display = String(displayValue);
   }
+  // Confidence boost for corrected fields
+  const confidenceValue = hasCorrected ? "corrected" : value;
   return (
     <div
       className="flex items-center justify-between py-[6px] last:border-0"
@@ -124,20 +139,22 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse }: {
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      title={hasCorrected ? `User-submitted correction · Original ATTOM value: ${value ?? "none"}` : undefined}
     >
       <div className="flex items-center gap-2">
         {Icon && <Icon className="w-3 h-3" style={{ color: "#CCCCCC" }} />}
         <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>{label}</span>
+        {hasCorrected && <Check className="w-3 h-3" style={{ color: "#10b981" }} />}
       </div>
       <div className="flex items-center gap-2.5">
         <span className={`text-[13px] ${accent ? "font-bold" : ""}`} style={{
-          color: isPlaceholder ? "#CCCCCC" : accent ? GOLD : TEXT_PRIMARY,
+          color: isPlaceholder ? "#CCCCCC" : hasCorrected ? ACCENT : accent ? GOLD : TEXT_PRIMARY,
           fontFamily: "var(--font-geist-mono)",
           fontStyle: isPlaceholder ? "italic" : "normal",
         }}>
           {display}
         </span>
-        <Badge value={value} pulse={!!pulse} />
+        <Badge value={confidenceValue} pulse={!!pulse} />
       </div>
     </div>
   );
@@ -643,6 +660,15 @@ export default function AddressSearch({
   const [intelAgents, setIntelAgents] = useState<any[]>([]);
   const [agentStatuses, setAgentStatuses] = useState<("pending" | "running" | "done")[]>(Array(6).fill("pending"));
 
+  // Corrections
+  const [corrections, setCorrections] = useState<Record<string, { correct_value: string; correction_type: string }>>({});
+  const [editingYearBuilt, setEditingYearBuilt] = useState(false);
+  const [yearBuiltInput, setYearBuiltInput] = useState("");
+  const [yearBuiltType, setYearBuiltType] = useState("Major Renovation");
+  const [showRenovationModal, setShowRenovationModal] = useState(false);
+  const [renovationYear, setRenovationYear] = useState("");
+  const [renovationType, setRenovationType] = useState("Major Renovation");
+
   // Autocomplete
   const [suggestions, setSuggestions] = useState<{ address: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -834,6 +860,35 @@ export default function AddressSearch({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialQuery]);
+
+  // Load corrections when result changes
+  useEffect(() => {
+    if (!result) return;
+    const addr = (result.detail || result.basic)?.address;
+    const fullAddr = addr ? [addr.line1, addr.locality, addr.countrySubd, addr.postal1].filter(Boolean).join(", ") : "";
+    if (!fullAddr) return;
+    correctionsDb.from("property_corrections").select("*").eq("address", fullAddr).then(({ data }) => {
+      if (data && data.length > 0) {
+        const map: Record<string, { correct_value: string; correction_type: string }> = {};
+        data.forEach((c: any) => { map[c.field_name] = { correct_value: c.correct_value, correction_type: c.correction_type }; });
+        setCorrections(map);
+      } else {
+        setCorrections({});
+      }
+    });
+  }, [result]);
+
+  async function saveCorrection(fieldName: string, attomValue: string, correctValue: string, correctionType: string) {
+    const addr = (result?.detail || result?.basic)?.address;
+    const fullAddr = addr ? [addr.line1, addr.locality, addr.countrySubd, addr.postal1].filter(Boolean).join(", ") : "";
+    const apnVal = (result?.detail || result?.basic)?.identifier?.apn || "";
+    await correctionsDb.from("property_corrections").insert({
+      address: fullAddr, apn: apnVal, field_name: fieldName,
+      attom_value: attomValue, correct_value: correctValue,
+      correction_type: correctionType, source: "user",
+    });
+    setCorrections(prev => ({ ...prev, [fieldName]: { correct_value: correctValue, correction_type: correctionType } }));
+  }
 
   /* ── Extract fields ─────────────────────────────────────────── */
   const d = result?.detail;
@@ -1066,17 +1121,16 @@ export default function AddressSearch({
                 </div>
               </div>
 
-              {/* Key stats: beds / baths / sqft / year built */}
-              <div className="grid grid-cols-4" style={{ borderColor: BORDER }}>
+              {/* Key stats: beds / baths / sqft / built / renovated */}
+              <div className="grid grid-cols-5" style={{ borderColor: BORDER }}>
                 {[
                   { icon: Bed, label: "BEDS", val: beds, fmtNum: true },
                   { icon: Bath, label: "BATHS", val: bathsFull, fmtNum: true },
                   { icon: Ruler, label: "SQFT", val: sqft, fmtNum: true },
-                  { icon: Calendar, label: "YEAR BUILT", val: yearBuilt, fmtNum: false },
                 ].map((s, idx) => {
                   const SIcon = s.icon;
                   return (
-                    <div key={s.label} className="px-5 py-4 text-center" style={{ borderRight: idx < 3 ? `1px solid ${BORDER}` : undefined }}>
+                    <div key={s.label} className="px-4 py-4 text-center" style={{ borderRight: `1px solid ${BORDER}` }}>
                       <div className="flex items-center justify-center gap-1.5 mb-1">
                         <SIcon className="w-3.5 h-3.5" style={{ color: "#CCCCCC" }} />
                         <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>{s.label}</span>
@@ -1087,7 +1141,140 @@ export default function AddressSearch({
                     </div>
                   );
                 })}
+
+                {/* BUILT — editable */}
+                <div className="px-4 py-4 text-center group relative" style={{ borderRight: `1px solid ${BORDER}` }}>
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <Calendar className="w-3.5 h-3.5" style={{ color: "#CCCCCC" }} />
+                    <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>BUILT</span>
+                  </div>
+                  {editingYearBuilt ? (
+                    <div className="space-y-1.5">
+                      <input
+                        type="number" min={1900} max={2026} value={yearBuiltInput}
+                        onChange={(e) => setYearBuiltInput(e.target.value)}
+                        className="w-20 text-center text-sm rounded py-1 focus:outline-none"
+                        style={{ border: `1px solid ${ACCENT}`, fontFamily: "var(--font-geist-mono)" }}
+                        autoFocus
+                      />
+                      <select
+                        value={yearBuiltType}
+                        onChange={(e) => setYearBuiltType(e.target.value)}
+                        className="w-full text-[9px] rounded py-0.5 focus:outline-none"
+                        style={{ border: `1px solid ${BORDER}`, fontFamily: "var(--font-inter)" }}
+                      >
+                        <option>Original Build</option>
+                        <option>Major Renovation</option>
+                        <option>Full Rebuild</option>
+                        <option>Addition</option>
+                      </select>
+                      <button
+                        onClick={() => {
+                          if (yearBuiltInput) {
+                            saveCorrection("year_built", String(yearBuilt || ""), yearBuiltInput, yearBuiltType);
+                            setEditingYearBuilt(false);
+                          }
+                        }}
+                        className="text-[9px] font-bold px-3 py-1 rounded-full"
+                        style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-inter)" }}
+                      >
+                        Save
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <p className="text-2xl font-bold" style={{
+                        color: corrections.year_built ? ACCENT : TEXT_PRIMARY,
+                        fontFamily: "var(--font-geist-mono)",
+                      }}>
+                        {corrections.year_built ? corrections.year_built.correct_value : (yearBuilt || "\u2014")}
+                      </p>
+                      {corrections.year_built && (
+                        <div className="flex items-center justify-center gap-1 mt-0.5">
+                          <Check className="w-3 h-3" style={{ color: "#10b981" }} />
+                          <span className="text-[8px]" style={{ color: "#10b981", fontFamily: "var(--font-geist-mono)" }}>Verified</span>
+                        </div>
+                      )}
+                      <button
+                        onClick={() => { setYearBuiltInput(String(yearBuilt || "")); setEditingYearBuilt(true); }}
+                        className="absolute -top-1 -right-1 p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                        style={{ backgroundColor: `${ACCENT}30` }}
+                        title={corrections.year_built ? `Original ATTOM value: ${yearBuilt}` : "Edit year built"}
+                      >
+                        <Pencil className="w-3 h-3" style={{ color: GOLD }} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* RENOVATED */}
+                <div className="px-4 py-4 text-center">
+                  <div className="flex items-center justify-center gap-1.5 mb-1">
+                    <Calendar className="w-3.5 h-3.5" style={{ color: "#CCCCCC" }} />
+                    <span className="text-[7px] uppercase tracking-[0.2em]" style={{ color: "#AAAAAA", fontFamily: "var(--font-geist-mono)" }}>RENOVATED</span>
+                  </div>
+                  {corrections.renovation_year ? (
+                    <div>
+                      <p className="text-2xl font-bold" style={{ color: ACCENT, fontFamily: "var(--font-geist-mono)" }}>
+                        {corrections.renovation_year.correct_value}
+                      </p>
+                      <div className="flex items-center justify-center gap-1 mt-0.5">
+                        <Check className="w-3 h-3" style={{ color: "#10b981" }} />
+                        <span className="text-[8px]" style={{ color: "#10b981", fontFamily: "var(--font-geist-mono)" }}>
+                          {corrections.renovation_year.correction_type}
+                        </span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div>
+                      <p className="text-2xl font-bold" style={{ color: "#DDDDDD", fontFamily: "var(--font-geist-mono)" }}>{"\u2014"}</p>
+                      <button
+                        onClick={() => setShowRenovationModal(true)}
+                        className="text-[9px] font-semibold mt-1 px-3 py-0.5 rounded-full"
+                        style={{ backgroundColor: `${ACCENT}20`, color: GOLD, fontFamily: "var(--font-inter)" }}
+                      >
+                        + Add
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
+
+              {/* Renovation Modal */}
+              {showRenovationModal && (
+                <div className="px-5 py-3" style={{ borderTop: `1px solid ${BORDER}`, backgroundColor: "#FFFBF0" }}>
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs font-semibold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-inter)" }}>When was this property renovated?</span>
+                    <input
+                      type="number" min={1900} max={2026} placeholder="Year"
+                      value={renovationYear} onChange={(e) => setRenovationYear(e.target.value)}
+                      className="w-20 text-sm rounded px-2 py-1 focus:outline-none"
+                      style={{ border: `1px solid ${ACCENT}`, fontFamily: "var(--font-geist-mono)" }}
+                    />
+                    <select value={renovationType} onChange={(e) => setRenovationType(e.target.value)}
+                      className="text-xs rounded px-2 py-1 focus:outline-none"
+                      style={{ border: `1px solid ${BORDER}`, fontFamily: "var(--font-inter)" }}>
+                      <option>Major Renovation</option>
+                      <option>Full Rebuild</option>
+                      <option>Addition</option>
+                      <option>Kitchen/Bath Remodel</option>
+                    </select>
+                    <button
+                      onClick={() => {
+                        if (renovationYear) {
+                          saveCorrection("renovation_year", "", renovationYear, renovationType);
+                          setShowRenovationModal(false);
+                        }
+                      }}
+                      className="text-xs font-bold px-4 py-1.5 rounded-full"
+                      style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY, fontFamily: "var(--font-inter)" }}
+                    >
+                      Save
+                    </button>
+                    <button onClick={() => setShowRenovationModal(false)} className="text-xs" style={{ color: "#9B9B9B" }}>Cancel</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
