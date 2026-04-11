@@ -402,6 +402,201 @@ function LitigationCheck({ address }: { address: string }) {
 }
 
 /* ═══════════════════════════════════════════════════════════════════
+   INTELLIGENCE BRIEF
+   ═══════════════════════════════════════════════════════════════════ */
+
+const AGENT_NAMES = ["Market", "Financial", "Risk", "Opportunity", "Solar", "Neighborhood"];
+
+function ScoreGauge({ score, size = 90 }: { score: number; size?: number }) {
+  const [animatedScore, setAnimatedScore] = useState(0);
+  useEffect(() => {
+    const dur = 1500;
+    const start = performance.now();
+    let frame: number;
+    function tick(now: number) {
+      const p = Math.min((now - start) / dur, 1);
+      const ease = 1 - Math.pow(1 - p, 3);
+      setAnimatedScore(Math.round(score * ease));
+      if (p < 1) frame = requestAnimationFrame(tick);
+    }
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [score]);
+
+  const r = (size - 10) / 2;
+  const circ = 2 * Math.PI * r;
+  const offset = circ - (circ * animatedScore) / 100;
+  const color = animatedScore >= 75 ? "#10b981" : animatedScore >= 50 ? "#F9D96A" : animatedScore >= 30 ? "#f59e0b" : "#ef4444";
+
+  return (
+    <div className="relative" style={{ width: size, height: size }}>
+      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#EEEEEE" strokeWidth={5} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={color} strokeWidth={5} strokeLinecap="round"
+          strokeDasharray={circ} strokeDashoffset={offset} style={{ transition: "stroke-dashoffset 0.1s ease" }} />
+      </svg>
+      <div className="absolute inset-0 flex items-center justify-center">
+        <span style={{ fontSize: size * 0.3, fontWeight: 700, fontFamily: "var(--font-heading)", color }}>{animatedScore}</span>
+      </div>
+    </div>
+  );
+}
+
+function AgentStatusPanel({ statuses }: { statuses: ("pending" | "running" | "done")[] }) {
+  return (
+    <div className="flex items-center gap-3 py-3">
+      {AGENT_NAMES.map((name, i) => {
+        const s = statuses[i] || "pending";
+        const color = s === "done" ? "#10b981" : s === "running" ? "#F9D96A" : "#DDDDDD";
+        return (
+          <div key={name} className="flex items-center gap-1.5">
+            <div className="w-2.5 h-2.5 rounded-full" style={{
+              backgroundColor: color,
+              animation: s === "running" ? "pin-pulse 1s ease-in-out infinite" : "none",
+            }} />
+            <span className="text-[9px]" style={{ color: s === "done" ? "#10b981" : s === "running" ? "#E8C84A" : "#CCCCCC", fontFamily: "var(--font-geist-mono)" }}>{name}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function IntelligenceBrief({ brief, agents, agentStatuses, loading }: {
+  brief: any;
+  agents: any[];
+  agentStatuses: ("pending" | "running" | "done")[];
+  loading: boolean;
+}) {
+  const ratingColor = (r: string) => {
+    if (r === "exceptional" || r === "high") return "#10b981";
+    if (r === "medium") return "#f59e0b";
+    return "#ef4444";
+  };
+
+  return (
+    <div className="rounded-xl overflow-hidden" style={{
+      backgroundColor: "#FFFFFF", border: "1px solid #EEEEEE", boxShadow: "0 4px 24px rgba(0,0,0,0.06)",
+      borderLeft: "4px solid #F9D96A",
+      animation: !loading && brief ? "fadeIn 0.5s ease" : "none",
+    }}>
+      <div className="px-5 py-4" style={{ borderBottom: "1px solid #EEEEEE" }}>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Zap className="w-5 h-5" style={{ color: "#E8C84A" }} />
+            <span style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 22, color: "#1A1A1A" }}>CASA Intelligence Brief</span>
+          </div>
+          {loading && <Loader2 className="w-5 h-5 animate-spin" style={{ color: "#E8C84A" }} />}
+        </div>
+        <AgentStatusPanel statuses={agentStatuses} />
+      </div>
+
+      {loading && !brief && (
+        <div className="px-5 py-8 text-center">
+          <p className="text-sm" style={{ color: "#6B6B6B", fontFamily: "var(--font-inter)" }}>
+            6 AI agents analyzing property data in parallel...
+          </p>
+        </div>
+      )}
+
+      {brief && (
+        <div className="p-5">
+          {/* Score + Ratings + Verdict */}
+          <div className="flex items-start gap-6 mb-6">
+            <ScoreGauge score={brief.overall_score || 0} />
+            <div className="flex-1">
+              <p className="text-sm mb-3" style={{ color: "#1A1A1A", fontFamily: "var(--font-inter)", fontWeight: 500 }}>
+                {brief.one_line_verdict}
+              </p>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider" style={{
+                  backgroundColor: `${ratingColor(brief.opportunity_rating)}15`,
+                  color: ratingColor(brief.opportunity_rating),
+                  fontFamily: "var(--font-geist-mono)",
+                }}>
+                  Opportunity: {brief.opportunity_rating}
+                </span>
+                <span className="text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider" style={{
+                  backgroundColor: `${ratingColor(brief.risk_rating === "low" ? "high" : brief.risk_rating === "critical" ? "low" : brief.risk_rating)}15`,
+                  color: ratingColor(brief.risk_rating === "low" ? "high" : brief.risk_rating === "critical" ? "low" : brief.risk_rating),
+                  fontFamily: "var(--font-geist-mono)",
+                }}>
+                  Risk: {brief.risk_rating}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Opportunities + Risks side by side */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-5">
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#10b981", fontFamily: "var(--font-geist-mono)" }}>Top Opportunities</h4>
+              <div className="space-y-2">
+                {(brief.top_opportunities || []).slice(0, 3).map((o: any, i: number) => (
+                  <div key={i} className="p-3 rounded-lg" style={{ backgroundColor: "#ecfdf5", border: "1px solid #a7f3d0" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold" style={{ color: "#065f46", fontFamily: "var(--font-inter)" }}>{o.title}</span>
+                      <span className="text-[10px] font-bold" style={{ color: "#10b981", fontFamily: "var(--font-geist-mono)" }}>{o.financial_impact}</span>
+                    </div>
+                    <p className="text-[10px]" style={{ color: "#6B6B6B" }}>{o.action}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#ef4444", fontFamily: "var(--font-geist-mono)" }}>Top Risks</h4>
+              <div className="space-y-2">
+                {(brief.top_risks || []).slice(0, 3).map((r: any, i: number) => (
+                  <div key={i} className="p-3 rounded-lg" style={{ backgroundColor: "#fef2f2", border: "1px solid #fecaca" }}>
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold" style={{ color: "#991b1b", fontFamily: "var(--font-inter)" }}>{r.title}</span>
+                      <span className="text-[10px] font-bold" style={{ color: "#ef4444", fontFamily: "var(--font-geist-mono)" }}>{r.financial_impact}</span>
+                    </div>
+                    <p className="text-[10px]" style={{ color: "#6B6B6B" }}>{r.action}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Recommended Actions */}
+          {brief.recommended_actions?.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold uppercase tracking-wider mb-2" style={{ color: "#E8C84A", fontFamily: "var(--font-geist-mono)" }}>Recommended Actions</h4>
+              <div className="space-y-1.5">
+                {brief.recommended_actions.slice(0, 5).map((a: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between py-2 px-3 rounded-lg" style={{ backgroundColor: i % 2 === 0 ? "#FAFAFA" : "#FFFFFF", border: `1px solid #EEEEEE` }}>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center" style={{ backgroundColor: "#F9D96A", color: "#1A1A1A", fontFamily: "var(--font-geist-mono)" }}>{a.priority || i + 1}</span>
+                      <span className="text-xs" style={{ color: "#1A1A1A", fontFamily: "var(--font-inter)" }}>{a.action}</span>
+                    </div>
+                    <span className="text-[10px] font-bold" style={{ color: "#10b981", fontFamily: "var(--font-geist-mono)" }}>{a.financial_impact}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Agent scores mini-bar */}
+          <div className="flex items-center gap-2 mt-5 pt-4" style={{ borderTop: "1px solid #EEEEEE" }}>
+            <span className="text-[9px] uppercase tracking-wider" style={{ color: "#CCCCCC", fontFamily: "var(--font-geist-mono)" }}>Agent Scores:</span>
+            {agents.map((a: any) => (
+              <span key={a.agent} className="text-[9px] px-2 py-0.5 rounded-full" style={{
+                backgroundColor: (a.score || 0) >= 70 ? "#ecfdf5" : (a.score || 0) >= 40 ? "#fffbeb" : "#fef2f2",
+                color: (a.score || 0) >= 70 ? "#10b981" : (a.score || 0) >= 40 ? "#f59e0b" : "#ef4444",
+                fontFamily: "var(--font-geist-mono)", fontWeight: 600,
+              }}>
+                {a.agent}: {a.score || 0}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════ */
 
@@ -431,6 +626,12 @@ export default function AddressSearch({
   const [confidencePulse, setConfidencePulse] = useState(false);
   const [googleData, setGoogleData] = useState<GoogleData | null>(null);
 
+  // Intelligence Engine
+  const [intelLoading, setIntelLoading] = useState(false);
+  const [intelBrief, setIntelBrief] = useState<any>(null);
+  const [intelAgents, setIntelAgents] = useState<any[]>([]);
+  const [agentStatuses, setAgentStatuses] = useState<("pending" | "running" | "done")[]>(Array(6).fill("pending"));
+
   // Autocomplete
   const [suggestions, setSuggestions] = useState<{ address: string }[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -459,6 +660,10 @@ export default function AddressSearch({
     setError("");
     setResult(null);
     setGoogleData(null);
+    setIntelBrief(null);
+    setIntelAgents([]);
+    setAgentStatuses(Array(6).fill("pending"));
+    setIntelLoading(false);
     try {
       const enc = encodeURIComponent(q);
       const [attomRes, googleRes] = await Promise.all([
@@ -466,13 +671,51 @@ export default function AddressSearch({
         fetch(`/api/google-property?address=${enc}`).catch(() => null),
       ]);
       const data = await attomRes.json();
-      if (data.error) setError(data.error);
-      else if (!data.basic && !data.detail) setError("No results found for this address.");
-      else setResult(data);
+      let gData: GoogleData | null = null;
+
+      if (data.error) { setError(data.error); }
+      else if (!data.basic && !data.detail) { setError("No results found for this address."); }
+      else { setResult(data); }
 
       if (googleRes && googleRes.ok) {
-        const gData = await googleRes.json();
-        if (!gData.error) setGoogleData(gData);
+        gData = await googleRes.json();
+        if (gData && !(gData as any).error) setGoogleData(gData);
+        else gData = null;
+      }
+
+      // Trigger Intelligence Engine in background
+      if (data.basic || data.detail) {
+        setIntelLoading(true);
+        // Simulate agent progress
+        const statusInterval = setInterval(() => {
+          setAgentStatuses(prev => {
+            const next = [...prev];
+            const pendingIdx = next.indexOf("pending");
+            const runningIdx = next.indexOf("running");
+            if (runningIdx >= 0) next[runningIdx] = "done";
+            if (pendingIdx >= 0) next[pendingIdx] = "running";
+            return next;
+          });
+        }, 800);
+
+        fetch("/api/intelligence", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ propertyData: { basic: data.basic, detail: data.detail, comps: data.comps }, googleData: gData }),
+        })
+          .then(r => r.json())
+          .then(intel => {
+            clearInterval(statusInterval);
+            setAgentStatuses(Array(6).fill("done"));
+            if (intel.brief) setIntelBrief(intel.brief);
+            if (intel.agents) setIntelAgents(intel.agents);
+            setIntelLoading(false);
+          })
+          .catch(() => {
+            clearInterval(statusInterval);
+            setAgentStatuses(Array(6).fill("done"));
+            setIntelLoading(false);
+          });
       }
     } catch {
       setError("Failed to search. Please try again.");
@@ -745,6 +988,18 @@ export default function AddressSearch({
       {/* ═══ RESULTS ══════════════════════════════════════════════ */}
       {result && prop && (
         <div className="mt-4 space-y-3">
+
+          {/* ── INTELLIGENCE BRIEF ──────────────────────────── */}
+          {(intelLoading || intelBrief) && (
+            <div style={sectionStyle(0)}>
+              <IntelligenceBrief
+                brief={intelBrief}
+                agents={intelAgents}
+                agentStatuses={agentStatuses}
+                loading={intelLoading}
+              />
+            </div>
+          )}
 
           {/* ── STREET VIEW HERO ────────────────────────────── */}
           {fullAddress && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
