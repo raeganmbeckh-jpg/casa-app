@@ -25,6 +25,8 @@ import {
   Car,
   Layers,
   LocateFixed,
+  Zap,
+  Cloud,
 } from "lucide-react";
 
 const GOLD = "#E8C84A";
@@ -404,6 +406,15 @@ function LitigationCheck({ address }: { address: string }) {
    ═══════════════════════════════════════════════════════════════════ */
 
 interface AttomData { basic: any; detail: any; comps: any[]; status?: any }
+interface GoogleData {
+  streetViewUrl: string | null;
+  lat: number;
+  lng: number;
+  solar: { maxPanels: number | null; maxArea: number | null; annualSunshineHours: number | null; annualEnergy: number | null; carbonOffset: number | null } | null;
+  weather: { temperature: number | null; temperatureUnit: string; condition: string | null; humidity: number | null; uvIndex: number | null; windSpeed: number | null } | null;
+  walkScore: { walk: number; walkDesc: string; transit: number | null; transitDesc: string; bike: number | null; bikeDesc: string } | null;
+  sources: string[];
+}
 
 export default function AddressSearch({
   onAddToPortfolio,
@@ -418,6 +429,7 @@ export default function AddressSearch({
   const [error, setError] = useState("");
   const [autoSearched, setAutoSearched] = useState(false);
   const [confidencePulse, setConfidencePulse] = useState(false);
+  const [googleData, setGoogleData] = useState<GoogleData | null>(null);
 
   // Autocomplete
   const [suggestions, setSuggestions] = useState<{ address: string }[]>([]);
@@ -446,12 +458,22 @@ export default function AddressSearch({
     setSearching(true);
     setError("");
     setResult(null);
+    setGoogleData(null);
     try {
-      const res = await fetch(`/api/attom?address=${encodeURIComponent(q)}`);
-      const data = await res.json();
+      const enc = encodeURIComponent(q);
+      const [attomRes, googleRes] = await Promise.all([
+        fetch(`/api/attom?address=${enc}`),
+        fetch(`/api/google-property?address=${enc}`).catch(() => null),
+      ]);
+      const data = await attomRes.json();
       if (data.error) setError(data.error);
       else if (!data.basic && !data.detail) setError("No results found for this address.");
       else setResult(data);
+
+      if (googleRes && googleRes.ok) {
+        const gData = await googleRes.json();
+        if (!gData.error) setGoogleData(gData);
+      }
     } catch {
       setError("Failed to search. Please try again.");
     }
@@ -707,6 +729,22 @@ export default function AddressSearch({
       {result && prop && (
         <div className="mt-4 space-y-3">
 
+          {/* ── STREET VIEW HERO ────────────────────────────── */}
+          {googleData?.streetViewUrl && (
+            <div style={sectionStyle(0)}>
+              <div className="rounded-xl overflow-hidden" style={{ boxShadow: CARD_SHADOW }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={googleData.streetViewUrl}
+                  alt={`Street view of ${fullAddress}`}
+                  className="w-full object-cover"
+                  style={{ height: 280 }}
+                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* ── 1. HEADER ─────────────────────────────────────── */}
           <div style={sectionStyle(0)}>
             <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
@@ -813,6 +851,99 @@ export default function AddressSearch({
           {/* ── 7. LITIGATION CHECK ───────────────────────────── */}
           <div style={sectionStyle(5)}>
             <LitigationCheck address={fullAddress} />
+          </div>
+
+          {/* ── 8. WALK SCORE ──────────────────────────────── */}
+          {googleData?.walkScore && (
+            <div style={sectionStyle(6)}>
+              <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
+                <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                  <MapPin className="w-4 h-4" style={{ color: "#10b981" }} />
+                  <span style={{ color: "#10b981", fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16 }}>Walkability & Transit</span>
+                </div>
+                <div className="p-5 flex flex-wrap gap-3">
+                  {[
+                    { label: "Walk Score", value: googleData.walkScore.walk, desc: googleData.walkScore.walkDesc, color: googleData.walkScore.walk >= 70 ? "#10b981" : googleData.walkScore.walk >= 50 ? "#f59e0b" : "#ef4444" },
+                    ...(googleData.walkScore.transit ? [{ label: "Transit", value: googleData.walkScore.transit, desc: googleData.walkScore.transitDesc, color: googleData.walkScore.transit >= 70 ? "#10b981" : googleData.walkScore.transit >= 50 ? "#f59e0b" : "#ef4444" }] : []),
+                    ...(googleData.walkScore.bike ? [{ label: "Bike", value: googleData.walkScore.bike, desc: googleData.walkScore.bikeDesc, color: googleData.walkScore.bike >= 70 ? "#10b981" : googleData.walkScore.bike >= 50 ? "#f59e0b" : "#ef4444" }] : []),
+                  ].map((s) => (
+                    <div key={s.label} className="flex items-center gap-3 px-4 py-3 rounded-xl" style={{ border: `1px solid ${BORDER}`, minWidth: 140 }}>
+                      <div className="text-2xl font-bold" style={{ color: s.color, fontFamily: "var(--font-heading)" }}>{s.value}</div>
+                      <div>
+                        <div className="text-xs font-semibold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-inter)" }}>{s.label}</div>
+                        <div className="text-[10px]" style={{ color: TEXT_SECONDARY }}>{s.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 9. SOLAR POTENTIAL ──────────────────────────── */}
+          {googleData?.solar && (
+            <div style={sectionStyle(7)}>
+              <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
+                <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                  <Zap className="w-4 h-4" style={{ color: GOLD }} />
+                  <span style={{ color: GOLD, fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16 }}>Solar Potential</span>
+                </div>
+                <div className="p-5 grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: "Max Panels", value: googleData.solar.maxPanels, suffix: "" },
+                    { label: "Annual Sunshine", value: googleData.solar.annualSunshineHours, suffix: " hrs" },
+                    { label: "Est. Energy/Year", value: googleData.solar.annualEnergy, suffix: " kWh" },
+                    { label: "CO₂ Offset", value: googleData.solar.carbonOffset, suffix: " kg/MWh" },
+                  ].map((s) => (
+                    <div key={s.label} className="text-center p-3 rounded-lg" style={{ backgroundColor: "#FFFBF0" }}>
+                      <div className="text-2xl font-bold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-heading)" }}>
+                        {s.value !== null ? s.value.toLocaleString() : "—"}
+                      </div>
+                      <div className="text-[10px] mt-1" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-inter)" }}>{s.label}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── 10. CLIMATE ─────────────────────────────────── */}
+          {googleData?.weather && (
+            <div style={sectionStyle(8)}>
+              <div className="rounded-lg overflow-hidden" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
+                <div className="flex items-center gap-2 px-5 py-3" style={{ borderBottom: `1px solid ${BORDER}` }}>
+                  <Cloud className="w-4 h-4" style={{ color: "#60a5fa" }} />
+                  <span style={{ color: "#60a5fa", fontFamily: "var(--font-heading)", fontWeight: 600, fontSize: 16 }}>Current Climate</span>
+                </div>
+                <div className="p-5 flex flex-wrap gap-4">
+                  {[
+                    { label: "Temperature", value: googleData.weather.temperature !== null ? `${googleData.weather.temperature}${googleData.weather.temperatureUnit}` : null },
+                    { label: "Conditions", value: googleData.weather.condition },
+                    { label: "Humidity", value: googleData.weather.humidity !== null ? `${googleData.weather.humidity}%` : null },
+                    { label: "UV Index", value: googleData.weather.uvIndex !== null ? String(googleData.weather.uvIndex) : null },
+                    ...(googleData.weather.windSpeed ? [{ label: "Wind", value: `${googleData.weather.windSpeed} mph` }] : []),
+                  ].filter(s => s.value).map((s) => (
+                    <div key={s.label} className="px-4 py-2 rounded-lg" style={{ border: `1px solid ${BORDER}` }}>
+                      <div className="text-xs" style={{ color: TEXT_SECONDARY }}>{s.label}</div>
+                      <div className="text-sm font-semibold" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>{s.value}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── SOURCES BAR ─────────────────────────────────── */}
+          <div style={sectionStyle(9)}>
+            <div className="flex items-center justify-center gap-2 py-3" style={{ color: "#CCCCCC" }}>
+              <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)" }}>Sources:</span>
+              {(googleData?.sources || ["ATTOM"]).map((s, i) => (
+                <span key={s} className="text-[9px] uppercase tracking-[0.15em]" style={{ fontFamily: "var(--font-geist-mono)" }}>
+                  {i > 0 && <span className="mx-1">|</span>}
+                  {s}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       )}
