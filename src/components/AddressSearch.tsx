@@ -101,11 +101,18 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse }: {
   pulse?: boolean;
 }) {
   const [hovered, setHovered] = useState(false);
-  let display = "\u2014";
-  if (value !== null && value !== undefined && value !== "") {
-    if (fmt === "usd" && typeof value === "number") display = `$${value.toLocaleString()}`;
-    else if (fmt === "num" && typeof value === "number") display = value.toLocaleString();
-    else display = String(value);
+  const isEmpty = value === null || value === undefined || value === "" || value === 0;
+  let display: string;
+  let isPlaceholder = false;
+  if (isEmpty) {
+    display = "Not in county records";
+    isPlaceholder = true;
+  } else if (fmt === "usd" && typeof value === "number") {
+    display = `$${value.toLocaleString()}`;
+  } else if (fmt === "num" && typeof value === "number") {
+    display = value.toLocaleString();
+  } else {
+    display = String(value);
   }
   return (
     <div
@@ -123,7 +130,11 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse }: {
         <span className="text-[10px] uppercase tracking-[0.15em]" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>{label}</span>
       </div>
       <div className="flex items-center gap-2.5">
-        <span className={`text-[13px] ${accent ? "font-bold" : ""}`} style={{ color: accent ? GOLD : TEXT_PRIMARY, fontFamily: "var(--font-geist-mono)" }}>
+        <span className={`text-[13px] ${accent ? "font-bold" : ""}`} style={{
+          color: isPlaceholder ? "#CCCCCC" : accent ? GOLD : TEXT_PRIMARY,
+          fontFamily: "var(--font-geist-mono)",
+          fontStyle: isPlaceholder ? "italic" : "normal",
+        }}>
           {display}
         </span>
         <Badge value={value} pulse={!!pulse} />
@@ -600,7 +611,7 @@ function IntelligenceBrief({ brief, agents, agentStatuses, loading }: {
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════ */
 
-interface AttomData { basic: any; detail: any; comps: any[]; status?: any }
+interface AttomData { basic: any; detail: any; comps: any[]; status?: any; sources?: string[]; schools?: any }
 interface GoogleData {
   streetViewUrl: string | null;
   lat: number;
@@ -808,9 +819,9 @@ export default function AddressSearch({
         }
       },
       () => {
-        setLocError("Location access denied \u2014 type an address manually");
+        setLocError("Please enable location access in Safari Settings");
         setLocating(false);
-        setTimeout(() => setLocError(""), 4000);
+        setTimeout(() => setLocError(""), 5000);
       },
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -1212,7 +1223,7 @@ export default function AddressSearch({
           <div style={sectionStyle(9)}>
             <div className="flex items-center justify-center gap-2 py-3" style={{ color: "#CCCCCC" }}>
               <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)" }}>Sources:</span>
-              {(googleData?.sources || ["ATTOM"]).map((s, i) => (
+              {[...(result?.sources || []), ...(googleData?.sources || [])].filter((v, i, a) => a.indexOf(v) === i).map((s: string, i: number) => (
                 <span key={s} className="text-[9px] uppercase tracking-[0.15em]" style={{ fontFamily: "var(--font-geist-mono)" }}>
                   {i > 0 && <span className="mx-1">|</span>}
                   {s}
