@@ -631,6 +631,14 @@ export default function AddressSearch({
         .confidence-pulse {
           animation: confidence-pulse 0.6s ease-out;
         }
+        @keyframes pin-pulse {
+          0%, 100% { transform: scale(1); }
+          50% { transform: scale(1.15); }
+        }
+        @keyframes spin-ring {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
       `}</style>
 
       {/* ── Search Bar ──────────────────────────────────────────── */}
@@ -670,13 +678,22 @@ export default function AddressSearch({
                 <button
                   onClick={detectLocation}
                   disabled={locating}
-                  className="p-1.5 rounded-md transition-all"
-                  style={{ color: locating ? GOLD : "#CCCCCC" }}
-                  onMouseEnter={(e) => { if (!locating) (e.currentTarget as HTMLElement).style.color = GOLD; }}
-                  onMouseLeave={(e) => { if (!locating) (e.currentTarget as HTMLElement).style.color = "#CCCCCC"; }}
+                  className="p-1.5 rounded-full transition-all"
+                  style={{
+                    color: ACCENT,
+                    animation: locating ? "none" : "pin-pulse 2s ease-in-out infinite",
+                  }}
                   title="Detect my location"
                 >
-                  {locating ? <Loader2 className="w-4 h-4 animate-spin" /> : <LocateFixed className="w-4 h-4" />}
+                  {locating ? (
+                    <div className="relative w-5 h-5">
+                      <div className="absolute inset-0 rounded-full" style={{ border: `2px solid ${BORDER}` }} />
+                      <div className="absolute inset-0 rounded-full" style={{ border: "2px solid transparent", borderTopColor: ACCENT, animation: "spin-ring 0.8s linear infinite" }} />
+                      <LocateFixed className="w-3 h-3 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" style={{ color: ACCENT }} />
+                    </div>
+                  ) : (
+                    <LocateFixed className="w-4 h-4" />
+                  )}
                 </button>
                 {locError && (
                   <div className="absolute right-0 top-full mt-2 z-50 w-56 p-2.5 rounded-lg text-[11px] leading-snug shadow-lg" style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, color: TEXT_SECONDARY, fontFamily: "var(--font-inter)" }}>
@@ -730,12 +747,12 @@ export default function AddressSearch({
         <div className="mt-4 space-y-3">
 
           {/* ── STREET VIEW HERO ────────────────────────────── */}
-          {googleData?.streetViewUrl && (
+          {fullAddress && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
             <div style={sectionStyle(0)}>
               <div className="rounded-xl overflow-hidden" style={{ boxShadow: CARD_SHADOW }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={googleData.streetViewUrl}
+                  src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(fullAddress)}&return_error_code=true&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
                   alt={`Street view of ${fullAddress}`}
                   className="w-full object-cover"
                   style={{ height: 280 }}
@@ -755,6 +772,9 @@ export default function AddressSearch({
                   <div className="min-w-0">
                     <h2 className="truncate" style={{ color: TEXT_PRIMARY, fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 28 }}>{fullAddress}</h2>
                     <div style={{ width: 60, height: 3, backgroundColor: '#F9D96A', borderRadius: 2, marginTop: 8 }} />
+                    <p style={{ fontSize: 11, color: '#9B9B9B', fontStyle: 'italic', fontFamily: 'var(--font-inter)', marginTop: 6 }}>
+                      Property data sourced from ATTOM county records. Recently built or renovated properties may reflect prior assessment data.
+                    </p>
                   </div>
                   {propType && (
                     <span className="text-[8px] font-bold px-2.5 py-1 rounded tracking-[0.15em] uppercase shrink-0" style={{ backgroundColor: `${GOLD}15`, color: GOLD, fontFamily: "var(--font-geist-mono)" }}>

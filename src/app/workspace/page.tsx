@@ -1553,9 +1553,38 @@ export default function Workspace() {
               Real Estate Intelligence
             </span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => {
+                const el = document.getElementById('casa-loc-btn');
+                if (el) { el.style.transform = 'translateY(-3px)'; setTimeout(() => { el.style.transform = 'translateY(0)'; }, 300); }
+                if (navigator.geolocation) {
+                  navigator.geolocation.getCurrentPosition(
+                    async (pos) => {
+                      try {
+                        const r = await fetch(`/api/attom/geocode?lat=${pos.coords.latitude}&lon=${pos.coords.longitude}`);
+                        const d = await r.json();
+                        if (d.address) {
+                          const city = d.address.split(',').slice(1, 3).join(',').trim();
+                          const span = document.getElementById('casa-loc-city');
+                          if (span) span.textContent = city || d.address;
+                        }
+                      } catch { /* silent */ }
+                    },
+                    () => { /* denied */ }
+                  );
+                }
+              }}
+              id="casa-loc-btn"
+              className="flex items-center gap-1 cursor-pointer"
+              style={{ transition: 'transform 0.3s cubic-bezier(0.34,1.56,0.64,1)' }}
+              title="Detect your location"
+            >
+              <span style={{ fontSize: 14 }}>📍</span>
+              <span id="casa-loc-city" className="text-[10px]" style={{ color: '#E8C84A', fontFamily: 'var(--font-inter)', fontWeight: 500 }}></span>
+            </button>
             <CircleDot className="w-3 h-3 text-emerald-500" />
-            <span className="text-[10px] font-mono capitalize" style={{ color: '#6B6B6B' }}>{role}</span>
+            <span className="text-[10px] capitalize" style={{ color: '#6B6B6B', fontFamily: 'var(--font-inter)' }}>{role}</span>
           </div>
         </div>
       </header>
