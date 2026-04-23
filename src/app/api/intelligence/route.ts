@@ -4,29 +4,33 @@ const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
 const MODEL = "claude-sonnet-4-20250514";
 
 async function callClaude(system: string, userMsg: string): Promise<any> {
-  if (!ANTHROPIC_KEY) return null;
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": ANTHROPIC_KEY,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      max_tokens: 1024,
-      system,
-      messages: [{ role: "user", content: userMsg }],
-    }),
-  });
-  const data = await res.json();
-  const text = data.content?.[0]?.text || "";
-  // Extract JSON from response
-  const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (jsonMatch) {
-    try { return JSON.parse(jsonMatch[0]); } catch { return null; }
+  if (!ANTHROPIC_KEY) return { _error: "No API key" };
+  try {
+    const res = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": ANTHROPIC_KEY,
+        "anthropic-version": "2023-06-01",
+      },
+      body: JSON.stringify({
+        model: MODEL,
+        max_tokens: 1024,
+        system,
+        messages: [{ role: "user", content: userMsg }],
+      }),
+    });
+    const data = await res.json();
+    if (data.error) return { _error: data.error.message || data.error.type || "API error" };
+    const text = data.content?.[0]?.text || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try { return JSON.parse(jsonMatch[0]); } catch { return { _error: "JSON parse failed", _raw: text.slice(0, 200) }; }
+    }
+    return { _error: "No JSON in response", _raw: text.slice(0, 200) };
+  } catch (e: any) {
+    return { _error: e.message || "Fetch failed" };
   }
-  return null;
 }
 
 // ── Agent Definitions ─────────────────────────────────────────
@@ -142,9 +146,10 @@ export async function POST(req: NextRequest) {
     ]);
 
     // Filter out nulls and apply defaults
+    const names = ["market", "financial", "risk", "opportunity", "solar", "neighborhood"];
     const validResults = agentResults.map((r, i) => {
-      const names = ["market", "financial", "risk", "opportunity", "solar", "neighborhood"];
-      if (!r || !r.agent) return { agent: names[i], findings: ["Agent returned no data"], score: 50, opportunities: [], risks: [], confidence: 0 };
+      if (!r || r._error) return { agent: names[i], findings: [r?._error ? `Error: ${r._error}` : "Agent returned no data"], score: 50, opportunities: [], risks: [], confidence: 0, _debug: r };
+      if (!r.agent) return { ...r, agent: names[i] };
       return r;
     });
 
