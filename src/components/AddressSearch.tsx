@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import QuantumPanel from "@/components/QuantumPanel";
+import ScenarioEngine from "@/components/ScenarioEngine";
 
 const correctionsDb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -1320,6 +1321,11 @@ export default function AddressSearch({
           {/* ── 4. SYSTEM HEALTH ──────────────────────────────── */}
           <div style={sectionStyle(2)}>
             <SystemHealth detail={prop} />
+          </div>
+
+          {/* ── 4.5 SCENARIO ENGINE ──────────────────────────── */}
+          <div style={sectionStyle(2)}>
+            <ScenarioEngine propertyData={{ basic: result.basic, detail: result.detail }} />
           </div>
 
           {/* ── 5. COMPARABLE SALES ───────────────────────────── */}
