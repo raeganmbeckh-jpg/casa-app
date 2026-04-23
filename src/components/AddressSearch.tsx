@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
+import QuantumPanel from "@/components/QuantumPanel";
 
 const correctionsDb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -1063,6 +1064,16 @@ export default function AddressSearch({
                 agents={intelAgents}
                 agentStatuses={agentStatuses}
                 loading={intelLoading}
+              />
+            </div>
+          )}
+
+          {/* ── QUANTUM INTELLIGENCE ──────────────────────── */}
+          {result && (
+            <div style={sectionStyle(0)}>
+              <QuantumPanel
+                propertyData={{ basic: result.basic, detail: result.detail, comps: result.comps }}
+                googleData={googleData}
               />
             </div>
           )}
