@@ -24,12 +24,14 @@ import {
   Clock,
   TrendingUp,
   Printer,
+  Zap,
   Search,
 } from "lucide-react";
 import { type RoleId } from "@/lib/roles";
 import RoleSwitcher from "@/components/RoleSwitcher";
 import AIPanel from "@/components/AIPanel";
 import AddressSearch from "@/components/AddressSearch";
+import ScenarioEngineTab from "@/components/ScenarioEngineTab";
 import InvestorWorkspace from "@/components/InvestorWorkspace";
 import DeveloperWorkspace from "@/components/DeveloperWorkspace";
 import LandWorkspace from "@/components/LandWorkspace";
@@ -72,6 +74,7 @@ const TABS = [
   { id: "reports", label: "Reports", icon: BarChart3 },
   { id: "owner-portal", label: "Owner Portal", icon: UserCircle },
   { id: "alerts", label: "Alerts", icon: Bell },
+  { id: "scenarios", label: "Scenarios", icon: Zap },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
@@ -1524,6 +1527,7 @@ export default function Workspace() {
       case "reports": return renderReports();
       case "owner-portal": return renderOwnerPortal();
       case "alerts": return renderAlerts();
+      case "scenarios": return <ScenarioEngineTab />;
       default: return null;
     }
   }
