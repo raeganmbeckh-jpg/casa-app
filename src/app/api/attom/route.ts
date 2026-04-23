@@ -124,8 +124,63 @@ export async function GET(req: NextRequest) {
       detailProp._schools = Array.isArray(schoolData) ? schoolData.slice(0, 5) : [];
     }
 
+    // ── Google Geocoding fallback if ATTOM has no data ─────────
+    let finalBasic = basicProp;
+    const finalDetail = detailProp;
+
+    if (!finalBasic && !finalDetail) {
+      const googleKey = process.env.GOOGLE_MAPS_API_KEY;
+      if (googleKey) {
+        try {
+          const geoRes = await fetch(
+            `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${googleKey}`
+          );
+          const geoData = await geoRes.json();
+          const result = geoData.results?.[0];
+          if (result) {
+            sources.push("Google Geocoding");
+            const comps = result.address_components || [];
+            const getComp = (type: string) => comps.find((c: any) => c.types.includes(type))?.long_name || "";
+            const loc = result.geometry?.location;
+
+            // Build a minimal ATTOM-compatible property object from Google data
+            finalBasic = {
+              identifier: { apn: "" },
+              address: {
+                line1: `${getComp("street_number")} ${getComp("route")}`.trim() || address.split(",")[0].trim(),
+                line2: `${getComp("locality")}, ${getComp("administrative_area_level_1")} ${getComp("postal_code")}`,
+                locality: getComp("locality"),
+                countrySubd: getComp("administrative_area_level_1"),
+                postal1: getComp("postal_code"),
+              },
+              location: loc ? { latitude: loc.lat, longitude: loc.lng } : undefined,
+              summary: { proptype: "SFR" },
+              _source: "google_geocoding",
+              _note: "Address verified by Google. ATTOM property records not available for this address.",
+            };
+          }
+        } catch { /* Google fallback failed */ }
+      }
+
+      // Also check Supabase properties table directly
+      if (!finalBasic) {
+        const { data: sbProp } = await supabase.from("properties").select("*").ilike("address", `%${address1}%`).limit(1);
+        if (sbProp?.[0]) {
+          sources.push("CASA Database");
+          const p = sbProp[0];
+          finalBasic = {
+            identifier: { apn: p.apn || "" },
+            address: { line1: p.address, locality: p.city, countrySubd: p.state, postal1: p.zip },
+            summary: { proptype: p.property_type || "SFR" },
+            assessment: p.estimated_value ? { market: { mktTtlValue: Number(p.estimated_value) } } : undefined,
+            _source: "supabase",
+          };
+        }
+      }
+    }
+
     // ── Fetch comps if we have geo ───────────────────────────
-    const prop = detailProp || basicProp;
+    const prop = finalDetail || finalBasic;
     let comps: any[] = [];
     const lat = prop?.location?.latitude;
     const lon = prop?.location?.longitude;
@@ -144,8 +199,8 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json({
-      basic: basicProp,
-      detail: detailProp,
+      basic: finalBasic,
+      detail: finalDetail,
       comps,
       schools: schoolData,
       sources,
