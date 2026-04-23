@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@supabase/supabase-js";
 import QuantumPanel from "@/components/QuantumPanel";
 import ScenarioEngine from "@/components/ScenarioEngine";
+import RentcastPanel from "@/components/RentcastPanel";
 
 const correctionsDb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -1328,6 +1329,13 @@ export default function AddressSearch({
             <ScenarioEngine propertyData={{ basic: result.basic, detail: result.detail }} />
           </div>
 
+          {/* ── 4.6 RENTAL MARKET INTELLIGENCE ──────────────── */}
+          {fullAddress && (
+            <div style={sectionStyle(3)}>
+              <RentcastPanel address={fullAddress} />
+            </div>
+          )}
+
           {/* ── 5. COMPARABLE SALES ───────────────────────────── */}
           <div style={sectionStyle(3)}>
             <CompsTable comps={result.comps} />
@@ -1427,7 +1435,7 @@ export default function AddressSearch({
           <div style={sectionStyle(9)}>
             <div className="flex items-center justify-center gap-2 py-3" style={{ color: "#CCCCCC" }}>
               <span className="text-[9px] uppercase tracking-[0.2em]" style={{ fontFamily: "var(--font-geist-mono)" }}>Sources:</span>
-              {[...(result?.sources || []), ...(googleData?.sources || [])].filter((v, i, a) => a.indexOf(v) === i).map((s: string, i: number) => (
+              {[...(result?.sources || []), ...(googleData?.sources || []), "Rentcast"].filter((v, i, a) => a.indexOf(v) === i).map((s: string, i: number) => (
                 <span key={s} className="text-[9px] uppercase tracking-[0.15em]" style={{ fontFamily: "var(--font-geist-mono)" }}>
                   {i > 0 && <span className="mx-1">|</span>}
                   {s}
