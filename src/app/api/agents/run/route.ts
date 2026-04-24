@@ -300,7 +300,7 @@ export async function POST(req: NextRequest) {
     const { data: run } = await supabase.from("ai_agent_runs").insert({
       agent_key: agentKey,
       triggered_by: "user",
-      status: (result?._error && !usedFallback) ? "error" : "completed",
+      status: (result?._error && !usedFallback) ? "failed" : "success",
       input: inputData,
       output: result,
       insights: result?._error ? null : result,
