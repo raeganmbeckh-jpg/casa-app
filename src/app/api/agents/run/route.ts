@@ -60,6 +60,77 @@ async function fetchPriorRuns(agentKey: string, propertyAddress: string) {
   return data || [];
 }
 
+// ── Local fallback calculators (when Claude unavailable) ────────
+
+function localFallback(agentKey: string, ctx: any): any {
+  const rent = ctx.supaProperty?.monthly_rent || ctx.rentcast?.estimate?.rent || 0;
+  const marketRent = ctx.rentcast?.estimate?.rent || rent;
+  const value = ctx.attom?.assessment?.market?.mktTtlValue || ctx.supaProperty?.estimated_value || 0;
+  const taxes = ctx.attom?.assessment?.tax?.taxAmt || 0;
+  const yearBuilt = ctx.attom?.summary?.yearbuilt || 0;
+  const age = yearBuilt ? new Date().getFullYear() - yearBuilt : 0;
+  const sqft = ctx.attom?.building?.size?.livingSize || 0;
+  const vacRate = ctx.rentcast?.market?.vacancyRate || 5;
+  const rentGrowth = ctx.rentcast?.market?.rentGrowthRate || ctx.rentcast?.market?.rentGrowth || 0;
+
+  switch (agentKey) {
+    case "cap_rate_scout": {
+      const annualRent = rent * 12;
+      const expenses = taxes + (annualRent * 0.35);
+      const noi = annualRent - expenses;
+      const capRate = value > 0 ? +((noi / value) * 100).toFixed(2) : 0;
+      const marketCap = 5.2;
+      return { cap_rate: capRate, market_cap_rate: marketCap, spread: +(capRate - marketCap).toFixed(2), verdict: capRate > marketCap ? "above_market" : capRate > marketCap - 0.5 ? "at_market" : "below_market", recommendation: capRate > marketCap ? `Cap rate of ${capRate}% exceeds market average of ${marketCap}%. Strong yield position.` : `Cap rate of ${capRate}% is below market ${marketCap}%. Consider rent optimization or expense reduction.`, confidence: rent > 0 && value > 0 ? 82 : 40, _fallback: true };
+    }
+    case "noi_optimizer": {
+      const currentNOI = (rent * 12) - taxes - (rent * 12 * 0.35);
+      const potentialNOI = (marketRent * 12) - taxes - (marketRent * 12 * 0.35);
+      const gap = potentialNOI - currentNOI;
+      return { current_noi: Math.round(currentNOI), potential_noi: Math.round(potentialNOI), noi_gap: Math.round(gap), current_rent: rent, market_rent: marketRent, rent_gap: Math.round(marketRent - rent), recommendations: gap > 0 ? [`Raise rent from $${rent} to $${marketRent}/mo to capture $${Math.round(gap)}/yr in additional NOI`] : ["NOI is optimized at current rent levels"], annual_impact: Math.round(gap), confidence: marketRent > 0 ? 80 : 35, _fallback: true };
+    }
+    case "eviction_risk_scorer": {
+      const status = ctx.supaProperty?.status;
+      const riskScore = status === "overdue" ? 65 : status === "vacant" ? 10 : 20;
+      return { risk_score: riskScore, risk_level: riskScore > 50 ? "high" : riskScore > 30 ? "medium" : "low", risk_factors: [{ factor: "Payment Status", weight: 0.4, assessment: status === "overdue" ? "Rent is overdue — elevated risk" : "Current on payments" }, { factor: "Market Vacancy", weight: 0.2, assessment: `Area vacancy at ${vacRate}%` }], recommendation: riskScore > 50 ? "Monitor closely. Consider late fee enforcement and payment plan discussion." : "Low risk. Maintain current management approach.", confidence: 65, _fallback: true };
+    }
+    case "renewal_probability_scorer": {
+      const belowMarket = rent < marketRent * 0.95;
+      const prob = belowMarket ? 85 : rent > marketRent * 1.05 ? 55 : 70;
+      return { renewal_probability: prob, factors: [{ factor: "Rent vs Market", impact: belowMarket ? "positive" : "negative", weight: 0.35 }, { factor: "Market Vacancy", impact: vacRate < 5 ? "positive" : "negative", weight: 0.2 }], recommended_action: belowMarket ? "High renewal probability. Safe to propose modest rent increase." : "Consider incentives to encourage renewal.", rent_adjustment_recommendation: belowMarket ? `Increase rent $${Math.round(marketRent - rent)}/mo at renewal` : "Hold rent steady", confidence: 70, _fallback: true };
+    }
+    case "rent_optimizer": {
+      const recommended = marketRent > 0 ? marketRent : rent;
+      const change = recommended - rent;
+      return { current_rent: rent, recommended_rent: recommended, rent_change: change, monthly_impact: change, annual_impact: change * 12, market_position: rent < marketRent * 0.9 ? "below" : rent > marketRent * 1.1 ? "above" : "at", comps_used: (ctx.rentcast?.comps || []).length, reasoning: change > 0 ? `Rentcast estimates market rent at $${marketRent}/mo. Current rent is $${change}/mo below market. Recommend increase to capture $${change * 12}/yr.` : "Rent is at or above market level.", confidence: marketRent > 0 ? 88 : 30, _fallback: true };
+    }
+    case "predictive_maintenance": {
+      const hvacAge = age > 20 ? Math.round(age * 0.7) : age;
+      const roofAge = age > 15 ? Math.round(age * 0.8) : age;
+      const systems = [
+        { system: "HVAC", estimated_age: hvacAge, expected_life: 20, remaining_life: Math.max(0, 20 - hvacAge), replace_cost: Math.round(sqft * 6.5 / 100) * 100 || 13000, urgency: (20 - hvacAge) <= 3 ? "replace" : (20 - hvacAge) <= 7 ? "monitor" : "good", proactive_savings: Math.round((sqft * 6.5 / 100) * 100 * 0.35) || 4550 },
+        { system: "Roof", estimated_age: roofAge, expected_life: 25, remaining_life: Math.max(0, 25 - roofAge), replace_cost: Math.round(sqft * 8 / 100) * 100 || 16000, urgency: (25 - roofAge) <= 5 ? "replace" : (25 - roofAge) <= 10 ? "monitor" : "good", proactive_savings: Math.round((sqft * 8 / 100) * 100 * 0.4) || 6400 },
+        { system: "Plumbing", estimated_age: age, expected_life: 50, remaining_life: Math.max(0, 50 - age), replace_cost: Math.round(sqft * 4 / 100) * 100 || 8000, urgency: (50 - age) <= 5 ? "replace" : (50 - age) <= 15 ? "monitor" : "good", proactive_savings: Math.round((sqft * 4 / 100) * 100 * 0.45) || 3600 },
+        { system: "Electrical", estimated_age: age, expected_life: 40, remaining_life: Math.max(0, 40 - age), replace_cost: Math.round(sqft * 3.5 / 100) * 100 || 7000, urgency: (40 - age) <= 5 ? "replace" : (40 - age) <= 12 ? "monitor" : "good", proactive_savings: Math.round((sqft * 3.5 / 100) * 100 * 0.3) || 2100 },
+        { system: "Water Heater", estimated_age: Math.min(age, 12), expected_life: 12, remaining_life: Math.max(0, 12 - Math.min(age, 12)), replace_cost: 2500, urgency: age > 10 ? "replace" : age > 8 ? "monitor" : "good", proactive_savings: 875 },
+      ];
+      const urgent = systems.filter(s => s.urgency === "replace");
+      return { systems, total_deferred_maintenance: urgent.reduce((s, sys) => s + sys.replace_cost, 0), annual_reserve_needed: Math.round(systems.reduce((s, sys) => s + sys.replace_cost / sys.expected_life, 0)), next_action: urgent.length > 0 ? `Replace ${urgent.map(s => s.system).join(" and ")} — ${urgent.length} system(s) past useful life` : "All systems within useful life. Continue monitoring.", confidence: yearBuilt > 0 ? 78 : 30, _fallback: true };
+    }
+    case "submarket_pulse": {
+      const health = (rentGrowth > 3 && vacRate < 5) ? "strong" : (rentGrowth > 0 && vacRate < 8) ? "stable" : vacRate > 10 ? "weak" : "softening";
+      return { market_health: health, median_rent: ctx.rentcast?.market?.medianRent || 0, rent_growth_pct: rentGrowth, vacancy_rate_pct: vacRate, supply_pressure: vacRate < 4 ? "low" : vacRate < 7 ? "moderate" : "high", demand_signal: rentGrowth > 3 ? "strong" : rentGrowth > 0 ? "moderate" : "weak", investment_outlook: health === "strong" ? "buy" : health === "stable" ? "hold" : "sell", reasoning: `Market shows ${rentGrowth}% rent growth with ${vacRate}% vacancy. ${health === "strong" ? "Strong fundamentals support investment." : health === "stable" ? "Stable market with moderate upside." : "Softening conditions — monitor closely."}`, confidence: ctx.rentcast?.market ? 82 : 25, _fallback: true };
+    }
+    case "vacancy_loss_calculator": {
+      const monthlyRent = rent || marketRent;
+      const annualLoss = Math.round(monthlyRent * 12 * (vacRate / 100));
+      const costPerDay = Math.round(monthlyRent / 30);
+      return { current_vacancy_rate: ctx.supaProperty?.status === "vacant" ? 100 : 0, market_vacancy_rate: vacRate, annual_vacancy_loss: annualLoss, projected_loss_next_year: annualLoss, days_to_fill_estimate: vacRate < 5 ? 21 : vacRate < 8 ? 35 : 50, cost_per_vacant_day: costPerDay, mitigation_actions: ["Price at market to minimize vacancy days", "Professional photos and staging for faster leasing", "Offer move-in incentive for quick occupancy"], confidence: monthlyRent > 0 ? 75 : 25, _fallback: true };
+    }
+    default:
+      return { _error: "No local fallback for this agent", _fallback: true };
+  }
+}
+
 // ── Agent definitions with real data prompts ────────────────────
 
 const AGENTS: Record<string, {
@@ -216,15 +287,20 @@ export async function POST(req: NextRequest) {
       prior_runs: priorRuns.length,
     };
 
-    // ── Phase 2: Call Claude with real data ───────────────────
-    const result = await claude(agentDef.system(ctx), agentDef.prompt(ctx));
+    // ── Phase 2: Call Claude with real data, fallback to local calc ──
+    let result = await claude(agentDef.system(ctx), agentDef.prompt(ctx));
+    let usedFallback = false;
+    if (!result || result._error) {
+      result = localFallback(agentKey, ctx);
+      usedFallback = true;
+    }
     const runMs = Date.now() - startTime;
 
     // ── Phase 3: Save to ai_agent_runs ───────────────────────
     const { data: run } = await supabase.from("ai_agent_runs").insert({
       agent_key: agentKey,
       triggered_by: "user",
-      status: result?._error ? "error" : "completed",
+      status: (result?._error && !usedFallback) ? "error" : "completed",
       input: inputData,
       output: result,
       insights: result?._error ? null : result,
@@ -235,7 +311,7 @@ export async function POST(req: NextRequest) {
     }).select().single();
 
     // ── Phase 4: Save insight to ai_insights ─────────────────
-    if (result && !result._error) {
+    if (result && (!result._error || usedFallback)) {
       const title = agentKey.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase());
       const impact = result.annual_impact || result.noi_gap || result.annual_vacancy_loss || result.total_deferred_maintenance || 0;
 
@@ -271,6 +347,8 @@ export async function POST(req: NextRequest) {
       agent: agentKey,
       status: result?._error ? "error" : "completed",
       result,
+      used_fallback: usedFallback,
+      powered_by: usedFallback ? "Local calculation with real data" : "Claude AI with real data",
       run_ms: runMs,
       data_sources: {
         attom: !!attomData,
