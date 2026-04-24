@@ -710,11 +710,20 @@ export default function AddressSearch({
         fetch(`/api/attom?address=${enc}`),
         fetch(`/api/google-property?address=${enc}`).catch(() => null),
       ]);
-      const data = await attomRes.json();
+
+      let data: any;
+      try {
+        data = await attomRes.json();
+      } catch {
+        setError("Search service returned invalid response. Please try again.");
+        setSearching(false);
+        return;
+      }
+
       let gData: GoogleData | null = null;
 
       if (data.error) { setError(data.error); }
-      else if (!data.basic && !data.detail) { setError("No results found for this address."); }
+      else if (!data.basic && !data.detail) { setError("No property records found for this address. Try a different format (e.g. '2167 Villa Sonoma Glen, Escondido, CA 92029')."); }
       else { setResult(data); }
 
       if (googleRes && googleRes.ok) {

@@ -206,7 +206,14 @@ export async function GET(req: NextRequest) {
       sources,
       status: basicRes?.status || detailRes?.status,
     });
-  } catch {
-    return NextResponse.json({ error: "Failed to fetch property data" }, { status: 500 });
+  } catch (e: any) {
+    return NextResponse.json({
+      error: "Failed to fetch property data",
+      debug: e?.message || "Unknown error",
+      basic: null,
+      detail: null,
+      comps: [],
+      sources: [],
+    }, { status: 500 });
   }
 }
