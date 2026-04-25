@@ -530,11 +530,11 @@ function IntelligenceBrief({ brief, agents, agentStatuses, loading }: {
         </div>
       )}
 
-      {brief && (
+      {brief && brief.overall_score > 0 && (
         <div className="p-5">
           {/* Score + Ratings + Verdict */}
           <div className="flex items-start gap-6 mb-6">
-            <ScoreGauge score={brief.overall_score || 0} />
+            <ScoreGauge score={brief.overall_score} />
             <div className="flex-1">
               <p className="text-sm mb-3" style={{ color: "#1A1A1A", fontFamily: "var(--font-inter)", fontWeight: 500 }}>
                 {brief.one_line_verdict}

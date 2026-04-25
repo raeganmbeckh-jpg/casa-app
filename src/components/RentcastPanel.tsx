@@ -82,7 +82,21 @@ export default function RentcastPanel({ address, currentRent }: { address: strin
     );
   }
 
-  if (!data || (!data.estimate && !data.market && data.comps.length === 0)) return null;
+  if (!data || (!data.estimate && !data.market && data.comps.length === 0)) {
+    return (
+      <div className="rounded-xl overflow-hidden" style={{ backgroundColor: "#fff", border: `1px solid ${BORDER}`, boxShadow: "0 4px 24px rgba(0,0,0,0.06)", borderLeft: "4px solid #10b981" }}>
+        <div className="px-5 py-4 flex items-center gap-2" style={{ borderBottom: `1px solid ${BORDER}` }}>
+          <DollarSign className="w-5 h-5" style={{ color: "#10b981" }} />
+          <span style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 20, color: TX }}>Rental Market Intelligence</span>
+          <span className="text-[8px] px-2 py-0.5 rounded-full font-bold" style={{ backgroundColor: "#10b98115", color: "#10b981", fontFamily: "var(--font-geist-mono)" }}>RENTCAST</span>
+        </div>
+        <div className="px-5 py-6 text-center">
+          <p className="text-sm" style={{ color: TX2, fontFamily: "var(--font-inter)" }}>Rental market data unavailable for this address.</p>
+          <p className="text-xs mt-1" style={{ color: "#aaa", fontFamily: "var(--font-inter)" }}>Rentcast coverage may be limited in some areas. Sales comps from ATTOM are shown above.</p>
+        </div>
+      </div>
+    );
+  }
 
   const est = data.estimate;
   const belowMarket = currentRent && est?.rent && currentRent < est.rent * 0.9;

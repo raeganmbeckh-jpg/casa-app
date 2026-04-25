@@ -17,7 +17,7 @@ async function rc(path: string) {
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address");
   if (!address) return NextResponse.json({ error: "address required" }, { status: 400 });
-  if (!KEY) return NextResponse.json({ error: "RENTCAST_API_KEY not configured" }, { status: 500 });
+  if (!KEY) return NextResponse.json({ estimate: null, comps: [], market: null, history: [], sources: [] });
 
   const encoded = encodeURIComponent(address);
 
