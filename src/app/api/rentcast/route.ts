@@ -86,21 +86,24 @@ export async function GET(req: NextRequest) {
   }
 
   let market = null;
-  if (marketStats && !Array.isArray(marketStats)) {
+  if (marketStats && typeof marketStats === "object" && !Array.isArray(marketStats)) {
+    // Rentcast nests current-tier market data under rentalData
+    const rd = marketStats.rentalData || marketStats;
     market = {
-      medianRent: marketStats.medianRent || marketStats.averageRent || null,
-      rentGrowth: marketStats.rentGrowthRate || marketStats.rentGrowth || null,
-      vacancyRate: marketStats.vacancyRate || null,
-      activeListings: marketStats.activeListings || marketStats.totalListings || null,
+      medianRent: rd.medianRent || rd.averageRent || rd.medianPrice || rd.averagePrice || null,
+      rentGrowth: rd.rentGrowthRate || rd.rentGrowth || rd.yearOverYearChange || null,
+      vacancyRate: rd.vacancyRate || null,
+      activeListings: rd.activeListings || rd.totalListings || rd.listingCount || null,
       zipCode: zip,
     };
   } else if (Array.isArray(marketStats) && marketStats.length > 0) {
     const m = marketStats[0];
+    const rd = m.rentalData || m;
     market = {
-      medianRent: m.medianRent || m.averageRent || null,
-      rentGrowth: m.rentGrowthRate || m.rentGrowth || null,
-      vacancyRate: m.vacancyRate || null,
-      activeListings: m.activeListings || m.totalListings || null,
+      medianRent: rd.medianRent || rd.averageRent || rd.medianPrice || rd.averagePrice || null,
+      rentGrowth: rd.rentGrowthRate || rd.rentGrowth || rd.yearOverYearChange || null,
+      vacancyRate: rd.vacancyRate || null,
+      activeListings: rd.activeListings || rd.totalListings || rd.listingCount || null,
       zipCode: zip,
     };
   }
