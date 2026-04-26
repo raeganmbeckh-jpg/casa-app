@@ -682,6 +682,7 @@ export default function AddressSearch({
   const [query, setQuery] = useState(initialQuery || "");
   const [result, setResult] = useState<AttomData | null>(null);
   const [searching, setSearching] = useState(false);
+  const [streetViewError, setStreetViewError] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [autoSearched, setAutoSearched] = useState(false);
   const [confidencePulse, setConfidencePulse] = useState(false);
@@ -730,6 +731,7 @@ export default function AddressSearch({
     setError("");
     setResult(null);
     setGoogleData(null);
+    setStreetViewError(null);
     setIntelBrief(null);
     setIntelAgents([]);
     setAgentStatuses(Array(6).fill("pending"));
@@ -1125,17 +1127,32 @@ export default function AddressSearch({
           )}
 
           {/* ── STREET VIEW HERO ────────────────────────────── */}
-          {fullAddress && process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY && (
+          {fullAddress && (
             <div style={sectionStyle(0)}>
-              <div className="rounded-xl overflow-hidden" style={{ boxShadow: CARD_SHADOW }}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(fullAddress)}&return_error_code=true&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
-                  alt={`Street view of ${fullAddress}`}
-                  className="w-full object-cover"
-                  style={{ height: 280 }}
-                  onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = "none"; }}
-                />
+              <div className="rounded-xl overflow-hidden" style={{ boxShadow: CARD_SHADOW, position: "relative", minHeight: 280, background: "#F5F5F5" }}>
+                {!process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "#999", fontSize: 13 }}>
+                    Street View unavailable — Maps API key not configured in build
+                  </div>
+                ) : streetViewError ? (
+                  <div style={{ padding: 40, textAlign: "center", color: "#999", fontSize: 13 }}>
+                    Street View not available for this address
+                    <div style={{ fontSize: 11, marginTop: 8, color: "#bbb" }}>{streetViewError}</div>
+                  </div>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={`https://maps.googleapis.com/maps/api/streetview?size=800x400&location=${encodeURIComponent(fullAddress)}&return_error_code=true&key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}`}
+                    alt={`Street view of ${fullAddress}`}
+                    className="w-full object-cover"
+                    style={{ height: 280, display: "block" }}
+                    onError={(e) => {
+                      const url = (e.currentTarget as HTMLImageElement).src;
+                      console.error("[StreetView] Image failed to load:", url);
+                      setStreetViewError("Image failed to load — check that Street View Static API is enabled in Google Cloud Console");
+                    }}
+                  />
+                )}
               </div>
             </div>
           )}
