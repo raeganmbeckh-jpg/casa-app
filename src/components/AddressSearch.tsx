@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import QuantumPanel from "@/components/QuantumPanel";
 import ScenarioEngine from "@/components/ScenarioEngine";
 import RentcastPanel from "@/components/RentcastPanel";
+import AmenitiesPanel from "@/components/AmenitiesPanel";
 
 const correctionsDb = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -105,7 +106,7 @@ function Badge({ value, pulse }: { value: any; pulse: boolean }) {
    DATA ROW
    ═══════════════════════════════════════════════════════════════════ */
 
-function Row({ label, value, fmt, icon: Icon, accent, pulse, correction }: {
+function Row({ label, value, fmt, icon: Icon, accent, pulse, correction, fieldKey, onSaveCorrection }: {
   label: string;
   value: any;
   fmt?: "usd" | "num";
@@ -113,8 +114,12 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse, correction }: {
   accent?: boolean;
   pulse?: boolean;
   correction?: { correct_value: string; correction_type: string } | null;
+  fieldKey?: string;
+  onSaveCorrection?: (fieldKey: string, attomValue: string, newValue: string) => void;
 }) {
   const [hovered, setHovered] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editVal, setEditVal] = useState("");
   const hasCorrected = !!correction;
   const displayValue = hasCorrected ? correction.correct_value : value;
   const isEmpty = displayValue === null || displayValue === undefined || displayValue === "" || displayValue === 0;
@@ -130,11 +135,29 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse, correction }: {
   } else {
     display = String(displayValue);
   }
-  // Confidence boost for corrected fields
   const confidenceValue = hasCorrected ? "corrected" : value;
+  const editable = !!fieldKey && !!onSaveCorrection;
+
+  if (editing && editable) {
+    return (
+      <div className="flex items-center gap-2 py-[6px]" style={{ borderBottom: `1px solid ${BORDER}`, backgroundColor: "#FFFBF0" }}>
+        {Icon && <Icon className="w-3 h-3" style={{ color: "#CCCCCC" }} />}
+        <span className="text-[10px] uppercase tracking-[0.15em] shrink-0" style={{ color: TEXT_SECONDARY, fontFamily: "var(--font-geist-mono)" }}>{label}</span>
+        <input value={editVal} onChange={(e) => setEditVal(e.target.value)} autoFocus
+          className="flex-1 text-[12px] px-2 py-1 rounded ml-2 focus:outline-none"
+          style={{ border: `1px solid ${ACCENT}`, fontFamily: "var(--font-geist-mono)", color: TEXT_PRIMARY, minWidth: 80 }}
+          onKeyDown={(e) => { if (e.key === "Enter" && editVal) { onSaveCorrection(fieldKey!, String(value ?? ""), editVal); setEditing(false); } if (e.key === "Escape") setEditing(false); }}
+        />
+        <button onClick={() => { if (editVal) { onSaveCorrection(fieldKey!, String(value ?? ""), editVal); setEditing(false); } }}
+          className="text-[9px] font-bold px-2 py-0.5 rounded-full" style={{ backgroundColor: ACCENT, color: TEXT_PRIMARY }}>Save</button>
+        <button onClick={() => setEditing(false)} className="text-[9px]" style={{ color: "#aaa" }}>Cancel</button>
+      </div>
+    );
+  }
+
   return (
     <div
-      className="flex items-center justify-between py-[6px] last:border-0"
+      className="flex items-center justify-between py-[6px] last:border-0 group"
       style={{
         borderBottom: `1px solid ${BORDER}`,
         backgroundColor: hovered ? "#FFFBF0" : "#FFFFFF",
@@ -157,6 +180,13 @@ function Row({ label, value, fmt, icon: Icon, accent, pulse, correction }: {
         }}>
           {display}
         </span>
+        {editable && (
+          <button onClick={() => { setEditVal(String(displayValue ?? "")); setEditing(true); }}
+            className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded"
+            style={{ color: GOLD }}>
+            <Pencil className="w-3 h-3" />
+          </button>
+        )}
         <Badge value={confidenceValue} pulse={!!pulse} />
       </div>
     </div>
@@ -902,6 +932,10 @@ export default function AddressSearch({
     setCorrections(prev => ({ ...prev, [fieldName]: { correct_value: correctValue, correction_type: correctionType } }));
   }
 
+  function handleRowEdit(fieldKey: string, attomValue: string, newValue: string) {
+    saveCorrection(fieldKey, attomValue, newValue, "user_edit");
+  }
+
   /* ── Extract fields ─────────────────────────────────────────── */
   const d = result?.detail;
   const b = result?.basic;
@@ -1305,28 +1339,35 @@ export default function AddressSearch({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
                 <Hdr icon={DollarSign} label="Ownership & Valuation" color={GOLD} />
-                <Row label="Owner" value={owner} icon={Shield} pulse={confidencePulse} />
-                <Row label="APN" value={apn} icon={FileText} pulse={confidencePulse} />
-                <Row label="Assessed Value" value={assessedValue} fmt="usd" icon={DollarSign} pulse={confidencePulse} />
-                <Row label="Market Value AVM" value={marketValue} fmt="usd" icon={TrendingUp} accent pulse={confidencePulse} />
-                <Row label="Last Sale Date" value={lastSaleDate} icon={Clock} pulse={confidencePulse} />
-                <Row label="Last Sale Price" value={lastSalePrice} fmt="usd" icon={DollarSign} pulse={confidencePulse} />
-                <Row label="Annual Taxes" value={annualTax} fmt="usd" icon={FileText} pulse={confidencePulse} />
+                <Row label="Owner" value={owner} icon={Shield} pulse={confidencePulse} fieldKey="owner" onSaveCorrection={handleRowEdit} correction={corrections.owner} />
+                <Row label="APN" value={apn} icon={FileText} pulse={confidencePulse} fieldKey="apn" onSaveCorrection={handleRowEdit} correction={corrections.apn} />
+                <Row label="Assessed Value" value={assessedValue} fmt="usd" icon={DollarSign} pulse={confidencePulse} fieldKey="assessed_value" onSaveCorrection={handleRowEdit} correction={corrections.assessed_value} />
+                <Row label="Market Value AVM" value={marketValue} fmt="usd" icon={TrendingUp} accent pulse={confidencePulse} fieldKey="market_value" onSaveCorrection={handleRowEdit} correction={corrections.market_value} />
+                <Row label="Last Sale Date" value={lastSaleDate} icon={Clock} pulse={confidencePulse} fieldKey="last_sale_date" onSaveCorrection={handleRowEdit} correction={corrections.last_sale_date} />
+                <Row label="Last Sale Price" value={lastSalePrice} fmt="usd" icon={DollarSign} pulse={confidencePulse} fieldKey="last_sale_price" onSaveCorrection={handleRowEdit} correction={corrections.last_sale_price} />
+                <Row label="Annual Taxes" value={annualTax} fmt="usd" icon={FileText} pulse={confidencePulse} fieldKey="annual_taxes" onSaveCorrection={handleRowEdit} correction={corrections.annual_taxes} />
               </div>
               <div className="rounded-lg p-5" style={{ backgroundColor: "#FFFFFF", border: `1px solid ${BORDER}`, boxShadow: CARD_SHADOW, borderLeft: '3px solid #F9D96A' }}>
                 <Hdr icon={Home} label="Physical & Risk" color="#60a5fa" />
-                <Row label="Year Built" value={yearBuilt} icon={Calendar} pulse={confidencePulse} />
-                <Row label="Bedrooms" value={beds} fmt="num" icon={Bed} pulse={confidencePulse} />
-                <Row label="Bathrooms" value={bathsStr} icon={Bath} pulse={confidencePulse} />
-                <Row label="Living Sqft" value={sqft} fmt="num" icon={Ruler} pulse={confidencePulse} />
-                <Row label="Lot Size" value={lotSize ? `${lotSize.toLocaleString()} sqft` : null} icon={MapPin} pulse={confidencePulse} />
-                <Row label="Flood Zone" value={floodZone || "Not reported"} icon={Droplets} pulse={confidencePulse} />
-                <Row label="Stories" value={stories} fmt="num" icon={Layers} pulse={confidencePulse} />
-                <Row label="Garage" value={garage ? `${garage} spaces` : null} icon={Car} pulse={confidencePulse} />
-                <Row label="Prop Type" value={propType} icon={Home} pulse={confidencePulse} />
+                <Row label="Year Built" value={yearBuilt} icon={Calendar} pulse={confidencePulse} fieldKey="year_built" onSaveCorrection={handleRowEdit} correction={corrections.year_built} />
+                <Row label="Bedrooms" value={beds} fmt="num" icon={Bed} pulse={confidencePulse} fieldKey="bedrooms" onSaveCorrection={handleRowEdit} correction={corrections.bedrooms} />
+                <Row label="Bathrooms" value={bathsStr} icon={Bath} pulse={confidencePulse} fieldKey="bathrooms" onSaveCorrection={handleRowEdit} correction={corrections.bathrooms} />
+                <Row label="Living Sqft" value={sqft} fmt="num" icon={Ruler} pulse={confidencePulse} fieldKey="sqft" onSaveCorrection={handleRowEdit} correction={corrections.sqft} />
+                <Row label="Lot Size" value={lotSize ? `${lotSize.toLocaleString()} sqft` : null} icon={MapPin} pulse={confidencePulse} fieldKey="lot_size" onSaveCorrection={handleRowEdit} correction={corrections.lot_size} />
+                <Row label="Flood Zone" value={floodZone || "Not reported"} icon={Droplets} pulse={confidencePulse} fieldKey="flood_zone" onSaveCorrection={handleRowEdit} correction={corrections.flood_zone} />
+                <Row label="Stories" value={stories} fmt="num" icon={Layers} pulse={confidencePulse} fieldKey="stories" onSaveCorrection={handleRowEdit} correction={corrections.stories} />
+                <Row label="Garage" value={garage ? `${garage} spaces` : null} icon={Car} pulse={confidencePulse} fieldKey="garage" onSaveCorrection={handleRowEdit} correction={corrections.garage} />
+                <Row label="Prop Type" value={propType} icon={Home} pulse={confidencePulse} fieldKey="prop_type" onSaveCorrection={handleRowEdit} correction={corrections.prop_type} />
               </div>
             </div>
           </div>
+
+          {/* ── 3.5 AMENITIES & FEATURES ────────────────────── */}
+          {fullAddress && (
+            <div style={sectionStyle(2)}>
+              <AmenitiesPanel address={fullAddress} apn={apn || undefined} attomData={prop} />
+            </div>
+          )}
 
           {/* ── 4. SYSTEM HEALTH ──────────────────────────────── */}
           <div style={sectionStyle(2)}>
