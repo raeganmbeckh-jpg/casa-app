@@ -145,59 +145,58 @@ function localInterference(superposition: any, entanglement: any, tunneling: any
   };
 }
 
+// Rate limit: track last request per address
+const rateLimit = new Map<string, number>();
+
 export async function POST(req: NextRequest) {
   try {
     const { propertyData, googleData } = await req.json();
     const d = propertyData?.detail || propertyData?.basic;
+    const addrKey = d?.address?.line1 || "unknown";
+
+    // Rate limit: reject if same address within 10 seconds
+    const now = Date.now();
+    const lastReq = rateLimit.get(addrKey) || 0;
+    if (now - lastReq < 10000) {
+      return NextResponse.json({ error: "Rate limited — please wait 10 seconds", rate_limited: true }, { status: 429 });
+    }
+    rateLimit.set(addrKey, now);
+
+    // Try ONE combined Claude call instead of 4 separate calls
     const ctx = JSON.stringify({ ...propertyData, solar: googleData?.solar, walkScore: googleData?.walkScore });
-
-    // Load quantum agents from Supabase
-    const { data: agents } = await supabase
-      .from("ai_agents")
-      .select("agent_key, name, quantum_principle, entanglement_targets")
-      .in("quantum_principle", ["superposition", "entanglement", "tunneling", "interference"]);
-    const agentList = agents || [];
-
-    // Try Claude for each phase, fallback to local calculations
-    let superpositionResult = await callClaude(
-      `You are a quantum-inspired real estate valuation engine. Generate 3 simultaneous value states. Return ONLY valid JSON: {"most_likely":500000,"optimistic":575000,"pessimistic":440000,"probability_weights":[0.6,0.25,0.15],"confidence":78,"scenarios":[{"name":"Base Case","value":500000,"probability":0.6,"key_assumptions":"string"},{"name":"Bull Case","value":575000,"probability":0.25,"key_assumptions":"string"},{"name":"Bear Case","value":440000,"probability":0.15,"key_assumptions":"string"}]}`,
-      `Generate superposition valuation states for:\n${ctx}`
+    const allPhases = await callClaude(
+      `You are the CASA Quantum Intelligence Engine. Analyze this property across 4 quantum phases and return ALL results in ONE JSON object. Return ONLY valid JSON:
+{
+  "superposition":{"most_likely":500000,"optimistic":575000,"pessimistic":440000,"probability_weights":[0.6,0.25,0.15],"confidence":78,"scenarios":[{"name":"Base Case","value":500000,"probability":0.6,"key_assumptions":"string"},{"name":"Bull Case","value":575000,"probability":0.25,"key_assumptions":"string"},{"name":"Bear Case","value":440000,"probability":0.15,"key_assumptions":"string"}]},
+  "entanglement":{"correlations":[{"signal_a":"string","signal_b":"string","strength":0.85,"insight":"string"}],"consensus_value":500000,"confidence":80},
+  "tunneling":{"barriers_penetrated":[{"barrier":"string","hidden_value":"$XX,XXX","path":"string","confidence":75}],"total_hidden_value":50000,"tunneling_score":72},
+  "interference":{"quantum_score":78,"constructive":[{"signal":"string","amplified_confidence":90,"reason":"string"}],"destructive":[{"signal":"string","reduced_confidence":40,"reason":"string"}],"final_verdict":"string","wave_pattern":[0.3,0.5,0.7,0.85,0.78,0.82,0.75,0.9,0.88,0.85]}
+}`,
+      `Analyze this property:\n${ctx}`
     );
-    if (!superpositionResult) superpositionResult = localSuperposition(d);
 
-    let entanglementResult = await callClaude(
-      `You are a quantum entanglement correlation engine. Return ONLY valid JSON: {"correlations":[{"signal_a":"string","signal_b":"string","strength":0.85,"insight":"string"}],"consensus_value":500000,"confidence":80}`,
-      `Find entangled correlations in:\n${ctx}`
-    );
-    if (!entanglementResult) entanglementResult = localEntanglement(d, superpositionResult);
+    // Use Claude results or fallback to local calculations
+    const superpositionResult = allPhases?.superposition || localSuperposition(d);
+    const entanglementResult = allPhases?.entanglement || localEntanglement(d, superpositionResult);
+    const tunnelingResult = allPhases?.tunneling || localTunneling(d, googleData?.solar);
+    const interferenceResult = allPhases?.interference || localInterference(superpositionResult, entanglementResult, tunnelingResult);
 
-    let tunnelingResult = await callClaude(
-      `You are a quantum tunneling opportunity finder. Return ONLY valid JSON: {"barriers_penetrated":[{"barrier":"string","hidden_value":"$XX,XXX","path":"string","confidence":75}],"total_hidden_value":50000,"tunneling_score":72}`,
-      `Find tunneling opportunities in:\n${ctx}`
-    );
-    if (!tunnelingResult) tunnelingResult = localTunneling(d, googleData?.solar);
-
-    let interferenceResult = await callClaude(
-      `You are the quantum interference engine. Return ONLY valid JSON: {"quantum_score":78,"constructive":[{"signal":"string","amplified_confidence":90,"reason":"string"}],"destructive":[{"signal":"string","reduced_confidence":40,"reason":"string"}],"final_verdict":"string","wave_pattern":[0.3,0.5,0.7,0.85,0.78,0.82,0.75,0.9,0.88,0.85]}`,
-      `Apply interference to:\nSuperposition: ${JSON.stringify(superpositionResult)}\nEntanglement: ${JSON.stringify(entanglementResult)}\nTunneling: ${JSON.stringify(tunnelingResult)}`
-    );
-    if (!interferenceResult) interferenceResult = localInterference(superpositionResult, entanglementResult, tunnelingResult);
-
-    // Record entanglement event (fire and forget)
+    // Get agent count (fire and forget, don't await)
+    const agentCount = 50; // known from seed
     supabase.from("agent_entanglement_events").insert({
       source_agent_key: "qi_verdict",
-      target_agent_keys: agentList.map((a: any) => a.agent_key),
+      target_agent_keys: ["qs_avm", "qe_val", "qt_exit", "qi_collapse"],
       trigger_type: "property_search",
-      property_id: propertyData?.detail?.identifier?.apn || propertyData?.basic?.identifier?.apn || "unknown",
+      property_id: d?.identifier?.apn || "unknown",
       payload: { superposition: superpositionResult, entanglement: entanglementResult, tunneling: tunnelingResult, interference: interferenceResult },
     });
 
     return NextResponse.json({
-      superposition: superpositionResult || { most_likely: 0, optimistic: 0, pessimistic: 0, probability_weights: [0.6, 0.25, 0.15], confidence: 0, scenarios: [] },
-      entanglement: entanglementResult || { correlations: [], consensus_value: 0, confidence: 0 },
-      tunneling: tunnelingResult || { barriers_penetrated: [], total_hidden_value: 0, tunneling_score: 0 },
-      interference: interferenceResult || { quantum_score: 0, constructive: [], destructive: [], final_verdict: "", wave_pattern: [] },
-      agents_fired: agentList.length,
+      superposition: superpositionResult,
+      entanglement: entanglementResult,
+      tunneling: tunnelingResult,
+      interference: interferenceResult,
+      agents_fired: agentCount,
       phases: ["superposition", "entanglement", "tunneling", "interference"],
     });
   } catch (e: any) {

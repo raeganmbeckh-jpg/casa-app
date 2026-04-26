@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Zap, Loader2, Shield, TrendingUp, AlertTriangle, Eye } from "lucide-react";
 
 const GOLD = "#E8C84A";
@@ -64,10 +64,10 @@ function WavePattern({ data }: { data: number[] }) {
         </linearGradient>
       </defs>
       <polyline points={points} fill="none" stroke="url(#waveGrad)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-      {data.map((v, i) => (
+      {data.map((v, i) => i === data.length - 1 ? (
         <circle key={i} cx={(i / (data.length - 1)) * w} cy={h - v * h} r={2.5}
-          fill={i === data.length - 1 ? GOLD : "#fff"} stroke={i === data.length - 1 ? GOLD : "#ccc"} strokeWidth={1} />
-      ))}
+          fill={GOLD} stroke="#fff" strokeWidth={1.5} />
+      ) : null)}
     </svg>
   );
 }
@@ -99,8 +99,29 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
   const [phase, setPhase] = useState(-1);
   const [expanded, setExpanded] = useState(false);
 
+  // Cache + dedup refs
+  const cacheRef = useRef<Record<string, any>>({});
+  const fetchingRef = useRef(false);
+  const lastAddressRef = useRef("");
+
+  // Derive a stable address key from propertyData
+  const addr = propertyData?.basic?.address || propertyData?.detail?.address;
+  const addressKey = addr ? [addr.line1, addr.locality, addr.countrySubd].filter(Boolean).join(",") : "";
+
   useEffect(() => {
-    if (!propertyData) return;
+    // Guards: no data, already fetching, same address already done
+    if (!addressKey || fetchingRef.current) return;
+    if (lastAddressRef.current === addressKey) return;
+
+    // Check cache
+    if (cacheRef.current[addressKey]) {
+      setResult(cacheRef.current[addressKey]);
+      setPhase(4);
+      return;
+    }
+
+    lastAddressRef.current = addressKey;
+    fetchingRef.current = true;
     setLoading(true);
     setResult(null);
     setPhase(0);
@@ -118,17 +139,22 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
       .then(data => {
         clearInterval(phaseTimer);
         setPhase(4);
-        if (!data.error) setResult(data);
+        if (!data.error) {
+          setResult(data);
+          cacheRef.current[addressKey] = data;
+        }
         setLoading(false);
+        fetchingRef.current = false;
       })
       .catch(() => {
         clearInterval(phaseTimer);
         setPhase(4);
         setLoading(false);
+        fetchingRef.current = false;
       });
 
     return () => clearInterval(phaseTimer);
-  }, [propertyData, googleData]);
+  }, [addressKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const qScore = result?.interference?.quantum_score || 0;
 
@@ -145,7 +171,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
           <span style={{ fontFamily: "var(--font-heading)", fontWeight: 700, fontSize: 20, color: "#1A1A1A" }}>Quantum Intelligence Network</span>
         </div>
         <div className="flex items-center gap-3">
-          {/* Phase indicators */}
           {PHASES.map((p, i) => (
             <div key={p.key} className="flex items-center gap-1">
               <div className="w-2 h-2 rounded-full" style={{
@@ -171,7 +196,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
       {/* Results */}
       {result && (
         <div className="p-5">
-          {/* Score + Verdict row */}
           <div className="flex items-start gap-5 mb-5">
             <AnimatedScore score={qScore} />
             <div className="flex-1 pt-2">
@@ -181,12 +205,10 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
               <div className="text-[9px] mb-3" style={{ color: "#9B9B9B", fontFamily: "var(--font-geist-mono)" }}>
                 {result.agents_fired} agents fired across 4 quantum phases
               </div>
-              {/* Wave pattern */}
               <WavePattern data={result.interference?.wave_pattern || []} />
             </div>
           </div>
 
-          {/* Superposition probability bar */}
           {result.superposition?.scenarios?.length > 0 && (
             <div className="mb-5 p-4 rounded-lg" style={{ backgroundColor: "#f8fafc", border: `1px solid ${BORDER}` }}>
               <div className="flex items-center gap-2 mb-3">
@@ -211,7 +233,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
             </div>
           )}
 
-          {/* Expand/collapse for detail */}
           <button onClick={() => setExpanded(!expanded)} className="w-full text-center py-2 text-[10px] font-semibold rounded-lg transition-colors" style={{ color: "#8b5cf6", backgroundColor: "rgba(139,92,246,0.05)", fontFamily: "var(--font-inter)" }}>
             <Eye className="w-3 h-3 inline mr-1" />
             {expanded ? "Hide" : "Show"} Entanglement & Tunneling Details
@@ -219,7 +240,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
 
           {expanded && (
             <div className="mt-4 space-y-4" style={{ animation: "fadeIn 0.3s ease" }}>
-              {/* Constructive interference */}
               {result.interference?.constructive?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
@@ -238,7 +258,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
                 </div>
               )}
 
-              {/* Destructive interference */}
               {result.interference?.destructive?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
@@ -257,7 +276,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
                 </div>
               )}
 
-              {/* Tunneling discoveries */}
               {result.tunneling?.barriers_penetrated?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
@@ -281,7 +299,6 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
                 </div>
               )}
 
-              {/* Entanglement correlations */}
               {result.entanglement?.correlations?.length > 0 && (
                 <div>
                   <div className="flex items-center gap-1.5 mb-2">
@@ -293,9 +310,7 @@ export default function QuantumPanel({ propertyData, googleData }: { propertyDat
                       <div className="w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold" style={{ backgroundColor: "#10b981", color: "#fff" }}>
                         {Math.round((c.strength || 0) * 100)}%
                       </div>
-                      <div className="flex-1">
-                        <p className="text-[10px]" style={{ color: "#1A1A1A", fontFamily: "var(--font-inter)" }}>{c.insight}</p>
-                      </div>
+                      <p className="text-[10px] flex-1" style={{ color: "#1A1A1A", fontFamily: "var(--font-inter)" }}>{c.insight}</p>
                     </div>
                   ))}
                 </div>
