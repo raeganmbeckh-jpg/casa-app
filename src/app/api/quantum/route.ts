@@ -154,11 +154,11 @@ export async function POST(req: NextRequest) {
     const d = propertyData?.detail || propertyData?.basic;
     const addrKey = d?.address?.line1 || "unknown";
 
-    // Rate limit: reject if same address within 10 seconds
+    // Rate limit: reject if same address within 30 seconds
     const now = Date.now();
     const lastReq = rateLimit.get(addrKey) || 0;
-    if (now - lastReq < 10000) {
-      return NextResponse.json({ error: "Rate limited — please wait 10 seconds", rate_limited: true }, { status: 429 });
+    if (now - lastReq < 30000) {
+      return NextResponse.json({ error: "rate_limited", rate_limited: true, cached: true }, { status: 429 });
     }
     rateLimit.set(addrKey, now);
 

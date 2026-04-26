@@ -1114,10 +1114,11 @@ export default function AddressSearch({
           )}
 
           {/* ── QUANTUM INTELLIGENCE ──────────────────────── */}
-          {result && (
+          {result && fullAddress && (
             <div style={sectionStyle(0)}>
               <QuantumPanel
-                propertyData={{ basic: result.basic, detail: result.detail, comps: result.comps }}
+                address={fullAddress}
+                propertyData={result}
                 googleData={googleData}
               />
             </div>
