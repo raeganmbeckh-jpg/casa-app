@@ -3,37 +3,60 @@ import { NextRequest, NextResponse } from "next/server";
 const KEY = process.env.RENTCAST_API_KEY;
 const BASE = "https://api.rentcast.io/v1";
 
-async function rc(path: string) {
-  if (!KEY) return null;
+async function rc(path: string, label: string, diag: any[]) {
+  if (!KEY) {
+    console.error(`[rentcast:${label}] RENTCAST_API_KEY is not set in environment`);
+    diag.push({ label, ok: false, reason: "no_api_key" });
+    return null;
+  }
   try {
     const res = await fetch(`${BASE}${path}`, {
       headers: { Accept: "application/json", "X-Api-Key": KEY },
     });
-    if (!res.ok) return null;
-    return res.json();
-  } catch { return null; }
+    if (!res.ok) {
+      const errText = await res.text().catch(() => "<unreadable>");
+      console.error(`[rentcast:${label}] ${BASE}${path} returned ${res.status}: ${errText.slice(0, 300)}`);
+      diag.push({ label, ok: false, status: res.status, reason: errText.slice(0, 200) });
+      return null;
+    }
+    const json = await res.json();
+    const shape = Array.isArray(json) ? `array(${json.length})` : (json && typeof json === "object" ? `object(keys=${Object.keys(json).slice(0,8).join(",")})` : typeof json);
+    console.log(`[rentcast:${label}] OK ${BASE}${path} → ${shape}`);
+    diag.push({ label, ok: true, shape });
+    return json;
+  } catch (err: any) {
+    console.error(`[rentcast:${label}] fetch threw for ${BASE}${path}:`, err?.message || err);
+    diag.push({ label, ok: false, reason: `threw: ${err?.message || "unknown"}` });
+    return null;
+  }
 }
 
 export async function GET(req: NextRequest) {
   const address = req.nextUrl.searchParams.get("address");
   if (!address) return NextResponse.json({ error: "address required" }, { status: 400 });
-  if (!KEY) return NextResponse.json({ estimate: null, comps: [], market: null, history: [], sources: [] });
+
+  const diag: any[] = [];
+  console.log(`[rentcast] incoming address: "${address}" | KEY_present=${!!KEY}`);
+
+  if (!KEY) {
+    return NextResponse.json({
+      estimate: null, comps: [], market: null, history: [], sources: [],
+      _diagnostics: { error: "RENTCAST_API_KEY missing in environment", diag: [] }
+    });
+  }
 
   const encoded = encodeURIComponent(address);
-
-  // Extract zip from address for market stats
   const zipMatch = address.match(/\b(\d{5})\b/);
   const zip = zipMatch?.[1] || "";
+  console.log(`[rentcast] parsed zip: "${zip}"`);
 
-  // Run all endpoints in parallel
   const [rentEstimate, rentComps, marketStats, rentHistory] = await Promise.all([
-    rc(`/avm/rent/long-term?address=${encoded}`),
-    rc(`/properties?address=${encoded}&radius=0.5&limit=10&propertyType=Single+Family`),
-    zip ? rc(`/markets?zipCode=${zip}`) : Promise.resolve(null),
-    rc(`/avm/rent/long-term/history?address=${encoded}`),
+    rc(`/avm/rent/long-term?address=${encoded}`, "rentEstimate", diag),
+    rc(`/properties?address=${encoded}&radius=0.5&limit=10&propertyType=Single+Family`, "rentComps", diag),
+    zip ? rc(`/markets?zipCode=${zip}`, "marketStats", diag) : Promise.resolve(null),
+    rc(`/avm/rent/long-term/history?address=${encoded}`, "rentHistory", diag),
   ]);
 
-  // Parse rent estimate
   let estimate = null;
   if (rentEstimate) {
     estimate = {
@@ -47,7 +70,6 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  // Parse rental comps
   let comps: any[] = [];
   if (Array.isArray(rentComps)) {
     comps = rentComps.slice(0, 10).map((c: any) => ({
@@ -63,7 +85,6 @@ export async function GET(req: NextRequest) {
     }));
   }
 
-  // Parse market stats
   let market = null;
   if (marketStats && !Array.isArray(marketStats)) {
     market = {
@@ -84,18 +105,11 @@ export async function GET(req: NextRequest) {
     };
   }
 
-  // Parse rent history
   let history: { date: string; rent: number }[] = [];
   if (rentHistory && Array.isArray(rentHistory)) {
-    history = rentHistory.map((h: any) => ({
-      date: h.date || h.month || "",
-      rent: h.rent || h.value || 0,
-    })).filter((h: any) => h.rent > 0);
+    history = rentHistory.map((h: any) => ({ date: h.date || h.month || "", rent: h.rent || h.value || 0 })).filter((h: any) => h.rent > 0);
   } else if (rentHistory?.history && Array.isArray(rentHistory.history)) {
-    history = rentHistory.history.map((h: any) => ({
-      date: h.date || h.month || "",
-      rent: h.rent || h.value || 0,
-    })).filter((h: any) => h.rent > 0);
+    history = rentHistory.history.map((h: any) => ({ date: h.date || h.month || "", rent: h.rent || h.value || 0 })).filter((h: any) => h.rent > 0);
   }
 
   const sources: string[] = [];
@@ -104,5 +118,10 @@ export async function GET(req: NextRequest) {
   if (market) sources.push("Rentcast Market");
   if (history.length > 0) sources.push("Rentcast History");
 
-  return NextResponse.json({ estimate, comps, market, history, sources });
+  console.log(`[rentcast] summary: estimate=${!!estimate} comps=${comps.length} market=${!!market} history=${history.length}`);
+
+  return NextResponse.json({
+    estimate, comps, market, history, sources,
+    _diagnostics: { zip, diag }
+  });
 }
