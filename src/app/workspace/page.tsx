@@ -26,6 +26,7 @@ import {
   Printer,
   Zap,
   Search,
+  Trash2,
 } from "lucide-react";
 import { type RoleId } from "@/lib/roles";
 import RoleSwitcher from "@/components/RoleSwitcher";
@@ -52,6 +53,7 @@ import {
   getAlerts,
   generateAlerts,
   addProperty,
+  removeProperty,
   addTenant,
   addLease,
   addWorkOrder,
@@ -378,10 +380,41 @@ export default function Workspace() {
     .reduce((s, t) => s + t.amount, 0);
 
   /* ── Handlers ──────────────────────────────────────────────── */
+  // Delete + undo state
+  const [deleteModal, setDeleteModal] = useState<{ id: string; address: string } | null>(null);
+  const [toast, setToast] = useState<{ message: string; undo?: () => void } | null>(null);
+
   function handleAddToPortfolio(basic: any, detail: any) {
     const data = propertyFromAttom(basic, detail);
-    addProperty(data);
+    const result = addProperty(data);
+    if ((result as any)._duplicate) {
+      setToast({ message: `${data.address} is already in your portfolio` });
+      setTimeout(() => setToast(null), 4000);
+    } else {
+      setToast({ message: `Added ${data.address} to portfolio` });
+      setTimeout(() => setToast(null), 3000);
+    }
     refreshData();
+  }
+
+  function handleDeleteProperty(id: string) {
+    const prop = properties.find(p => p.id === id);
+    if (!prop) return;
+    // Optimistic delete
+    removeProperty(id);
+    refreshData();
+    setDeleteModal(null);
+    // Toast with undo
+    const backup = { ...prop };
+    setToast({
+      message: "Property removed",
+      undo: () => {
+        addProperty(backup);
+        refreshData();
+        setToast(null);
+      },
+    });
+    setTimeout(() => setToast(null), 5000);
   }
 
   function handleAddTenant() {
@@ -592,7 +625,16 @@ export default function Workspace() {
                           {p.city}, {p.state} {p.zip}
                         </p>
                       </div>
-                      <Badge text={p.status} colors={STATUS_COLORS[p.status] || STATUS_COLORS.vacant} />
+                      <div className="flex items-center gap-2">
+                        <Badge text={p.status} colors={STATUS_COLORS[p.status] || STATUS_COLORS.vacant} />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); setDeleteModal({ id: p.id, address: p.address }); }}
+                          className="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-opacity p-1 rounded"
+                          title="Remove property"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" style={{ color: "#B42318" }} />
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3 mb-3">
                       <div>
@@ -680,7 +722,16 @@ export default function Workspace() {
                   <p className="font-mono text-sm font-bold truncate transition-colors" style={{ color: '#1A1A1A' }}>{p.address}</p>
                   <p className="text-[10px] font-mono mt-0.5" style={{ color: '#6B6B6B' }}>{p.city}, {p.state} {p.zip}</p>
                 </div>
-                <Badge text={p.status} colors={STATUS_COLORS[p.status] || STATUS_COLORS.vacant} />
+                <div className="flex items-center gap-2">
+                  <Badge text={p.status} colors={STATUS_COLORS[p.status] || STATUS_COLORS.vacant} />
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setDeleteModal({ id: p.id, address: p.address }); }}
+                    className="opacity-0 group-hover:opacity-70 hover:!opacity-100 transition-opacity p-1 rounded"
+                    title="Remove property"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" style={{ color: "#B42318" }} />
+                  </button>
+                </div>
               </div>
               <div className="grid grid-cols-3 gap-2 text-[10px] font-mono mb-2">
                 <div><span className="block text-[8px] tracking-widest" style={{ color: '#6B6B6B' }}>TYPE</span><span style={{ color: '#1A1A1A' }}>{p.property_type}</span></div>
@@ -1632,6 +1683,49 @@ export default function Workspace() {
 
       <AIPanel />
       <RoleSwitcher currentRole={role} />
+
+      {/* Delete confirmation modal */}
+      {deleteModal && (
+        <div style={{ position: "fixed", inset: 0, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: "rgba(0,0,0,0.45)" }}
+          onClick={() => setDeleteModal(null)}>
+          <div style={{ backgroundColor: "#fff", borderRadius: 16, padding: 32, maxWidth: 480, width: "90%", boxShadow: "0 20px 60px rgba(0,0,0,0.15)" }}
+            onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ fontFamily: "var(--font-heading)", fontSize: 24, fontWeight: 700, color: "#1A1A1A", marginBottom: 12 }}>
+              Remove property from portfolio?
+            </h3>
+            <p style={{ fontFamily: "var(--font-inter)", fontSize: 14, color: "#6B6B6B", lineHeight: 1.6, marginBottom: 24 }}>
+              This will remove <strong>{deleteModal.address}</strong> from your portfolio. The property record stays in CASA — you can re-add it later by searching the address.
+            </p>
+            <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+              <button onClick={() => setDeleteModal(null)}
+                style={{ fontFamily: "var(--font-inter)", fontSize: 14, fontWeight: 500, padding: "10px 20px", borderRadius: 999, border: "1px solid #EEEEEE", backgroundColor: "#fff", color: "#6B6B6B", cursor: "pointer" }}>
+                Cancel
+              </button>
+              <button onClick={() => handleDeleteProperty(deleteModal.id)}
+                style={{ fontFamily: "var(--font-inter)", fontSize: 14, fontWeight: 600, padding: "10px 20px", borderRadius: 999, border: "none", backgroundColor: "#B42318", color: "#fff", cursor: "pointer" }}>
+                Remove property
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div style={{
+          position: "fixed", bottom: 80, left: "50%", transform: "translateX(-50%)", zIndex: 9998,
+          backgroundColor: "#1A1A1A", color: "#fff", padding: "12px 24px", borderRadius: 999,
+          boxShadow: "0 8px 32px rgba(0,0,0,0.2)", display: "flex", alignItems: "center", gap: 12,
+          fontFamily: "var(--font-inter)", fontSize: 14, animation: "fadeIn 0.3s ease",
+        }}>
+          <span>{toast.message}</span>
+          {toast.undo && (
+            <button onClick={toast.undo} style={{ color: "#F9D96A", fontWeight: 600, background: "none", border: "none", cursor: "pointer", fontSize: 14 }}>
+              Undo
+            </button>
+          )}
+        </div>
+      )}
 
       <style jsx global>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }

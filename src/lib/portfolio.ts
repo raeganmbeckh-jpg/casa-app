@@ -39,9 +39,17 @@ export function getProperties(): PortfolioProperty[] {
   return get<PortfolioProperty>(KEYS.properties);
 }
 
-export function addProperty(p: Omit<PortfolioProperty, "id" | "added_at">): PortfolioProperty {
-  const prop: PortfolioProperty = { ...p, id: uid(), added_at: new Date().toISOString() };
+export function addProperty(p: Omit<PortfolioProperty, "id" | "added_at">): PortfolioProperty & { _duplicate?: boolean } {
   const all = getProperties();
+  // Prevent duplicates by normalized address
+  const normalize = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const existing = all.find(
+    (e) => normalize(e.address) === normalize(p.address) && normalize(e.city) === normalize(p.city)
+  );
+  if (existing) {
+    return { ...existing, _duplicate: true } as PortfolioProperty & { _duplicate: boolean };
+  }
+  const prop: PortfolioProperty = { ...p, id: uid(), added_at: new Date().toISOString() };
   all.push(prop);
   set(KEYS.properties, all);
   generateAlerts();
