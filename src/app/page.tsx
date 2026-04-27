@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import CasaOrb from "@/components/CasaOrb";
 import {
   Search,
   ChevronDown,
@@ -160,6 +161,7 @@ export default function LandingPage() {
 
   const hero = (
     <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-16" style={{ backgroundColor: "#fff" }}>
+      <CasaOrb />
       <div className="relative text-center max-w-3xl mx-auto">
         <p
           className={`text-xs font-semibold uppercase tracking-[0.3em] mb-6 transition-all duration-800 ${heroVisible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-3"}`}
