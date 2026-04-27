@@ -9,7 +9,7 @@ async function callClaude(system: string, userMsg: string): Promise<any> {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: MODEL, max_tokens: 1500, system, messages: [{ role: "user", content: userMsg }] }),
+      body: JSON.stringify({ model: MODEL, max_tokens: 1500, temperature: 0, system, messages: [{ role: "user", content: userMsg }] }),
     });
     const data = await res.json();
     if (data.error) return null;

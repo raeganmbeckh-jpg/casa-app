@@ -14,7 +14,7 @@ async function callClaude(system: string, user: string) {
     const res = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": ANTHROPIC_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 512, system, messages: [{ role: "user", content: user }] }),
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 512, temperature: 0, system, messages: [{ role: "user", content: user }] }),
     });
     const data = await res.json();
     if (data.error) { console.error("Claude error:", data.error.message); return null; }
@@ -148,11 +148,17 @@ function localInterference(superposition: any, entanglement: any, tunneling: any
 // Rate limit: track last request per address
 const rateLimit = new Map<string, number>();
 
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+
 export async function POST(req: NextRequest) {
+  const startMs = Date.now();
   try {
     const { propertyData, googleData } = await req.json();
     const d = propertyData?.detail || propertyData?.basic;
-    const addrKey = d?.address?.line1 || "unknown";
+    const addr = d?.address;
+    const addrKey = addr ? [addr.line1, addr.locality, addr.countrySubd].filter(Boolean).join(", ") : "unknown";
+    const propertyId = d?.identifier?.apn || addrKey;
+    const propertyAddress = addrKey;
 
     // Rate limit: reject if same address within 30 seconds
     const now = Date.now();
@@ -161,6 +167,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "rate_limited", rate_limited: true, cached: true }, { status: 429 });
     }
     rateLimit.set(addrKey, now);
+
+    // ── Supabase cache check (24h TTL) ───────────────────────
+    const { data: cached } = await supabase
+      .from("quantum_runs")
+      .select("result, created_at")
+      .eq("property_id", propertyId)
+      .order("created_at", { ascending: false })
+      .limit(1);
+
+    if (cached && cached.length > 0) {
+      const age = Date.now() - new Date(cached[0].created_at).getTime();
+      if (age < CACHE_TTL_MS) {
+        console.log(`[quantum] cache hit for ${propertyId}, age ${Math.round(age / 60000)}min`);
+        return NextResponse.json({ ...cached[0].result, _diagnostics: { cache_hit: true, cache_age_min: Math.round(age / 60000) } });
+      }
+    }
 
     // Try ONE combined Claude call instead of 4 separate calls
     const ctx = JSON.stringify({ ...propertyData, solar: googleData?.solar, walkScore: googleData?.walkScore });
@@ -191,14 +213,26 @@ export async function POST(req: NextRequest) {
       payload: { superposition: superpositionResult, entanglement: entanglementResult, tunneling: tunnelingResult, interference: interferenceResult },
     });
 
-    return NextResponse.json({
+    const quantumResult = {
       superposition: superpositionResult,
       entanglement: entanglementResult,
       tunneling: tunnelingResult,
       interference: interferenceResult,
       agents_fired: agentCount,
       phases: ["superposition", "entanglement", "tunneling", "interference"],
+    };
+
+    // ── Save to Supabase cache ───────────────────────────────
+    const durationMs = Date.now() - startMs;
+    supabase.from("quantum_runs").insert({
+      property_id: propertyId,
+      property_address: propertyAddress,
+      result: quantumResult,
+      cost_usd: superpositionResult?._source === "local" ? 0 : 0.01,
+      duration_ms: durationMs,
     });
+
+    return NextResponse.json(quantumResult);
   } catch (e: any) {
     console.error("Quantum engine error:", e.message);
     return NextResponse.json({ error: "Quantum intelligence engine failed", debug: e.message }, { status: 500 });

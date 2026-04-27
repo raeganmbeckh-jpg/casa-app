@@ -42,6 +42,7 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify({
         model: "claude-sonnet-4-20250514",
         max_tokens: 1024,
+        temperature: 0,
         system: `You are CASA AI, a real estate portfolio intelligence assistant. You analyze property data, tenant information, leases, and market conditions. Be concise and actionable. Here is the current portfolio data:\n\n${context}`,
         messages: messages.map((m: any) => ({
           role: m.role,

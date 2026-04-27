@@ -8,7 +8,7 @@ async function claude(system: string, user: string) {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2048, system, messages: [{ role: "user", content: user }] }),
+      body: JSON.stringify({ model: "claude-sonnet-4-20250514", max_tokens: 2048, temperature: 0, system, messages: [{ role: "user", content: user }] }),
     });
     const d = await r.json();
     if (d.error) return null;

@@ -92,6 +92,7 @@ Rent growth: ${rentcastData?.market?.rentGrowth || "N/A"}%`;
           body: JSON.stringify({
             model: "claude-sonnet-4-20250514",
             max_tokens: 2048,
+            temperature: 0,
             system: `You are CASA's Buyer Demand Simulator. You evaluate properties through the lens of 6 distinct investor archetypes and return structured JSON.
 
 CRITICAL FAIR HOUSING CONSTRAINT: You evaluate buyers by their investment strategy, budget tier, risk tolerance, capital structure, and property-use intent only. You do NOT reference age, race, ethnicity, national origin, religion, gender, family status, disability, source of income, or zip-code-based demographic inferences. Personas are defined by financial profile and investment thesis, never by protected class. If a property's location implies demographic patterns, you ignore them and focus on the investment math.
