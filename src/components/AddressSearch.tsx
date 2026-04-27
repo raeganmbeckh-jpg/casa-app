@@ -5,6 +5,7 @@ import { createClient } from "@supabase/supabase-js";
 import QuantumPanel from "@/components/QuantumPanel";
 import ScenarioEngine from "@/components/ScenarioEngine";
 import RentcastPanel from "@/components/RentcastPanel";
+import BuyerDemandPanel from "@/components/BuyerDemandPanel";
 import AmenitiesPanel from "@/components/AmenitiesPanel";
 
 const correctionsDb = createClient(
@@ -1122,6 +1123,18 @@ export default function AddressSearch({
                 address={fullAddress}
                 propertyData={result}
                 googleData={googleData}
+              />
+            </div>
+          )}
+
+          {/* ── BUYER DEMAND SIMULATOR ──────────────────────── */}
+          {result && fullAddress && (
+            <div style={sectionStyle(0)}>
+              <BuyerDemandPanel
+                address={fullAddress}
+                propertyData={result}
+                rentcastData={null}
+                quantumResult={null}
               />
             </div>
           )}
