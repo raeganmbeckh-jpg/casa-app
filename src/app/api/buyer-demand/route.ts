@@ -50,17 +50,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // ── Build context ────────────────────────────────────────
-    const value = prop?.assessment?.market?.mktTtlValue || prop?.assessment?.assessed?.assdTtlValue || 0;
-    const yearBuilt = prop?.summary?.yearbuilt || 0;
-    const sqft = prop?.building?.size?.livingSize || 0;
-    const beds = prop?.building?.rooms?.beds || 0;
-    const baths = prop?.building?.rooms?.bathsFull || 0;
-    const propType = prop?.summary?.proptype || "SFR";
-    const taxes = prop?.assessment?.tax?.taxAmt || 0;
-    const lastSalePrice = prop?.sale?.saleTransAmount || 0;
+    // ── Build context (merge detail + basic for best coverage) ─
+    const d = propertyData?.detail;
+    const b = propertyData?.basic;
+    const value = d?.assessment?.market?.mktTtlValue || b?.assessment?.market?.mktTtlValue || d?.assessment?.assessed?.assdTtlValue || b?.assessment?.assessed?.assdTtlValue || 0;
+    const yearBuilt = d?.summary?.yearbuilt || b?.summary?.yearbuilt || 0;
+    const sqft = d?.building?.size?.livingSize || b?.building?.size?.livingSize || d?.building?.size?.bldgSize || b?.building?.size?.bldgSize || 0;
+    const beds = d?.building?.rooms?.beds ?? b?.building?.rooms?.beds ?? 0;
+    const baths = d?.building?.rooms?.bathsFull ?? b?.building?.rooms?.bathsFull ?? 0;
+    const propType = d?.summary?.proptype || b?.summary?.proptype || "SFR";
+    const taxes = d?.assessment?.tax?.taxAmt || b?.assessment?.tax?.taxAmt || 0;
+    const lastSalePrice = d?.sale?.saleTransAmount || b?.sale?.saleTransAmount || 0;
     const rentEstimate = rentcastData?.estimate?.rent || 0;
     const qis = quantumResult?.interference?.quantum_score || 0;
+    console.log(`[buyer-demand] extracted: beds=${beds} baths=${baths} sqft=${sqft} value=${value} yearBuilt=${yearBuilt} rent=${rentEstimate}`);
 
     const propertyContext = `Address: ${propertyAddress}
 Value: $${value.toLocaleString()} | Beds: ${beds} | Baths: ${baths} | Sqft: ${sqft.toLocaleString()}
