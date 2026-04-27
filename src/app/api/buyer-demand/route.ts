@@ -12,10 +12,27 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { propertyData, rentcastData, quantumResult } = body;
+
+    // ── Diagnostic logging ───────────────────────────────────
+    console.log("[buyer-demand] received body keys:", Object.keys(body));
+    console.log("[buyer-demand] propertyData shape:", propertyData ? Object.keys(propertyData) : "MISSING");
+    console.log("[buyer-demand] propertyData sample:", JSON.stringify(propertyData).slice(0, 1000));
+    console.log("[buyer-demand] rentcastData present:", !!rentcastData);
+    console.log("[buyer-demand] quantumResult present:", !!quantumResult);
+
     propertyId = body.propertyId || propertyData?.basic?.identifier?.apn || propertyData?.detail?.identifier?.apn || "unknown";
     const prop = propertyData?.detail || propertyData?.basic;
     const addr = prop?.address;
     const propertyAddress = addr ? [addr.line1, addr.locality, addr.countrySubd, addr.postal1].filter(Boolean).join(", ") : "";
+
+    // Use address as cache key if propertyId is "unknown"
+    if (propertyId === "unknown" && propertyAddress) {
+      propertyId = propertyAddress;
+    }
+
+    console.log("[buyer-demand] resolved propertyId:", propertyId);
+    console.log("[buyer-demand] prop keys:", prop ? Object.keys(prop) : "NO PROP");
+    console.log("[buyer-demand] beds:", prop?.building?.rooms?.beds, "baths:", prop?.building?.rooms?.bathsFull, "sqft:", prop?.building?.size?.livingSize, "yearBuilt:", prop?.summary?.yearbuilt);
 
     // ── Cache check ──────────────────────────────────────────
     const { data: cached } = await supabase

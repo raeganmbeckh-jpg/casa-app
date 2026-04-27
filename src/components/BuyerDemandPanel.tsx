@@ -71,15 +71,24 @@ export default function BuyerDemandPanel({ address, propertyData, rentcastData, 
       setLoading(true);
       setData(null);
       try {
+        const payload = {
+          propertyData,
+          rentcastData: rentcastData || {},
+          quantumResult: quantumResult || {},
+          propertyId: propertyData?.basic?.identifier?.apn || propertyData?.detail?.identifier?.apn || address,
+        };
+        console.log("[buyer-demand:client] sending payload:", {
+          propertyDataKeys: propertyData ? Object.keys(propertyData) : "MISSING",
+          hasBasic: !!propertyData?.basic,
+          hasDetail: !!propertyData?.detail,
+          basicBeds: propertyData?.basic?.building?.rooms?.beds,
+          detailBeds: propertyData?.detail?.building?.rooms?.beds,
+          propertyId: payload.propertyId,
+        });
         const res = await fetch("/api/buyer-demand", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            propertyData,
-            rentcastData: rentcastData || {},
-            quantumResult: quantumResult || {},
-            propertyId: propertyData?.basic?.identifier?.apn || propertyData?.detail?.identifier?.apn || address,
-          }),
+          body: JSON.stringify(payload),
         });
         const d = await res.json();
         if (!d.error) setData(d);
