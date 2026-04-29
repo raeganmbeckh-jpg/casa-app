@@ -102,8 +102,31 @@ const ROLES = [
    PAGE
    ═══════════════════════════════════════════════════════════════════ */
 
+// Owner bypass: set WAITLIST_BYPASS_TOKEN in env vars. Load with ?access=TOKEN to bypass waitlist gate.
+function useBypass(): boolean {
+  const [bypassed, setBypassed] = useState(false);
+  useEffect(() => {
+    // Check URL for bypass token
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get("access");
+    if (token && token === (process.env.NEXT_PUBLIC_WAITLIST_BYPASS_TOKEN || "casa-owner-2026")) {
+      localStorage.setItem("casa_bypass", "true");
+      setBypassed(true);
+      // Clean URL
+      window.history.replaceState({}, "", window.location.pathname);
+      return;
+    }
+    // Check localStorage
+    if (localStorage.getItem("casa_bypass") === "true") {
+      setBypassed(true);
+    }
+  }, []);
+  return bypassed;
+}
+
 export default function LandingPage() {
   const router = useRouter();
+  const bypassed = useBypass();
   const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [email, setEmail] = useState("");
@@ -130,6 +153,9 @@ export default function LandingPage() {
     router.push("/workspace");
   }
 
+  // CTA destination: bypass goes to /select-role, everyone else to /waitlist
+  const ctaDest = bypassed ? "/select-role" : "/waitlist";
+
   /* ── 1. NAVBAR ──────────────────────────────────────────────── */
 
   const navbar = (
@@ -144,9 +170,9 @@ export default function LandingPage() {
       <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
         <span style={{ fontFamily: PF, color: TX, fontSize: 22, fontWeight: 700, letterSpacing: -0.5 }}>CASA</span>
         <div className="flex items-center gap-6">
-          <a href="/select-role" className="text-sm transition-colors hover:opacity-70" style={{ fontFamily: IN, color: TX2 }}>Sign in</a>
+          <a href={ctaDest} className="text-sm transition-colors hover:opacity-70" style={{ fontFamily: IN, color: TX2 }}>Sign in</a>
           <a
-            href="/select-role"
+            href={ctaDest}
             className="text-sm font-semibold px-5 py-2.5 rounded-full transition-all hover:brightness-95"
             style={{ fontFamily: IN, backgroundColor: Y, color: TX, boxShadow: GLOW_SM }}
           >
