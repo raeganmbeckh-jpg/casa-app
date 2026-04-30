@@ -23,7 +23,7 @@ const geistMono = localFont({
 
 export const metadata: Metadata = {
   title: "CASA — Real Estate Intelligence",
-  description: "AI-powered real estate portfolio management platform",
+  description: "Pull up any US property. Know what others miss. AI-powered intelligence for investors, managers, brokers, developers, lenders, and land buyers.",
 };
 
 export default function RootLayout({
