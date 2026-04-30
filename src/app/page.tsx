@@ -109,7 +109,7 @@ function useBypass(): boolean {
     // Check URL for bypass token
     const params = new URLSearchParams(window.location.search);
     const token = params.get("access");
-    if (token && token === (process.env.NEXT_PUBLIC_WAITLIST_BYPASS_TOKEN || "casa-owner-2026")) {
+    if (token && token === (process.env.NEXT_PUBLIC_WAITLIST_BYPASS_TOKEN || "raegan-2026-builder")) {
       localStorage.setItem("casa_bypass", "true");
       setBypassed(true);
       // Clean URL
