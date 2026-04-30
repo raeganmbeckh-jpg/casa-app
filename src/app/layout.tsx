@@ -33,6 +33,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link href="https://api.fontshare.com/v2/css?f[]=general-sans@200,300,400,500,600,700&display=swap" rel="stylesheet" />
+      </head>
       <body
         className={`${inter.variable} ${cormorant.variable} ${geistMono.variable} antialiased min-h-screen`}
         style={{ fontFamily: "var(--font-inter)", color: "#1A1A1A", backgroundColor: "#FFFFFF" }}

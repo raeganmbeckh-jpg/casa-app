@@ -2,15 +2,33 @@
 
 import { useState, useEffect } from "react";
 import { CheckCircle2 } from "lucide-react";
+import MiniOrb from "@/components/MiniOrb";
+
+const GS = "var(--font-general-sans)";
+const TX = "#1A1A1A";
 
 const PHRASES = [
   "Currently under construction",
   "Polishing the engine",
-  "Tuning 50 AI agents",
+  "Tuning fifty AI agents",
   "Teaching personas to think",
   "Brewing something special",
   "Almost ready for you",
 ];
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  padding: "15px 18px",
+  background: "rgba(255,255,255,0.75)",
+  border: "1px solid rgba(26,26,26,0.10)",
+  borderRadius: 12,
+  fontFamily: GS,
+  fontSize: 15,
+  fontWeight: 400,
+  color: TX,
+  outline: "none",
+  boxSizing: "border-box" as const,
+};
 
 export default function WaitlistPage() {
   const [email, setEmail] = useState("");
@@ -19,250 +37,168 @@ export default function WaitlistPage() {
   const [useCase, setUseCase] = useState("");
   const [showMore, setShowMore] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [waitlistNumber, setWaitlistNumber] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [phraseIdx, setPhraseIdx] = useState(0);
   const [visible, setVisible] = useState(true);
 
-  // Rotating subline
   useEffect(() => {
     const interval = setInterval(() => {
       setVisible(false);
       setTimeout(() => {
         setPhraseIdx((i) => (i + 1) % PHRASES.length);
         setVisible(true);
-      }, 300);
+      }, 400);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!email) return;
-    // Generate a waitlist number (deterministic from email)
-    const num = Math.abs(email.split("").reduce((a, c) => a + c.charCodeAt(0), 0) % 200) + 12;
-    setWaitlistNumber(num);
-    setSubmitted(true);
+    if (!email || loading) return;
+    setLoading(true);
+    try {
+      const res = await fetch("/api/waitlist/signup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, name: name || undefined, role: role || undefined, use_case: useCase || undefined }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPosition(data.position || 1);
+        setSubmitted(true);
+      }
+    } catch { /* silent */ }
+    setLoading(false);
   }
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: "40px 24px",
-        background: "radial-gradient(ellipse at top, #FFFBEF 0%, #FFEFB8 40%, #F9D96A 100%)",
-        position: "relative",
-        overflow: "hidden",
-      }}
-    >
-      {/* Noise texture overlay */}
-      <div
-        style={{
-          position: "absolute",
-          inset: 0,
-          opacity: 0.04,
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
-          backgroundSize: "128px 128px",
-          pointerEvents: "none",
-        }}
-      />
+    <main style={{
+      minHeight: "100vh",
+      background: "linear-gradient(180deg, #FFFFFF 0%, #FFFFFF 45%, #FFFCF0 75%, #FDEFC0 100%)",
+      padding: "56px 24px 56px",
+      display: "flex",
+      flexDirection: "column",
+      alignItems: "center",
+      position: "relative",
+    }}>
+      <div style={{ maxWidth: 560, width: "100%", textAlign: "center", flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
 
-      {/* Soft glow behind content */}
-      <div
-        style={{
-          position: "absolute",
-          top: "30%",
-          left: "50%",
-          transform: "translate(-50%, -50%)",
-          width: 500,
-          height: 500,
-          borderRadius: "50%",
-          background: "rgba(255,255,255,0.4)",
-          filter: "blur(80px)",
-          pointerEvents: "none",
-        }}
-      />
-
-      <div style={{ position: "relative", zIndex: 1, maxWidth: 560, width: "100%", textAlign: "center" }}>
         {/* Wordmark */}
-        <div style={{ marginBottom: 48 }}>
-          <h2 style={{ fontFamily: "var(--font-heading)", fontSize: 32, fontWeight: 500, color: "#1A1A1A", marginBottom: 4 }}>
-            CASA
-          </h2>
-          <p style={{ fontFamily: "var(--font-geist-mono)", fontSize: 10, letterSpacing: 4, color: "#6B6B6B", textTransform: "uppercase" }}>
-            Real Estate Intelligence
-          </p>
+        <div style={{ marginBottom: 64 }}>
+          <div style={{ fontFamily: GS, fontSize: 22, fontWeight: 600, letterSpacing: "0.32em", color: TX }}>CASA</div>
+          <div style={{ fontFamily: GS, fontSize: 10, fontWeight: 400, letterSpacing: "0.24em", color: TX, textTransform: "uppercase" as const, marginTop: 8 }}>Real Estate Intelligence</div>
         </div>
+
+        {/* Mini Orb */}
+        <MiniOrb />
 
         {!submitted ? (
           <>
+            {/* Eyebrow */}
+            <div style={{ fontFamily: GS, fontSize: 11, fontWeight: 500, letterSpacing: "0.32em", color: TX, textTransform: "uppercase" as const, marginBottom: 20 }}>Beta Access</div>
+
             {/* Headline */}
-            <h1 style={{
-              fontFamily: "var(--font-heading)",
-              fontSize: 56,
-              fontWeight: 500,
-              fontStyle: "italic",
-              color: "#1A1A1A",
-              letterSpacing: "-0.02em",
-              lineHeight: 1.1,
-              marginBottom: 16,
-            }}>
-              Join the Waitlist
+            <h1 style={{ fontFamily: GS, fontSize: 44, fontWeight: 500, letterSpacing: "-0.025em", lineHeight: 1.05, color: TX, margin: 0 }}>
+              Join the waitlist
             </h1>
 
-            {/* Rotating subline */}
-            <p style={{
-              fontFamily: "var(--font-inter)",
-              fontSize: 16,
-              color: "#6B6B6B",
-              fontStyle: "italic",
-              marginBottom: 40,
-              height: 24,
-              opacity: visible ? 1 : 0,
-              transition: "opacity 300ms ease",
+            {/* Rotating phrase */}
+            <div style={{ height: 24, margin: "22px 0 44px" }}>
+              <span style={{
+                fontFamily: GS, fontSize: 15, fontWeight: 400, color: TX,
+                opacity: visible ? 1 : 0, transition: "opacity 400ms ease",
+              }}>
+                {PHRASES[phraseIdx]}
+              </span>
+            </div>
+
+            {/* Glassmorphic form card */}
+            <div style={{
+              background: "rgba(255,255,255,0.5)",
+              backdropFilter: "blur(28px) saturate(180%)",
+              WebkitBackdropFilter: "blur(28px) saturate(180%)",
+              border: "1px solid rgba(255,255,255,0.85)",
+              borderRadius: 20,
+              padding: "32px 28px",
+              boxShadow: "0 12px 40px rgba(180,150,40,0.10), inset 0 1px 0 rgba(255,255,255,0.95)",
             }}>
-              {PHRASES[phraseIdx]}
-            </p>
+              <form onSubmit={handleSubmit}>
+                <input
+                  type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  style={{ ...inputStyle, marginBottom: 12 }}
+                  onFocus={(e) => { e.currentTarget.style.borderColor = "#F9D96A"; e.currentTarget.style.background = "rgba(255,255,255,0.98)"; }}
+                  onBlur={(e) => { e.currentTarget.style.borderColor = "rgba(26,26,26,0.10)"; e.currentTarget.style.background = "rgba(255,255,255,0.75)"; }}
+                />
 
-            {/* Signup form */}
-            <form onSubmit={handleSubmit} style={{ textAlign: "left" }}>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="your@email.com"
-                required
-                style={{
-                  width: "100%",
-                  padding: 16,
-                  borderRadius: 16,
-                  border: "1px solid #F0F0F0",
-                  backgroundColor: "#fff",
-                  fontSize: 16,
-                  fontFamily: "var(--font-inter)",
-                  color: "#1A1A1A",
-                  outline: "none",
-                  boxSizing: "border-box",
-                  marginBottom: 12,
+                <button type="submit" disabled={loading} style={{
+                  width: "100%", padding: "15px 18px",
+                  background: "#1A1A1A", color: "#FFFFFF",
+                  border: "none", borderRadius: 999,
+                  fontFamily: GS, fontSize: 14, fontWeight: 500, letterSpacing: "0.01em",
+                  cursor: "pointer", transition: "all 0.2s ease",
+                  opacity: loading ? 0.7 : 1,
                 }}
-                onFocus={(e) => { e.currentTarget.style.borderColor = "#F9D96A"; e.currentTarget.style.boxShadow = "0 0 0 3px rgba(249,217,106,0.3)"; }}
-                onBlur={(e) => { e.currentTarget.style.borderColor = "#F0F0F0"; e.currentTarget.style.boxShadow = "none"; }}
-              />
-
-              {/* Optional fields toggle */}
-              {!showMore && (
-                <button
-                  type="button"
-                  onClick={() => setShowMore(true)}
-                  style={{
-                    background: "none", border: "none", cursor: "pointer",
-                    fontFamily: "var(--font-inter)", fontSize: 13, color: "#6B6B6B",
-                    marginBottom: 12, padding: 0, textDecoration: "underline",
-                    textDecorationColor: "#ddd",
-                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.background = "#000"; (e.currentTarget as HTMLElement).style.transform = "translateY(-1px)"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.background = "#1A1A1A"; (e.currentTarget as HTMLElement).style.transform = "none"; }}
                 >
-                  Tell us more (optional)
+                  {loading ? "Joining..." : "Reserve my spot \u2192"}
                 </button>
-              )}
+              </form>
 
-              {showMore && (
-                <div style={{ marginBottom: 12, display: "flex", flexDirection: "column", gap: 10 }}>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Full name"
-                    style={{
-                      width: "100%", padding: 14, borderRadius: 12,
-                      border: "1px solid #F0F0F0", backgroundColor: "#fff",
-                      fontSize: 14, fontFamily: "var(--font-inter)", color: "#1A1A1A",
-                      outline: "none", boxSizing: "border-box",
-                    }}
-                  />
-                  <select
-                    value={role}
-                    onChange={(e) => setRole(e.target.value)}
-                    style={{
-                      width: "100%", padding: 14, borderRadius: 12,
-                      border: "1px solid #F0F0F0", backgroundColor: "#fff",
-                      fontSize: 14, fontFamily: "var(--font-inter)", color: role ? "#1A1A1A" : "#999",
-                      outline: "none", boxSizing: "border-box",
-                    }}
-                  >
+              {!showMore ? (
+                <button onClick={() => setShowMore(true)} style={{
+                  background: "none", border: "none", cursor: "pointer",
+                  fontFamily: GS, fontSize: 12, fontWeight: 500, color: TX,
+                  letterSpacing: "0.02em", marginTop: 16, padding: 0,
+                  transition: "opacity 0.2s",
+                }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "0.6"; }}
+                  onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                >
+                  + Tell us more about you
+                </button>
+              ) : (
+                <div style={{ marginTop: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+                  <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full name" style={inputStyle} />
+                  <select value={role} onChange={(e) => setRole(e.target.value)} style={{ ...inputStyle, color: role ? TX : "#999" }}>
                     <option value="">I am a...</option>
-                    <option>Investor</option>
-                    <option>Property Manager</option>
-                    <option>Broker</option>
-                    <option>Developer</option>
-                    <option>Lender</option>
-                    <option>Land</option>
-                    <option>Homeowner</option>
-                    <option>Other</option>
+                    <option>Investor</option><option>Property Manager</option><option>Broker</option>
+                    <option>Developer</option><option>Lender</option><option>Land</option>
+                    <option>Homeowner</option><option>Other</option>
                   </select>
-                  <textarea
-                    value={useCase}
-                    onChange={(e) => setUseCase(e.target.value)}
-                    placeholder="What would you use CASA for?"
-                    rows={3}
-                    style={{
-                      width: "100%", padding: 14, borderRadius: 12,
-                      border: "1px solid #F0F0F0", backgroundColor: "#fff",
-                      fontSize: 14, fontFamily: "var(--font-inter)", color: "#1A1A1A",
-                      outline: "none", boxSizing: "border-box", resize: "vertical",
-                    }}
-                  />
+                  <textarea value={useCase} onChange={(e) => setUseCase(e.target.value)} placeholder="What would you use CASA for?" rows={3} style={{ ...inputStyle, resize: "vertical" as const }} />
                 </div>
               )}
+            </div>
 
-              <button
-                type="submit"
-                style={{
-                  width: "100%",
-                  padding: 14,
-                  borderRadius: 999,
-                  border: "none",
-                  backgroundColor: "#F9D96A",
-                  color: "#1A1A1A",
-                  fontSize: 16,
-                  fontWeight: 500,
-                  fontFamily: "var(--font-inter)",
-                  cursor: "pointer",
-                  marginTop: 4,
-                }}
-              >
-                Reserve my spot &rarr;
-              </button>
-            </form>
+            {/* Sub-copy */}
+            <p style={{ fontFamily: GS, fontSize: 13, fontWeight: 400, color: TX, marginTop: 20 }}>
+              No spam. Just one email when access opens.
+            </p>
           </>
         ) : (
           /* Success state */
           <div style={{ animation: "fadeIn 0.5s ease" }}>
-            <CheckCircle2 style={{ width: 64, height: 64, color: "#F9D96A", margin: "0 auto 20px" }} />
-            <h2 style={{
-              fontFamily: "var(--font-heading)", fontSize: 40, fontWeight: 500,
-              color: "#1A1A1A", marginBottom: 8,
-            }}>
+            <CheckCircle2 style={{ width: 56, height: 56, color: "#F9D96A", margin: "0 auto 20px" }} />
+            <div style={{ fontFamily: GS, fontSize: 22, fontWeight: 500, color: TX, marginBottom: 12 }}>
               You&apos;re on the list.
-            </h2>
-            <p style={{ fontFamily: "var(--font-inter)", fontSize: 18, color: "#1A1A1A", marginBottom: 8 }}>
-              You&apos;re #{waitlistNumber} on the waitlist. We&apos;ll email you when access opens.
-            </p>
-            <p style={{ fontFamily: "var(--font-inter)", fontSize: 14, color: "#6B6B6B" }}>
-              Check your inbox &mdash; you should hear from us within a week.
-            </p>
+            </div>
+            <div style={{ fontFamily: GS, fontSize: 15, fontWeight: 400, color: TX }}>
+              You&apos;re #{position} on the waitlist. We&apos;ll email you when access opens.
+            </div>
           </div>
         )}
+      </div>
 
-        {/* Footer */}
-        <p style={{
-          fontFamily: "var(--font-geist-mono)", fontSize: 11, color: "#999",
-          marginTop: 48,
-        }}>
-          &copy; 2026 CASA &middot; Built with intention
-        </p>
+      {/* Footer */}
+      <div style={{
+        fontFamily: GS, fontSize: 10, fontWeight: 500, color: TX,
+        letterSpacing: "0.18em", textTransform: "uppercase" as const,
+        textAlign: "center", marginTop: 48,
+      }}>
+        &copy; 2026 CASA &middot; Built with intention
       </div>
 
       <style jsx global>{`
