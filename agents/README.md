@@ -1,3 +1,25 @@
+# CASA Agents
+
+Autonomous build system for CASA. Manager agent runs on a schedule and ships code while Raegan is away.
+
+## Architecture
+
+```
+Vercel cron (17 runs/day)
+    └─► /api/agent/run
+        └─► manager.ts
+            ├─► reads master-spec.md + build-log.md
+            ├─► asks Claude to plan & generate code
+            ├─► security.ts reviews changeset
+            │     ├─► hard rules (protected paths, secrets, destructive SQL)
+            │     └─► LLM review (does code match task?)
+            ├─► creates branch + commits files via GitHub API
+            ├─► opens PR
+            ├─► auto-merges if eligible (small + low-risk + approved)
+            ├─► updates build-log.md
+            └─► logs run to Supabase agent_runs table
+```
+
 ## Files
 
 - `master-spec.md` — the blueprint. The agent reads this every run. **Edit this to change CASA's direction.**
