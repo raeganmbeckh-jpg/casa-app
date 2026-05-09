@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { CheckCircle2 } from "lucide-react";
 import MiniOrb from "@/components/MiniOrb";
+import Footer from '@/components/Footer';
 
 const GS = "var(--font-general-sans)";
 const TX = "#1A1A1A";
@@ -204,6 +205,7 @@ export default function WaitlistPage() {
       <style jsx global>{`
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
       `}</style>
+      <Footer />
     </main>
   );
 }

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CasaOrb from "@/components/CasaOrb";
+import Footer from '@/components/Footer';
 import {
   Search,
   ChevronDown,
@@ -461,6 +462,7 @@ export default function LandingPage() {
       {rolesSection}
       {ctaSection}
       {footer}
+      <Footer />
     </main>
   );
 }
