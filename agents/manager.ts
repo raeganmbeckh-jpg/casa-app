@@ -214,21 +214,20 @@ async function createBranchAndCommit(branchName: string, proposal: AgentProposal
 
   let lastSha = baseRef.object.sha;
   for (const file of proposal.files) {
+    // Always try to fetch existing SHA — needed for both creates (overwrites) and updates
     let existingSha: string | undefined;
-    if (file.action === 'update') {
-      try {
-        const existing = await getOctokit().repos.getContent({
-          owner: REPO_OWNER,
-          repo: REPO_NAME,
-          path: file.path,
-          ref: branchName,
-        });
-        if (!Array.isArray(existing.data) && existing.data.type === 'file') {
-          existingSha = existing.data.sha;
-        }
-      } catch {
-        // file doesn't exist yet
+    try {
+      const existing = await getOctokit().repos.getContent({
+        owner: REPO_OWNER,
+        repo: REPO_NAME,
+        path: file.path,
+        ref: branchName,
+      });
+      if (!Array.isArray(existing.data) && existing.data.type === 'file') {
+        existingSha = existing.data.sha;
       }
+    } catch {
+      // 404 — file doesn't exist yet, no SHA needed
     }
 
     const result = await getOctokit().repos.createOrUpdateFileContents({
