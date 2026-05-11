@@ -19,12 +19,10 @@ const REPO_OWNER = 'raeganmbeckh-jpg';
 const REPO_NAME = 'casa-app';
 const BASE_BRANCH = 'main';
 
-const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! });
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-);
-const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+// Lazy-initialized clients — only created at runtime, not during Next.js build
+function getAnthropic() { return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY! }); }
+function getSupabase() { return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!); }
+function getOctokit() { return new Octokit({ auth: process.env.GITHUB_TOKEN }); }
 
 type ProposedFile = {
   path: string;
@@ -49,7 +47,7 @@ export async function runManagerAgent() {
 
     const proposal = await generateProposal(spec, buildLog, recentRuns);
 
-    const review = await reviewChangeset(proposal, anthropic);
+    const review = await reviewChangeset(proposal, getAnthropic());
 
     if (review.decision === 'blocked') {
       await finishRun(runId, {
@@ -74,7 +72,7 @@ export async function runManagerAgent() {
     let autoMerged = false;
     if (isAutoMergeEligible(proposal, review)) {
       try {
-        await octokit.pulls.merge({
+        await getOctokit().pulls.merge({
           owner: REPO_OWNER,
           repo: REPO_NAME,
           pull_number: pr.number,
@@ -165,7 +163,7 @@ ${recentSummary || '(no recent runs)'}
 
 Pick the next highest-priority task and generate the code. Respond with JSON only.`;
 
-  const response = await anthropic.messages.create({
+  const response = await getAnthropic().messages.create({
     model: 'claude-sonnet-4-5-20250929',
     max_tokens: 16000,
     system: systemPrompt,
@@ -188,7 +186,7 @@ Pick the next highest-priority task and generate the code. Respond with JSON onl
 }
 
 async function loadFile(path: string): Promise<string> {
-  const { data } = await octokit.repos.getContent({
+  const { data } = await getOctokit().repos.getContent({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     path,
@@ -201,13 +199,13 @@ async function loadFile(path: string): Promise<string> {
 }
 
 async function createBranchAndCommit(branchName: string, proposal: AgentProposal): Promise<string> {
-  const { data: baseRef } = await octokit.git.getRef({
+  const { data: baseRef } = await getOctokit().git.getRef({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     ref: `heads/${BASE_BRANCH}`,
   });
 
-  await octokit.git.createRef({
+  await getOctokit().git.createRef({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     ref: `refs/heads/${branchName}`,
@@ -219,7 +217,7 @@ async function createBranchAndCommit(branchName: string, proposal: AgentProposal
     let existingSha: string | undefined;
     if (file.action === 'update') {
       try {
-        const existing = await octokit.repos.getContent({
+        const existing = await getOctokit().repos.getContent({
           owner: REPO_OWNER,
           repo: REPO_NAME,
           path: file.path,
@@ -233,7 +231,7 @@ async function createBranchAndCommit(branchName: string, proposal: AgentProposal
       }
     }
 
-    const result = await octokit.repos.createOrUpdateFileContents({
+    const result = await getOctokit().repos.createOrUpdateFileContents({
       owner: REPO_OWNER,
       repo: REPO_NAME,
       path: file.path,
@@ -261,7 +259,7 @@ ${proposal.files.map(f => `- \`${f.path}\` (${f.action})`).join('\n')}
 ---
 *Opened by CASA Manager Agent*`;
 
-  const { data: pr } = await octokit.pulls.create({
+  const { data: pr } = await getOctokit().pulls.create({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     title: `[agent] ${proposal.workspace}: ${proposal.task_summary}`,
@@ -281,7 +279,7 @@ async function updateBuildLog(proposal: AgentProposal, prUrl: string, autoMerged
 
   let existingSha: string | undefined;
   try {
-    const { data } = await octokit.repos.getContent({
+    const { data } = await getOctokit().repos.getContent({
       owner: REPO_OWNER,
       repo: REPO_NAME,
       path: 'agents/build-log.md',
@@ -292,7 +290,7 @@ async function updateBuildLog(proposal: AgentProposal, prUrl: string, autoMerged
     // doesn't exist yet
   }
 
-  await octokit.repos.createOrUpdateFileContents({
+  await getOctokit().repos.createOrUpdateFileContents({
     owner: REPO_OWNER,
     repo: REPO_NAME,
     path: 'agents/build-log.md',
@@ -304,7 +302,7 @@ async function updateBuildLog(proposal: AgentProposal, prUrl: string, autoMerged
 }
 
 async function startRun(): Promise<string> {
-  const { data, error } = await supabase
+  const { data, error } = await getSupabase()
     .from('agent_runs')
     .insert({ status: 'running' })
     .select('id')
@@ -314,14 +312,14 @@ async function startRun(): Promise<string> {
 }
 
 async function finishRun(runId: string, fields: Record<string, any>) {
-  await supabase
+  await getSupabase()
     .from('agent_runs')
     .update({ ...fields, finished_at: new Date().toISOString() })
     .eq('id', runId);
 }
 
 async function getRecentRuns(limit: number) {
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('agent_runs')
     .select('status, workspace, task_summary, started_at')
     .order('started_at', { ascending: false })
@@ -331,7 +329,7 @@ async function getRecentRuns(limit: number) {
 
 async function checkRepeatedBlocks(reason: string) {
   const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-  const { data } = await supabase
+  const { data } = await getSupabase()
     .from('agent_runs')
     .select('id')
     .eq('security_reason', reason)
