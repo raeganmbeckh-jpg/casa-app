@@ -12,3 +12,9 @@
 - **Task:** Build Portfolio Overview page with property cards, occupancy metrics, and NOI dashboard
 - **Files:** src/app/(workspaces)/management/portfolio/page.tsx, src/components/management/PortfolioMetrics.tsx, src/components/management/PropertyGrid.tsx, src/components/management/AlertsFeed.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/2
+
+## 2026-05-11T19:07:03.152Z
+- **Workspace:** investment
+- **Task:** Build Deal Pipeline page with deals table, stage visualization, and filtering
+- **Files:** src/app/(workspaces)/investment/pipeline/page.tsx, src/components/investment/PipelineMetrics.tsx, src/components/investment/DealStageOverview.tsx, src/components/investment/DealFilters.tsx, src/components/investment/DealsTable.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/3
