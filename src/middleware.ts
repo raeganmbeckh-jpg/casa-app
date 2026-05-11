@@ -17,6 +17,11 @@ export function middleware(request: NextRequest) {
     return response
   }
 
+  // API routes are always reachable (cron jobs, webhooks, agent endpoint)
+  if (pathname.startsWith('/api/')) {
+    return NextResponse.next();
+  }
+
   // These routes are ALWAYS public — no gate ever
   const alwaysPublic = [
     '/',
