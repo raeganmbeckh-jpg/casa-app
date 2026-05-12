@@ -18,3 +18,9 @@
 - **Task:** Build Deal Pipeline page with deals table, stage visualization, and filtering
 - **Files:** src/app/(workspaces)/investment/pipeline/page.tsx, src/components/investment/PipelineMetrics.tsx, src/components/investment/DealStageOverview.tsx, src/components/investment/DealFilters.tsx, src/components/investment/DealsTable.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/3
+
+## 2026-05-12T08:50:36.521Z
+- **Workspace:** development
+- **Task:** Build Project Pipeline page with project cards, status tracking, and pro forma summaries
+- **Files:** src/app/(workspaces)/development/pipeline/page.tsx, src/components/development/PipelineMetrics.tsx, src/components/development/ProjectStageOverview.tsx, src/components/development/ProjectFilters.tsx, src/components/development/ProjectsTable.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/5
