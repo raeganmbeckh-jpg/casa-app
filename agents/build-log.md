@@ -24,3 +24,9 @@
 - **Task:** Build Project Pipeline page with project cards, status tracking, and pro forma summaries
 - **Files:** src/app/(workspaces)/development/pipeline/page.tsx, src/components/development/PipelineMetrics.tsx, src/components/development/ProjectStageOverview.tsx, src/components/development/ProjectFilters.tsx, src/components/development/ProjectsTable.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/5
+
+## 2026-05-13T08:08:49.126Z
+- **Workspace:** land
+- **Task:** Build Parcel Search & Map View page with search filters, map interface, and parcel results table
+- **Files:** src/app/(workspaces)/land/parcels/page.tsx, src/components/land/ParcelMetrics.tsx, src/components/land/ParcelSearchFilters.tsx, src/components/land/ParcelMap.tsx, src/components/land/ParcelResults.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/6
