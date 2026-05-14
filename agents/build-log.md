@@ -30,3 +30,9 @@
 - **Task:** Build Parcel Search & Map View page with search filters, map interface, and parcel results table
 - **Files:** src/app/(workspaces)/land/parcels/page.tsx, src/components/land/ParcelMetrics.tsx, src/components/land/ParcelSearchFilters.tsx, src/components/land/ParcelMap.tsx, src/components/land/ParcelResults.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/6
+
+## 2026-05-14T08:18:28.363Z
+- **Workspace:** brokerage
+- **Task:** Build Listing Pipeline page with listing cards, status tracking, and performance metrics
+- **Files:** src/app/(workspaces)/brokerage/pipeline/page.tsx, src/components/brokerage/PipelineMetrics.tsx, src/components/brokerage/ListingStageOverview.tsx, src/components/brokerage/ListingFilters.tsx, src/components/brokerage/ListingsTable.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/7
