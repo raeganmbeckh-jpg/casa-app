@@ -36,3 +36,9 @@
 - **Task:** Build Listing Pipeline page with listing cards, status tracking, and performance metrics
 - **Files:** src/app/(workspaces)/brokerage/pipeline/page.tsx, src/components/brokerage/PipelineMetrics.tsx, src/components/brokerage/ListingStageOverview.tsx, src/components/brokerage/ListingFilters.tsx, src/components/brokerage/ListingsTable.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/7
+
+## 2026-05-15T08:19:11.202Z
+- **Workspace:** lending
+- **Task:** Build Loan Pipeline page with loan cards, status tracking, and underwriting metrics
+- **Files:** src/app/(workspaces)/lending/pipeline/page.tsx, src/components/lending/PipelineMetrics.tsx, src/components/lending/LoanStageOverview.tsx, src/components/lending/LoanFilters.tsx, src/components/lending/LoansTable.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/8
