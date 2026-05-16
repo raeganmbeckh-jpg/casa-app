@@ -42,3 +42,9 @@
 - **Task:** Build Loan Pipeline page with loan cards, status tracking, and underwriting metrics
 - **Files:** src/app/(workspaces)/lending/pipeline/page.tsx, src/components/lending/PipelineMetrics.tsx, src/components/lending/LoanStageOverview.tsx, src/components/lending/LoanFilters.tsx, src/components/lending/LoansTable.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/8
+
+## 2026-05-16T08:23:30.707Z
+- **Workspace:** management
+- **Task:** Build Property Detail page with single-property deep dive, agent commentary, and key metrics
+- **Files:** src/app/(workspaces)/management/property/[id]/page.tsx, src/components/management/PropertyHeader.tsx, src/components/management/PropertyMetrics.tsx, src/components/management/AgentCommentary.tsx, src/components/management/UnitMix.tsx, src/components/management/FinancialSnapshot.tsx, src/components/management/MaintenanceAlerts.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/9
