@@ -48,3 +48,9 @@
 - **Task:** Build Property Detail page with single-property deep dive, agent commentary, and key metrics
 - **Files:** src/app/(workspaces)/management/property/[id]/page.tsx, src/components/management/PropertyHeader.tsx, src/components/management/PropertyMetrics.tsx, src/components/management/AgentCommentary.tsx, src/components/management/UnitMix.tsx, src/components/management/FinancialSnapshot.tsx, src/components/management/MaintenanceAlerts.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/9
+
+## 2026-05-17T08:08:15.846Z
+- **Workspace:** investment
+- **Task:** Build Underwriting Engine page with IRR/cap rate calculator, NOI analysis, and sensitivity modeling
+- **Files:** src/app/(workspaces)/investment/underwriting/page.tsx, src/components/investment/UnderwritingHeader.tsx, src/components/investment/PropertyInputs.tsx, src/components/investment/ReturnsCalculator.tsx, src/components/investment/SensitivityTable.tsx, src/components/investment/NOIBreakdown.tsx, src/components/investment/AssumptionsPanel.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/10
