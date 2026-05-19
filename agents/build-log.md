@@ -60,3 +60,9 @@
 - **Task:** Build Pro Forma Modeler page with cost breakdown, ROI calculator, and sensitivity analysis
 - **Files:** src/app/(workspaces)/development/proforma/page.tsx, src/components/development/ProFormaHeader.tsx, src/components/development/CostInputs.tsx, src/components/development/ROICalculator.tsx, src/components/development/CostBreakdown.tsx, src/components/development/SensitivityAnalysis.tsx, src/components/development/AssumptionsPanel.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/11
+
+## 2026-05-19T08:05:43.233Z
+- **Workspace:** land
+- **Task:** Build Zoning & Entitlement Analyzer page with zoning classification, permitted uses, and rezoning potential analysis
+- **Files:** src/app/(workspaces)/land/zoning/[id]/page.tsx, src/components/land/ZoningHeader.tsx, src/components/land/ZoningClassification.tsx, src/components/land/PermittedUses.tsx, src/components/land/RezoningPotential.tsx, src/components/land/EntitlementTimeline.tsx, src/components/land/ZoningAgentAnalysis.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/12
