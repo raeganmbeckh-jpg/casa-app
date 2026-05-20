@@ -66,3 +66,9 @@
 - **Task:** Build Zoning & Entitlement Analyzer page with zoning classification, permitted uses, and rezoning potential analysis
 - **Files:** src/app/(workspaces)/land/zoning/[id]/page.tsx, src/components/land/ZoningHeader.tsx, src/components/land/ZoningClassification.tsx, src/components/land/PermittedUses.tsx, src/components/land/RezoningPotential.tsx, src/components/land/EntitlementTimeline.tsx, src/components/land/ZoningAgentAnalysis.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/12
+
+## 2026-05-20T08:11:43.384Z
+- **Workspace:** brokerage
+- **Task:** Build CMA Generator page with comparable property analysis, pricing recommendations, and market metrics
+- **Files:** src/app/(workspaces)/brokerage/cma/page.tsx, src/components/brokerage/CMAHeader.tsx, src/components/brokerage/SubjectProperty.tsx, src/components/brokerage/ComparableProperties.tsx, src/components/brokerage/PricingRecommendation.tsx, src/components/brokerage/MarketMetrics.tsx, src/components/brokerage/AgentConsensus.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/13
