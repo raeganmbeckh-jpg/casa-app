@@ -72,3 +72,9 @@
 - **Task:** Build CMA Generator page with comparable property analysis, pricing recommendations, and market metrics
 - **Files:** src/app/(workspaces)/brokerage/cma/page.tsx, src/components/brokerage/CMAHeader.tsx, src/components/brokerage/SubjectProperty.tsx, src/components/brokerage/ComparableProperties.tsx, src/components/brokerage/PricingRecommendation.tsx, src/components/brokerage/MarketMetrics.tsx, src/components/brokerage/AgentConsensus.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/13
+
+## 2026-05-21T08:57:00.563Z
+- **Workspace:** lending
+- **Task:** Build Underwriting Dashboard page with DSCR/LTV/debt yield calculators and stress testing
+- **Files:** src/app/(workspaces)/lending/underwriting/[id]/page.tsx, src/components/lending/UnderwritingHeader.tsx, src/components/lending/LoanInputs.tsx, src/components/lending/CoverageMetrics.tsx, src/components/lending/StressTestScenarios.tsx, src/components/lending/CollateralSummary.tsx, src/components/lending/AgentRiskAssessment.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/14
