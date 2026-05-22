@@ -78,3 +78,9 @@
 - **Task:** Build Underwriting Dashboard page with DSCR/LTV/debt yield calculators and stress testing
 - **Files:** src/app/(workspaces)/lending/underwriting/[id]/page.tsx, src/components/lending/UnderwritingHeader.tsx, src/components/lending/LoanInputs.tsx, src/components/lending/CoverageMetrics.tsx, src/components/lending/StressTestScenarios.tsx, src/components/lending/CollateralSummary.tsx, src/components/lending/AgentRiskAssessment.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/14
+
+## 2026-05-22T08:38:31.696Z
+- **Workspace:** management
+- **Task:** Build Tenant Management page with rent roll, lease tracking, and tenant communication log
+- **Files:** src/app/(workspaces)/management/tenants/page.tsx, src/components/management/TenantMetrics.tsx, src/components/management/TenantFilters.tsx, src/components/management/LeaseExpirations.tsx, src/components/management/RentRoll.tsx, src/components/management/CommunicationLog.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/15
