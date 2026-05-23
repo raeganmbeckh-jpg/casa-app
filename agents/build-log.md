@@ -84,3 +84,9 @@
 - **Task:** Build Tenant Management page with rent roll, lease tracking, and tenant communication log
 - **Files:** src/app/(workspaces)/management/tenants/page.tsx, src/components/management/TenantMetrics.tsx, src/components/management/TenantFilters.tsx, src/components/management/LeaseExpirations.tsx, src/components/management/RentRoll.tsx, src/components/management/CommunicationLog.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/15
+
+## 2026-05-23T08:31:46.567Z
+- **Workspace:** investment
+- **Task:** Build QIS (Quantum Intelligence Score) Dashboard with multi-agent scoring, risk breakdown, and market positioning
+- **Files:** src/app/(workspaces)/investment/qis/[id]/page.tsx, src/components/investment/QISHeader.tsx, src/components/investment/QISScoreCard.tsx, src/components/investment/AgentScores.tsx, src/components/investment/RiskBreakdown.tsx, src/components/investment/MarketPositioning.tsx, src/components/investment/ConsensusAnalysis.tsx, src/components/investment/HistoricalPerformance.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/16
