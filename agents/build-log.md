@@ -90,3 +90,9 @@
 - **Task:** Build QIS (Quantum Intelligence Score) Dashboard with multi-agent scoring, risk breakdown, and market positioning
 - **Files:** src/app/(workspaces)/investment/qis/[id]/page.tsx, src/components/investment/QISHeader.tsx, src/components/investment/QISScoreCard.tsx, src/components/investment/AgentScores.tsx, src/components/investment/RiskBreakdown.tsx, src/components/investment/MarketPositioning.tsx, src/components/investment/ConsensusAnalysis.tsx, src/components/investment/HistoricalPerformance.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/16
+
+## 2026-05-24T08:54:56.114Z
+- **Workspace:** development
+- **Task:** Build Construction Schedule page with Gantt chart, critical path visualization, and weather/permit risk overlay
+- **Files:** src/app/(workspaces)/development/schedule/[id]/page.tsx, src/components/development/ScheduleHeader.tsx, src/components/development/CriticalPath.tsx, src/components/development/GanttChart.tsx, src/components/development/RiskOverlay.tsx, src/components/development/MilestoneTracker.tsx, src/components/development/WeatherImpact.tsx, src/components/development/PermitDependencies.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/17
