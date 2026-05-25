@@ -96,3 +96,9 @@
 - **Task:** Build Construction Schedule page with Gantt chart, critical path visualization, and weather/permit risk overlay
 - **Files:** src/app/(workspaces)/development/schedule/[id]/page.tsx, src/components/development/ScheduleHeader.tsx, src/components/development/CriticalPath.tsx, src/components/development/GanttChart.tsx, src/components/development/RiskOverlay.tsx, src/components/development/MilestoneTracker.tsx, src/components/development/WeatherImpact.tsx, src/components/development/PermitDependencies.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/17
+
+## 2026-05-25T08:21:57.820Z
+- **Workspace:** land
+- **Task:** Build Highest & Best Use Calculator page with use case analysis, financial projections, and rezoning scenarios
+- **Files:** src/app/(workspaces)/land/hbu/[id]/page.tsx, src/components/land/HBUHeader.tsx, src/components/land/UseCaseAnalysis.tsx, src/components/land/FinancialProjections.tsx, src/components/land/RezoningScenarios.tsx, src/components/land/DevelopmentTimeline.tsx, src/components/land/AgentRecommendations.tsx, src/components/land/ComparableAnalysis.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/18
