@@ -102,3 +102,9 @@
 - **Task:** Build Highest & Best Use Calculator page with use case analysis, financial projections, and rezoning scenarios
 - **Files:** src/app/(workspaces)/land/hbu/[id]/page.tsx, src/components/land/HBUHeader.tsx, src/components/land/UseCaseAnalysis.tsx, src/components/land/FinancialProjections.tsx, src/components/land/RezoningScenarios.tsx, src/components/land/DevelopmentTimeline.tsx, src/components/land/AgentRecommendations.tsx, src/components/land/ComparableAnalysis.tsx
 - **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/18
+
+## 2026-05-26T08:35:02.769Z
+- **Workspace:** brokerage
+- **Task:** Build Buyer Matching page with buyer profiles, listing compatibility scoring, and outreach tracking
+- **Files:** src/app/(workspaces)/brokerage/buyers/page.tsx, src/components/brokerage/BuyerMatchingHeader.tsx, src/components/brokerage/ActiveListings.tsx, src/components/brokerage/BuyerProfiles.tsx, src/components/brokerage/MatchRecommendations.tsx, src/components/brokerage/OutreachTracker.tsx, src/components/brokerage/AgentMatchInsights.tsx
+- **PR:** https://github.com/raeganmbeckh-jpg/casa-app/pull/19
