@@ -1,8 +1,12 @@
 # CASA Master Spec
 
-**Version:** 1.0
+**Version:** 2.0
 **Owner:** Raegan Beck
-**Last Updated:** May 2026
+**Last Updated:** June 22, 2026
+
+---
+
+> **What changed from v1.0:** Added Section 4.5 (Codebase Map — real folder paths, design tokens, fonts), Section 5.5 (Design North Star — the tenant page is the reference for every new page), and Section 5.6 (Pre-PR Self-Check — agent must verify its code compiles before opening a PR). Cadence in Section 5 dialed down from 17 runs/day to one polished page per night. Build order in Section 7 revised to use the existing shell, not invent new layouts.
 
 ---
 
@@ -34,7 +38,7 @@ CASA is the **Bloomberg Terminal for Real Estate** — a swarm-intelligence plat
 **Pages (8):**
 1. Portfolio Overview — all properties, occupancy, NOI, alerts
 2. Property Detail — single-property deep dive with agent commentary
-3. Tenant Management — rent roll, lease tracking, communication log
+3. Tenant Management — rent roll, lease tracking, communication log **(already built — DESIGN REFERENCE)**
 4. Maintenance & Operations — active tickets, vendor scoring, predictive HVAC
 5. Financials — P&L, cash flow, accounting integration
 6. Compliance Center — lease compliance, fair housing, local ordinance tracking
@@ -151,34 +155,233 @@ CASA is the **Bloomberg Terminal for Real Estate** — a swarm-intelligence plat
 
 ---
 
+### 4.5 Codebase Map — READ THIS BEFORE WRITING ANY CODE
+
+The agent MUST follow the real folder structure of this app. The map below is the source of truth. Anything that contradicts this map is wrong.
+
+#### 4.5.1 Folder Structure (THE RULE)
+
+The CASA app is a Next.js 15 App Router project. Routes live under `src/app/`.
+
+The unified workspace shell already exists at:
+
+```
+src/app/workspace/[role]/layout.tsx   <- THE SHELL (do not modify)
+src/app/workspace/[role]/page.tsx     <- THE DASHBOARD (currently shared)
+```
+
+`[role]` is a dynamic route segment. Valid roles: `manager`, `investor`, `developer`, `land`, `broker`, `lender`.
+
+Pages the agent creates MUST be placed at one of these path patterns:
+
+| Page Type | Correct Folder Path |
+|---|---|
+| Role-specific sub-page | `src/app/workspace/<role>/<subpath>/page.tsx` |
+| Reusable workspace component | `src/components/workspace/<ComponentName>.tsx` |
+| Role-specific component | `src/components/<role>/<ComponentName>.tsx` |
+| Shared UI primitive | `src/components/ui/<ComponentName>.tsx` |
+
+Real examples that the agent MUST follow:
+
+- Manager's Tenants page → `src/app/workspace/manager/tenants/page.tsx`
+- Investor's Deal Pipeline → `src/app/workspace/investor/pipeline/page.tsx`
+- Developer's Pro Forma → `src/app/workspace/developer/proforma/page.tsx`
+- Land's Parcel Search → `src/app/workspace/land/parcels/page.tsx`
+- Broker's CMA Generator → `src/app/workspace/broker/cma/page.tsx`
+- Lender's Underwriting → `src/app/workspace/lender/underwriting/page.tsx`
+
+The sub-path slugs are defined in `src/components/workspace/sidebarConfig.ts` — the agent should read that file to confirm the exact slug for the page it's building.
+
+#### 4.5.2 FORBIDDEN Folder Patterns (NEVER USE)
+
+- `src/app/(workspaces)/...` — **DOES NOT EXIST.** This is the broken pattern that caused 19 failed PRs in May 2026. Never create files at any path containing parentheses.
+- `src/app/workspace/[role]/<role>/...` — Don't double-nest the role.
+- `src/pages/...` — This is Pages Router. The app uses App Router. Wrong directory entirely.
+- Any layout file at `src/app/workspace/<role>/layout.tsx` — That would shadow the shell. The shell layout is owned by `[role]/layout.tsx`. New role-specific dashboards override only `page.tsx`.
+
+#### 4.5.3 The Existing Shell — USE IT, DON'T REBUILD IT
+
+The workspace shell is already built and lives at:
+
+- `src/app/workspace/[role]/layout.tsx` — wraps every workspace page in WorkspaceShell
+- `src/components/workspace/WorkspaceShell.tsx` — cream substrate + sidebar + topbar + Cmd-K palette
+- `src/components/workspace/Sidebar.tsx` — role-aware nav (reads sidebarConfig)
+- `src/components/workspace/Topbar.tsx` — breadcrumb, live UPD clock, Cmd-K trigger
+- `src/components/workspace/CommandPalette.tsx` — Cmd-K search modal
+- `src/components/workspace/sidebarConfig.ts` — single source of truth for role nav
+
+The agent MUST NOT create new layout files, shells, sidebars, or command palettes. Pages it creates render INSIDE the existing shell automatically. The page file should contain only the page's own content, starting with the editorial header and ending with the data.
+
+#### 4.5.4 Design Tokens — Use Exactly These Values
+
+The agent must use these exact tokens in every file. No new colors. No new fonts. No hardcoded font names.
+
+**Colors:**
+
+```ts
+const INK      = "#111111";              // primary type
+const CREAM    = "#FAFAF7";              // page background
+const HAIRLINE = "rgba(17,17,17,0.08)";  // borders
+const BUTTER   = "#F9D96A";              // the one accent — use SPARINGLY
+const DIM      = "rgba(17,17,17,0.45)";  // dimmest text (labels)
+const MID      = "rgba(17,17,17,0.65)";  // body text
+const RED      = "#B91C1C";              // negative deltas, urgent flags
+const GREEN    = "#15803D";              // positive deltas
+```
+
+**Fonts (via CSS variables, NEVER hardcoded font names):**
+
+```ts
+fontFamily: "var(--font-heading)"      // Cormorant Garamond — display headlines only
+fontFamily: "var(--font-inter)"        // Inter — body, UI, default
+fontFamily: "var(--font-geist-mono)"   // Geist Mono — numbers, labels, terminal feel
+```
+
+**Forbidden patterns:**
+
+- Hardcoded `fontFamily: "Cormorant Garamond, serif"` — use the CSS variable
+- Any background other than cream or white
+- Any gray shades — use the `rgba(17,17,17, X)` opacity scale
+- Rounded corners larger than `rounded` (4px) — Bloomberg-density means crisp edges
+- Drop shadows except very subtle ones on modals (`0 24px 60px -20px rgba(17,17,17,0.18)`)
+
+#### 4.5.5 Component Library — Reuse, Don't Reinvent
+
+Before creating a new component, the agent should check if a similar one already exists:
+
+- KPI strip with sparklines → see `src/app/workspace/[role]/page.tsx` (Kpi and Sparkline)
+- Activity feed row → see `src/app/workspace/[role]/page.tsx` (ActivityRow)
+- Hairline-bordered card → cream bg-white with border colored HAIRLINE
+- Editorial section header → mono uppercase label + Cormorant headline with one italic word
+
+---
+
 ## 5. Manager Agent Operating Rules
 
 **Identity:** You are CASA's Manager Agent. You build CASA autonomously while Raegan is unavailable.
 
-**Cadence:** Hourly 10pm–7am, every 2 hours 7am–10pm. 17 runs/day.
+**Cadence:** One run per night at 8am UTC (1am Pacific). One polished page per run. That's it. Better to ship one beautiful page per night than five broken ones.
 
 **Each run:**
-1. Read this spec.
-2. Read the build log (`/agents/build-log.md`) to see what's been done.
-3. Pick the highest-priority unfinished work item that fits in one run (~30-60 min of code).
-4. Generate the code.
-5. Submit to Security Agent for review.
-6. On approval, commit to a feature branch with descriptive message.
-7. Update the build log.
-8. Open a PR to main (Raegan reviews and merges).
+1. Read this spec start to finish.
+2. Read the build log (`agents/build-log.md`) to see what's been done.
+3. Read `src/components/workspace/sidebarConfig.ts` to confirm route slugs.
+4. Read `src/app/workspace/management/tenants/page.tsx` to refresh on the design north star (see Section 5.5).
+5. Pick ONE highest-priority unfinished page that fits in one run.
+6. Generate the code for that single page, matching the design north star.
+7. Run the Pre-PR Self-Check (Section 5.6). If ANY check fails, fix it before opening the PR.
+8. Submit to Security Agent for review.
+9. On approval, commit to a feature branch with a descriptive message.
+10. Update the build log with: page built, files created, design notes, any deviations from the north star.
+11. Open a PR to main. Wait for Raegan to review and merge.
 
 **Workspace prioritization:**
-- Rotate. Don't go deep on one workspace and ignore others.
-- After completing a page in workspace A, next run picks from workspace B.
-- Foundation work (shared components, data layer) gets priority when blocking.
+- Rotate fairly. Don't go deep on one workspace and ignore others.
+- After completing a page in workspace A, the next run picks from workspace B.
+- Foundation work (shared components, data layer) gets priority only when actually blocking a page.
 
 **Hard rules:**
 - Never delete files without security agent approval.
 - Never modify the landing page (hero, particle orb, waitlist) without explicit Raegan instruction.
+- Never touch the existing workspace shell files (Section 4.5.3) without explicit instruction.
 - Never touch Supabase migrations without security agent approval.
 - Never commit secrets, API keys, or credentials.
 - Always preserve existing functionality — additive changes only unless instructed.
 - Never auto-merge to main. Always open a PR.
+
+---
+
+### 5.5 Design North Star — STUDY BEFORE BUILDING
+
+**The reference page:** `src/app/workspace/management/tenants/page.tsx`
+
+This is the page Raegan personally loves and considers the visual standard. Every new page the agent builds MUST match the patterns it establishes. Before writing a single line of a new page, the agent reads this file and identifies the patterns it will reuse.
+
+**Patterns the agent extracts and reuses:**
+
+1. **Header block:**
+   - Mono uppercase label like `MANAGEMENT · TENANTS` in Geist Mono, tracking-wide, dim color
+   - Cormorant Garamond headline with one italic word, e.g. `Tenant *Roll*.` — note the period
+   - Inter subtitle in MID color, max ~640px wide, describing what the page does and why
+
+2. **KPI strip:**
+   - Hairline-bordered grid, cream backgrounds, mono labels in caps
+   - 3xl Cormorant numbers
+   - Optional butter yellow accent border on the highlighted KPI (use sparingly — one per strip)
+   - Sparklines top-right, 56px wide, color-coded green/red by direction
+
+3. **Section headers within the page:**
+   - Cormorant + italic mix, e.g. `Lease *pipeline*` and `Rent *roll*`
+   - Mono uppercase subheadline underneath in DIM
+
+4. **Data tables:**
+   - Mono numbers (tabular-nums)
+   - Hairline row dividers
+   - Hover lifts row 2px and tints background to `SOFT_HOVER` (`rgba(17,17,17,0.035)`)
+   - Risk bars rendered as colored fill on a hairline track
+   - Sentiment dots (red/amber/green circles)
+   - URGENT badges in butter yellow
+
+5. **Spacing & density:**
+   - Lots of cream breathing room between sections (~80px vertical gaps)
+   - Tight internal spacing within data tables (Bloomberg-density)
+   - Page padding: `px-6 py-8 lg:px-10`
+
+6. **Animation:**
+   - Use framer-motion for hover lifts, never CSS transitions for movement
+   - Spring transitions: `{ type: "spring", stiffness: 400, damping: 30 }`
+   - No fade-ins on page load (the page just appears — terminal feel)
+
+**Forbidden design patterns:**
+
+- Bootstrap-style cards (rounded with thick borders and drop shadows)
+- Multiple competing accent colors (only butter yellow accents)
+- Centered marketing-style hero sections inside the workspace
+- Sans-serif headlines (always Cormorant for display)
+- Pixel-perfect cloning of other SaaS platforms (no Stripe-clone, no Linear-clone, no Notion-clone — CASA has its own voice)
+
+---
+
+### 5.6 Pre-PR Self-Check — RUN BEFORE EVERY PR
+
+Before the agent opens a PR, it MUST verify every box below. If ANY check fails, the agent fixes the issue first. If it can't fix it, it logs the problem and does NOT open the PR.
+
+**Folder & file checks:**
+
+- [ ] File path matches Section 4.5.1 exactly (e.g. `src/app/workspace/manager/tenants/page.tsx`)
+- [ ] File path contains NO parentheses
+- [ ] File path uses an existing role name from sidebarConfig (`manager`, `investor`, `developer`, `land`, `broker`, `lender`)
+- [ ] No new `layout.tsx` files in role folders (shell layout lives at `[role]/layout.tsx`)
+
+**Import & syntax checks:**
+
+- [ ] All imports resolve (component files exist, lucide-react icons exist, framer-motion is used correctly)
+- [ ] File starts with `"use client";` if it uses hooks, motion, or event handlers
+- [ ] No hardcoded font names — only `var(--font-heading)`, `var(--font-inter)`, `var(--font-geist-mono)`
+- [ ] No hardcoded gray colors — only the `rgba(17,17,17, X)` opacity scale from Section 4.5.4
+- [ ] No external image URLs (use local `public/` assets only)
+- [ ] No `localStorage`, `sessionStorage`, or any browser storage API calls (not supported in this environment)
+
+**Design checks (per Section 5.5):**
+
+- [ ] Page header has a mono uppercase label, a Cormorant headline with one italic word, and a MID-color subtitle
+- [ ] KPI strip uses hairline grid with mono labels and 3xl Cormorant numbers
+- [ ] Data tables use tabular-nums and hairline row dividers
+- [ ] Butter yellow used only as a SINGLE accent, never as a background fill on large surfaces
+- [ ] Page padding is `px-6 py-8 lg:px-10` (or matches the tenant page exactly)
+
+**Mock data check:**
+
+- [ ] Mock data is realistic (real-sounding names, realistic dollar amounts, dates that match the current era)
+- [ ] No lorem ipsum, no placeholder strings like "TODO" or "Coming soon"
+
+**If all boxes are checked,** the agent opens the PR with a description that includes:
+
+1. Workspace and page name
+2. Files created (with paths)
+3. Rationale (why this page is next in priority)
+4. Design notes (which patterns from the tenant page were reused)
+5. The pre-PR checklist with all boxes ticked
 
 ---
 
@@ -190,12 +393,15 @@ CASA is the **Bloomberg Terminal for Real Estate** — a swarm-intelligence plat
 
 **Block commits that:**
 - Delete or rename files outside the agent's stated scope
-- Modify protected paths (`/landing/*`, `/supabase/migrations/*`, `.env*`, `vercel.json`)
+- Modify protected paths (`/landing/*`, `/supabase/migrations/*`, `.env*`, `vercel.json`, any file under `src/app/workspace/[role]/layout.tsx` or `src/components/workspace/`)
 - Contain hardcoded secrets, API keys, tokens
 - Drop database tables or columns
 - Disable existing tests
 - Remove the security agent itself or modify these rules
 - Don't match the stated work item from the build log
+- Place files at any path containing parentheses (e.g. `src/app/(workspaces)/...`)
+- Hardcode font names instead of using CSS variables
+- Create a new `layout.tsx` under `src/app/workspace/<role>/` (shell layout owns this)
 
 **On block:**
 - Halt the commit
@@ -211,22 +417,40 @@ CASA is the **Bloomberg Terminal for Real Estate** — a swarm-intelligence plat
 
 Manager agent decides, but with these constraints:
 
-**Foundation first (week 1):**
-- Shared layout + navigation across all 6 workspaces
-- Auth + role-based routing
-- Shared Supabase schema for cross-workspace data
-- Agent orchestration framework
-- Build log system
+**Foundation status (June 2026): COMPLETE.**
 
-**Then rotate** through workspaces, building one page per run, never more than 2 consecutive pages in the same workspace.
+The following exist and are not to be touched:
+
+- Workspace shell (sidebar + topbar + command palette)
+- Role-based routing at `src/app/workspace/[role]/`
+- Sidebar config at `src/components/workspace/sidebarConfig.ts`
+- Manager dashboard at `src/app/workspace/[role]/page.tsx` (currently shared across all roles)
+- Tenant Roll page at `src/app/workspace/management/tenants/page.tsx` (design north star)
+
+**Current phase: Workspace page build-out.**
+
+The agent builds the remaining ~47 pages across the 6 workspaces, one per night, rotating fairly. Suggested next-up order (the agent can override with reason logged in the build log):
+
+1. Manager / Properties — `src/app/workspace/manager/properties/page.tsx`
+2. Investor / Deal Pipeline — `src/app/workspace/investor/pipeline/page.tsx`
+3. Developer / Project Pipeline — `src/app/workspace/developer/projects/page.tsx`
+4. Land / Parcel Search — `src/app/workspace/land/parcels/page.tsx`
+5. Broker / Listing Pipeline — `src/app/workspace/broker/listings/page.tsx`
+6. Lender / Loan Pipeline — `src/app/workspace/lender/pipeline/page.tsx`
+
+Then rotate through the remaining pages by depth, never more than 2 consecutive pages in the same workspace.
+
+The agent migrates `src/app/workspace/management/tenants/page.tsx` to `src/app/workspace/manager/tenants/page.tsx` at some point during the Manager workspace pass, redirecting the old URL to the new one. This is the one architectural cleanup needed.
 
 ---
 
 ## 8. Success Metrics
 
-- Pages shipped per week (target: 12+)
-- Security agent block rate (healthy: 5-15%)
-- Build log clarity (Raegan understands every commit in <30 seconds)
+- **Pages shipped per week:** 5-7 polished pages (one per night, allowing for missed runs)
+- **PR pass rate on Vercel preview build:** 100% (the Pre-PR Self-Check exists to make this true)
+- **Security agent block rate:** 5-15% (healthy)
+- **Build log clarity:** Raegan understands every commit in <30 seconds
+- **Design consistency:** Every new page passes a side-by-side visual review against the tenant page
 - Zero rogue deletions
 - Zero exposed secrets
 
@@ -238,3 +462,4 @@ Manager agent decides, but with these constraints:
 - Public marketing site changes (Raegan owns)
 - Pricing & billing logic (Phase 3)
 - Mobile apps (Phase 3)
+- Modifying the existing workspace shell (locked until Raegan signs off on changes)
