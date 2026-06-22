@@ -1,79 +1,294 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { ArrowUpRight } from "lucide-react";
 import {
-  Building2,
-  TrendingUp,
-  Layers,
-  Handshake,
-  Landmark,
-  MapPin,
-} from "lucide-react";
-import { ROLES } from "@/lib/roles";
+  ROLES_ORDERED,
+  ROLE_CONFIGS,
+  buildHref,
+} from "@/components/workspace/sidebarConfig";
 
-const iconMap: Record<string, React.ComponentType<{ className?: string; style?: React.CSSProperties }>> = {
-  Building2, TrendingUp, Layers, Handshake, Landmark, MapPin,
-};
+const INK = "#111111";
+const CREAM = "#FAFAF7";
+const HAIRLINE = "rgba(17,17,17,0.08)";
+const BUTTER = "#F9D96A";
+const DIM = "rgba(17,17,17,0.45)";
+const MID = "rgba(17,17,17,0.65)";
 
-const Y = "#F9D96A";
-const YD = "#E8C84A";
-const TX = "#1A1A1A";
-const TX2 = "#6B6B6B";
-const BD = "#F0F0F0";
-const GLOW = "0 8px 40px rgba(249,217,106,0.22)";
-
-export default function RoleSelector() {
-  const router = useRouter();
-
-  function selectRole(roleId: string) {
-    localStorage.setItem("casa-role", roleId);
-    router.push("/workspace");
-  }
-
+export default function SelectRolePage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center p-8" style={{ backgroundColor: "#fff" }}>
-      {/* Nav */}
-      <div className="fixed top-0 left-0 right-0 z-50 px-6 h-16 flex items-center" style={{ backgroundColor: "rgba(255,255,255,0.95)", backdropFilter: "blur(20px)", borderBottom: `1px solid ${BD}` }}>
-        <a href="/" style={{ fontFamily: "var(--font-heading)", fontSize: 22, fontWeight: 700, color: TX, letterSpacing: -0.5, textDecoration: "none" }}>CASA</a>
-      </div>
+    <div
+      className="min-h-screen antialiased"
+      style={{
+        backgroundColor: CREAM,
+        color: INK,
+        fontFamily: "var(--font-inter)",
+      }}
+    >
+      <div
+        className="fixed inset-x-0 top-0 z-30 h-px"
+        style={{ backgroundColor: HAIRLINE }}
+      />
 
-      <div className="text-center mb-14 pt-16">
-        <h1 className="text-4xl sm:text-5xl mb-3" style={{ fontFamily: "var(--font-heading)", color: TX, fontWeight: 600 }}>
-          Who do you want to be today?
-        </h1>
-        <p className="text-base" style={{ fontFamily: "var(--font-inter)", color: TX2 }}>
-          Select a role to customize your workspace
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5 max-w-4xl w-full">
-        {ROLES.map((role) => {
-          const Icon = iconMap[role.icon];
-          return (
-            <button
-              key={role.id}
-              onClick={() => selectRole(role.id)}
-              className="group flex flex-col items-start p-7 rounded-2xl border text-left transition-all duration-500 hover:-translate-y-1"
-              style={{ borderColor: BD, backgroundColor: "#fff", boxShadow: "0 1px 3px rgba(0,0,0,0.04)" }}
-              onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = GLOW; }}
-              onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.boxShadow = "0 1px 3px rgba(0,0,0,0.04)"; }}
+      <header className="border-b" style={{ borderColor: HAIRLINE }}>
+        <div className="max-w-[1280px] mx-auto px-8 h-12 flex items-center justify-between">
+          <Link
+            href="/"
+            className="flex items-baseline gap-1.5"
+            style={{ color: INK }}
+          >
+            <span
+              className="text-[20px] leading-none"
+              style={{
+                fontFamily: "var(--font-heading)",
+                fontWeight: 500,
+                letterSpacing: "-0.01em",
+              }}
             >
-              <div
-                className="p-3.5 rounded-xl mb-5 transition-all duration-500 group-hover:scale-110"
-                style={{ backgroundColor: `${Y}30` }}
-              >
-                <Icon className="w-6 h-6" style={{ color: YD }} />
-              </div>
-              <h2 className="text-lg mb-1" style={{ fontFamily: "var(--font-heading)", color: TX, fontWeight: 700 }}>
-                {role.label}
-              </h2>
-              <p className="text-sm leading-relaxed" style={{ fontFamily: "var(--font-inter)", color: TX2 }}>
-                {role.description}
-              </p>
-            </button>
-          );
-        })}
-      </div>
-    </main>
+              CASA
+            </span>
+            <span
+              className="text-[8px] tracking-[0.18em]"
+              style={{
+                fontFamily: "var(--font-geist-mono)",
+                color: DIM,
+              }}
+            >
+              v1
+            </span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <span className="relative flex h-2 w-2">
+              <span
+                className="absolute inline-flex h-full w-full animate-ping opacity-60"
+                style={{ backgroundColor: BUTTER, borderRadius: "9999px" }}
+              />
+              <span
+                className="relative inline-flex h-2 w-2"
+                style={{ backgroundColor: BUTTER, borderRadius: "9999px" }}
+              />
+            </span>
+            <span
+              className="text-[10px] tracking-[0.14em]"
+              style={{
+                fontFamily: "var(--font-geist-mono)",
+                color: MID,
+              }}
+            >
+              TERMINAL ONLINE
+            </span>
+          </div>
+        </div>
+      </header>
+
+      <section className="border-b" style={{ borderColor: HAIRLINE }}>
+        <div className="max-w-[1280px] mx-auto px-8 py-12">
+          <div
+            className="text-[10px] tracking-[0.18em] mb-4"
+            style={{
+              fontFamily: "var(--font-geist-mono)",
+              color: DIM,
+            }}
+          >
+            SELECT WORKSPACE / 06 ROLES
+          </div>
+          <h1
+            className="text-[44px] leading-[1.05] tracking-[-0.015em] max-w-[820px]"
+            style={{
+              fontFamily: "var(--font-heading)",
+              fontWeight: 500,
+              color: INK,
+            }}
+          >
+            Pick the seat you sit in.{" "}
+            <span style={{ fontStyle: "italic", color: MID }}>
+              Every role gets its own terminal.
+            </span>
+          </h1>
+          <p
+            className="mt-4 text-[13px] max-w-[640px]"
+            style={{
+              color: MID,
+              fontFamily: "var(--font-inter)",
+              lineHeight: 1.55,
+            }}
+          >
+            CASA shapes itself around what you actually do — underwriting,
+            leasing, building, lending, listing, scouting. Choose your role
+            below to enter the workspace built for it.
+          </p>
+        </div>
+      </section>
+
+      <section className="max-w-[1280px] mx-auto">
+        <div
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3"
+          style={{ borderLeft: `1px solid ${HAIRLINE}` }}
+        >
+          {ROLES_ORDERED.map((role, idx) => {
+            const rc = ROLE_CONFIGS[role];
+            const code = role.slice(0, 3).toUpperCase();
+            const indexLabel = String(idx + 1).padStart(2, "0");
+            return (
+              <RoleCard
+                key={role}
+                href={buildHref(role, "")}
+                code={code}
+                indexLabel={indexLabel}
+                displayName={rc.displayName}
+                tagline={rc.tagline}
+                description={rc.description}
+                sidebarCount={rc.sidebar.length}
+              />
+            );
+          })}
+        </div>
+      </section>
+
+      <footer className="border-t mt-0" style={{ borderColor: HAIRLINE }}>
+        <div
+          className="max-w-[1280px] mx-auto px-8 h-10 flex items-center justify-between text-[10px] tracking-[0.14em]"
+          style={{
+            fontFamily: "var(--font-geist-mono)",
+            color: DIM,
+          }}
+        >
+          <span>CASA / WORKSPACE ROUTER</span>
+          <span>
+            06 ROLES ·{" "}
+            {Object.values(ROLE_CONFIGS).reduce(
+              (n, r) => n + r.sidebar.length,
+              0
+            )}{" "}
+            MODULES
+          </span>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+function RoleCard({
+  href,
+  code,
+  indexLabel,
+  displayName,
+  tagline,
+  description,
+  sidebarCount,
+}: {
+  href: string;
+  code: string;
+  indexLabel: string;
+  displayName: string;
+  tagline: string;
+  description: string;
+  sidebarCount: number;
+}) {
+  return (
+    <Link href={href} className="block">
+      <motion.div
+        whileHover={{ y: -2 }}
+        transition={{ type: "spring", stiffness: 380, damping: 30 }}
+        className="relative h-full px-7 py-7 cursor-pointer group"
+        style={{
+          borderRight: `1px solid ${HAIRLINE}`,
+          borderBottom: `1px solid ${HAIRLINE}`,
+          backgroundColor: "transparent",
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.backgroundColor = "rgba(249,217,106,0.04)";
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.backgroundColor = "transparent";
+        }}
+      >
+        <div className="flex items-center justify-between mb-8">
+          <span
+            className="text-[10px] tracking-[0.18em]"
+            style={{
+              fontFamily: "var(--font-geist-mono)",
+              color: DIM,
+            }}
+          >
+            {indexLabel}
+          </span>
+          <span
+            className="text-[10px] tracking-[0.14em] px-1.5 py-0.5"
+            style={{
+              fontFamily: "var(--font-geist-mono)",
+              color: INK,
+              backgroundColor: BUTTER,
+            }}
+          >
+            {code}
+          </span>
+        </div>
+
+        <div
+          className="text-[26px] leading-[1.1] tracking-[-0.01em]"
+          style={{
+            fontFamily: "var(--font-heading)",
+            color: INK,
+            fontWeight: 500,
+          }}
+        >
+          {displayName}
+        </div>
+
+        <div
+          className="text-[13px] italic mt-1"
+          style={{
+            fontFamily: "var(--font-heading)",
+            color: MID,
+          }}
+        >
+          {tagline}
+        </div>
+
+        <div
+          className="my-5 h-px"
+          style={{ backgroundColor: HAIRLINE }}
+        />
+
+        <p
+          className="text-[12px] leading-[1.55]"
+          style={{
+            color: MID,
+            fontFamily: "var(--font-inter)",
+          }}
+        >
+          {description}
+        </p>
+
+        <div className="mt-7 flex items-center justify-between">
+          <span
+            className="text-[9px] tracking-[0.16em] tabular-nums"
+            style={{
+              fontFamily: "var(--font-geist-mono)",
+              color: DIM,
+            }}
+          >
+            {String(sidebarCount).padStart(2, "0")} MODULES
+          </span>
+          <motion.span
+            className="flex items-center gap-1.5 text-[10px] tracking-[0.14em]"
+            style={{
+              fontFamily: "var(--font-geist-mono)",
+              color: INK,
+            }}
+          >
+            ENTER
+            <ArrowUpRight
+              size={12}
+              strokeWidth={1.75}
+              className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+            />
+          </motion.span>
+        </div>
+      </motion.div>
+    </Link>
   );
 }
