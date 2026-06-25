@@ -3,7 +3,7 @@
 // Protected by CRON_SECRET to prevent unauthorized triggers
 
 import { NextRequest, NextResponse } from 'next/server';
-import { runManagerAgent } from '../../../../../agents/manager';
+import { runManagerAgent } from '@/agents/manager';
 
 export const maxDuration = 300; // 5 minutes — needed for code generation + commits
 export const dynamic = 'force-dynamic';
