@@ -31,6 +31,7 @@ export const ROLE_CONFIGS: Record<Role, RoleConfig> = {
       { label: "Properties",     icon: "Building2",    href: "properties" },
       { label: "Tenants",        icon: "Users",        href: "tenants" },
       { label: "Maintenance",    icon: "Wrench",       href: "maintenance" },
+      { label: "Payments",       icon: "Banknote",     href: "payments" },
       { label: "Financials",     icon: "PieChart",     href: "financials" },
       { label: "Compliance",     icon: "Shield",       href: "compliance" },
       { label: "Market",         icon: "LineChart",    href: "market" },

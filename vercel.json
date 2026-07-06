@@ -3,6 +3,14 @@
     {
       "path": "/api/agent/run",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron/autopay",
+      "schedule": "0 14 * * *"
+    },
+    {
+      "path": "/api/cron/late-fees",
+      "schedule": "0 15 * * *"
     }
   ]
 }
