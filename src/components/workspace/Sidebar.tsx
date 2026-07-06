@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { Command } from "lucide-react";
 import type { RoleConfig } from "./sidebarConfig";
 import { buildHref, ROLES_ORDERED, ROLE_CONFIGS } from "./sidebarConfig";
+import { resolveIcon } from "./iconMap";
 
 const INK = "#111111";
 const HAIRLINE = "rgba(17,17,17,0.08)";
@@ -91,7 +92,7 @@ export function Sidebar({
               item.href === ""
                 ? pathname === `/workspace/${config.role}`
                 : pathname === href || pathname.startsWith(`${href}/`);
-            const Icon = item.icon;
+            const Icon = resolveIcon(item.icon);
 
             return (
               <li key={`${item.label}-${idx}`}>
