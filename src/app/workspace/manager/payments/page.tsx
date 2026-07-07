@@ -93,14 +93,36 @@ const outstandingBalance = MOCK_PAYMENTS.filter((p) => p.status !== 'paid').redu
 const autopayPct = 72;
 const lateCount = MOCK_UNITS.filter((u) => u.status === 'late').length;
 
-/* ── Stripe Connect mock ────────────────────────────────────────── */
-const MOCK_CONNECT: ConnectStatus = 'complete';
-const MOCK_STRIPE_ACCOUNT_ID = 'acct_1R3xJk2eZvKYl0';
+/* ── Active leases for rent collection ──────────────────────────── */
+type ActiveLease = {
+  id: string;
+  tenant: string;
+  property: string;
+  unit: string;
+  monthlyRent: number;
+  paidThisMonth: boolean;
+};
+
+const MOCK_LEASES: ActiveLease[] = [
+  { id: 'l1', tenant: 'Maya Hernandez',   property: 'Villa Sonoma',     unit: 'A-204', monthlyRent: 2850, paidThisMonth: true },
+  { id: 'l2', tenant: 'James Okafor',      property: 'Villa Sonoma',     unit: 'B-112', monthlyRent: 3100, paidThisMonth: true },
+  { id: 'l3', tenant: 'Priya Kapoor',      property: 'Mission Bay Lofts', unit: 'C-301', monthlyRent: 3650, paidThisMonth: false },
+  { id: 'l4', tenant: 'Marcus Reynolds',   property: 'North Park Row',    unit: 'D-105', monthlyRent: 2400, paidThisMonth: false },
+  { id: 'l5', tenant: 'Sasha Mendoza',     property: 'North Park Row',    unit: 'E-208', monthlyRent: 2600, paidThisMonth: true },
+  { id: 'l6', tenant: 'Daniel Park',       property: 'Mission Bay Lofts', unit: 'F-410', monthlyRent: 3950, paidThisMonth: true },
+  { id: 'l7', tenant: 'Aaliyah Brooks',    property: 'Villa Sonoma',     unit: 'G-102', monthlyRent: 2750, paidThisMonth: false },
+  { id: 'l8', tenant: "Liam O\u2019Sullivan", property: 'North Park Row', unit: 'H-307', monthlyRent: 2550, paidThisMonth: false },
+];
+
+/* ── Stripe Connect — default to none so onboarding card shows ─── */
+const INITIAL_CONNECT: ConnectStatus = 'none';
 
 /* ── Page ───────────────────────────────────────────────────────── */
 export default function PaymentsPage() {
-  const [connectStatus, setConnectStatus] = useState<ConnectStatus>(MOCK_CONNECT);
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus>(INITIAL_CONNECT);
   const [connectLoading, setConnectLoading] = useState(false);
+  const [connectError, setConnectError] = useState('');
+  const [collectingId, setCollectingId] = useState<string | null>(null);
   const [showRecordForm, setShowRecordForm] = useState(false);
   const [recordForm, setRecordForm] = useState({ tenant: '', amount: '', method: 'ach' as PaymentMethod, date: '' });
 
@@ -108,6 +130,7 @@ export default function PaymentsPage() {
 
   const handleOnboard = async () => {
     setConnectLoading(true);
+    setConnectError('');
     try {
       const res = await fetch('/api/stripe/connect/onboard', {
         method: 'POST',
@@ -116,10 +139,35 @@ export default function PaymentsPage() {
       });
       const data = await res.json();
       if (data.url) window.location.href = data.url;
+      else setConnectError(data.error || 'Failed to start onboarding. Check Stripe API key.');
     } catch {
-      console.error('Onboarding failed');
+      setConnectError('Network error — could not reach Stripe. Try again.');
     } finally {
       setConnectLoading(false);
+    }
+  };
+
+  const handleCollectRent = async (lease: ActiveLease) => {
+    setCollectingId(lease.id);
+    try {
+      const res = await fetch('/api/stripe/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leaseId: lease.id,
+          amount: lease.monthlyRent,
+          type: 'rent',
+          tenantEmail: '',
+          successUrl: window.location.href + '?payment=success',
+          cancelUrl: window.location.href + '?payment=cancelled',
+        }),
+      });
+      const data = await res.json();
+      if (data.url) window.location.href = data.url;
+    } catch {
+      console.error('Checkout failed');
+    } finally {
+      setCollectingId(null);
     }
   };
 
@@ -168,21 +216,26 @@ export default function PaymentsPage() {
           {/* ── Connect onboarding card ──────────────────────── */}
           <div className="mt-6 rounded-lg border bg-white p-5" style={{ borderColor: connectStatus === 'none' ? BUTTER : HAIRLINE }}>
             {connectStatus === 'none' && (
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-sm font-medium" style={{ color: INK }}>Start collecting rent online</p>
-                  <p className="mt-0.5 text-xs" style={{ color: DIM }}>Connect a Stripe account to accept card and ACH payments from tenants.</p>
+              <div>
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-sm font-medium" style={{ color: INK }}>Enable rent collection</p>
+                    <p className="mt-0.5 text-xs" style={{ color: DIM }}>Connect a Stripe account to accept card and ACH payments from tenants. Test mode — no real charges.</p>
+                  </div>
+                  <motion.button
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={handleOnboard}
+                    disabled={connectLoading}
+                    className="shrink-0 rounded-md px-5 py-2.5 text-sm font-medium transition-opacity disabled:opacity-50"
+                    style={{ backgroundColor: BUTTER, color: INK }}
+                  >
+                    {connectLoading ? 'Redirecting to Stripe...' : 'Enable rent collection'}
+                  </motion.button>
                 </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={handleOnboard}
-                  disabled={connectLoading}
-                  className="shrink-0 rounded-md px-5 py-2.5 text-sm font-medium transition-opacity disabled:opacity-50"
-                  style={{ backgroundColor: BUTTER, color: INK }}
-                >
-                  {connectLoading ? 'Redirecting...' : 'Enable Rent Collection'}
-                </motion.button>
+                {connectError && (
+                  <p className="mt-3 text-xs" style={{ color: RED }}>{connectError}</p>
+                )}
               </div>
             )}
             {connectStatus === 'pending' && (
@@ -198,7 +251,7 @@ export default function PaymentsPage() {
                 <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-medium" style={{ backgroundColor: 'rgba(21,128,61,0.08)', color: GREEN }}>
                   Payouts enabled
                 </span>
-                <span className="font-mono text-xs" style={{ color: DIM }}>{MOCK_STRIPE_ACCOUNT_ID}</span>
+                <span className="font-mono text-xs" style={{ color: DIM }}>Connected</span>
               </div>
             )}
           </div>
@@ -215,6 +268,68 @@ export default function PaymentsPage() {
 
       {/* ── Main ───────────────────────────────────────────────── */}
       <main className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
+
+        {/* ── Collect Rent — active leases ──────────────────── */}
+        <section className="mb-12">
+          <h2 className="text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>
+            Collect <em className="italic">rent</em>
+          </h2>
+          <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>
+            {MOCK_LEASES.filter(l => !l.paidThisMonth).length} unpaid &middot; {MOCK_LEASES.filter(l => l.paidThisMonth).length} collected this month
+          </p>
+          <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: HAIRLINE }}>
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b text-left text-[10px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM }}>
+                  <th className="px-4 py-2.5 font-medium">Tenant</th>
+                  <th className="px-4 py-2.5 font-medium">Property</th>
+                  <th className="px-4 py-2.5 font-medium">Unit</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Rent</th>
+                  <th className="px-4 py-2.5 font-medium">Status</th>
+                  <th className="px-4 py-2.5 font-medium text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {MOCK_LEASES.map((lease) => (
+                  <motion.tr
+                    key={lease.id}
+                    whileHover={{ x: 2 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 30 }}
+                    className="border-b last:border-0"
+                    style={{ borderColor: HAIRLINE }}
+                  >
+                    <td className="px-4 py-3 font-medium" style={{ color: INK }}>{lease.tenant}</td>
+                    <td className="px-4 py-3" style={{ color: MID }}>{lease.property}</td>
+                    <td className="px-4 py-3 font-mono text-xs" style={{ color: MID }}>{lease.unit}</td>
+                    <td className="px-4 py-3 text-right font-mono tabular-nums" style={{ color: INK }}>{fmtMoney(lease.monthlyRent)}</td>
+                    <td className="px-4 py-3">
+                      {lease.paidThisMonth ? (
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: 'rgba(21,128,61,0.08)', color: GREEN }}>Paid</span>
+                      ) : (
+                        <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: 'rgba(185,28,28,0.08)', color: RED }}>Unpaid</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {!lease.paidThisMonth && (
+                        <motion.button
+                          whileHover={{ scale: 1.02 }}
+                          whileTap={{ scale: 0.98 }}
+                          onClick={() => handleCollectRent(lease)}
+                          disabled={collectingId === lease.id}
+                          className="rounded-md px-3 py-1.5 text-xs font-medium transition-opacity disabled:opacity-50"
+                          style={{ backgroundColor: BUTTER, color: INK }}
+                        >
+                          {collectingId === lease.id ? 'Opening...' : 'Collect rent'}
+                        </motion.button>
+                      )}
+                    </td>
+                  </motion.tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
         {/* ── Payment History ────────────────────────────────── */}
         <section className="mb-12">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
@@ -224,15 +339,13 @@ export default function PaymentsPage() {
               </h2>
               <p className="text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>{MOCK_PAYMENTS.length} transactions this cycle</p>
             </div>
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+            <button
               onClick={() => setShowRecordForm(!showRecordForm)}
-              className="shrink-0 rounded-md px-4 py-2 text-xs font-medium"
-              style={{ backgroundColor: BUTTER, color: INK }}
+              className="shrink-0 text-xs font-medium underline underline-offset-2 transition-opacity hover:opacity-70"
+              style={{ color: MID }}
             >
-              {showRecordForm ? 'Cancel' : '+ Record Payment'}
-            </motion.button>
+              {showRecordForm ? 'Cancel' : 'Record manual payment'}
+            </button>
           </div>
 
           {/* ── Record Payment form ──────────────────────────── */}
