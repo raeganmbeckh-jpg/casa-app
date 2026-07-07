@@ -1,19 +1,9 @@
-// src/components/workspace/Topbar.tsx
-// 48px sticky topbar — role badge, breadcrumb, live UPD pulse, ⌘K trigger.
-// Cream substrate inherited from shell; this component only owns layout + content.
-
 "use client";
 
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Search } from "lucide-react";
 import type { RoleConfig } from "./sidebarConfig";
-
-const INK = "#111111";
-const HAIRLINE = "rgba(17,17,17,0.08)";
-const BUTTER = "#F9D96A";
-const DIM = "rgba(17,17,17,0.45)";
-const MID = "rgba(17,17,17,0.65)";
 
 export function Topbar({
   config,
@@ -59,103 +49,50 @@ export function Topbar({
     return [config.displayName, label];
   })();
 
-  const roleCode = config.role.slice(0, 3).toUpperCase();
-
   return (
-    <div className="flex h-12 items-center gap-4 px-4">
-      <div
-        className="flex h-6 items-center px-2 text-[10px] font-medium tracking-[0.12em]"
-        style={{
-          backgroundColor: BUTTER,
-          color: INK,
-          fontFamily: "var(--font-geist-mono)",
-        }}
-      >
-        {roleCode}
+    <div className="flex h-12 items-center justify-between gap-4 px-5 lg:px-8">
+      {/* ── Left: search pill + breadcrumb ── */}
+      <div className="flex items-center gap-4">
+        <button
+          onClick={onOpenCommand}
+          className="flex items-center gap-3 rounded-full border border-stone-200 bg-[#fffdf8] px-4 py-2 text-sm text-stone-500 shadow-sm shadow-stone-200/30 transition hover:border-stone-300"
+        >
+          <Search className="h-4 w-4" />
+          <span className="hidden sm:inline">
+            Search properties, markets, documents...
+          </span>
+          <span className="sm:hidden">Search...</span>
+          <kbd className="ml-2 text-[10px] tracking-wider text-stone-400">
+            ⌘K
+          </kbd>
+        </button>
+
+        {/* Breadcrumb */}
+        <nav className="hidden items-baseline gap-2 text-sm leading-none lg:flex">
+          <span className="font-medium text-[#111111]">{crumbs[0]}</span>
+          <span className="text-[11px] text-stone-400">▸</span>
+          <span className="italic text-stone-500">{crumbs[1]}</span>
+        </nav>
       </div>
 
-      <nav className="flex items-baseline gap-2 text-[15px] leading-none">
-        <span
-          style={{
-            fontFamily: "var(--font-heading)",
-            color: INK,
-            fontWeight: 500,
-          }}
-        >
-          {crumbs[0]}
-        </span>
-        <span style={{ color: DIM }} className="text-[11px]">
-          ▸
-        </span>
-        <span
-          style={{
-            fontFamily: "var(--font-heading)",
-            fontStyle: "italic",
-            color: MID,
-            fontWeight: 400,
-          }}
-        >
-          {crumbs[1]}
-        </span>
-      </nav>
+      {/* ── Right: clock + "New Analysis" button ── */}
+      <div className="flex items-center gap-4">
+        {/* Live clock */}
+        <div className="hidden items-center gap-2 sm:flex">
+          <span className="relative flex h-2 w-2">
+            <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#F9D96A] opacity-60" />
+            <span className="relative inline-flex h-2 w-2 rounded-full bg-[#F9D96A]" />
+          </span>
+          <span className="text-[10px] tabular-nums tracking-[0.14em] text-stone-500">
+            UPD {now}
+          </span>
+        </div>
 
-      <div className="flex-1" />
-
-      <div className="flex items-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span
-            className="absolute inline-flex h-full w-full animate-ping opacity-60"
-            style={{ backgroundColor: BUTTER, borderRadius: "9999px" }}
-          />
-          <span
-            className="relative inline-flex h-2 w-2"
-            style={{ backgroundColor: BUTTER, borderRadius: "9999px" }}
-          />
-        </span>
-        <span
-          className="text-[10px] tracking-[0.14em] tabular-nums"
-          style={{
-            fontFamily: "var(--font-geist-mono)",
-            color: MID,
-          }}
-        >
-          UPD {now}
-        </span>
+        {/* New Analysis pill */}
+        <button className="rounded-full bg-[#111111] px-4 py-2 text-sm text-[#FAFAF7] shadow-sm transition hover:scale-[1.01]">
+          New Analysis
+        </button>
       </div>
-
-      <button
-        onClick={onOpenCommand}
-        className="group flex h-7 items-center gap-2 border px-2.5 transition-colors"
-        style={{
-          borderColor: HAIRLINE,
-          backgroundColor: "transparent",
-        }}
-        onMouseEnter={(e) => {
-          e.currentTarget.style.borderColor = "rgba(17,17,17,0.18)";
-        }}
-        onMouseLeave={(e) => {
-          e.currentTarget.style.borderColor = HAIRLINE;
-        }}
-      >
-        <Search size={12} style={{ color: MID }} strokeWidth={1.75} />
-        <span
-          className="text-[11px]"
-          style={{ color: MID, fontFamily: "var(--font-inter)" }}
-        >
-          Search
-        </span>
-        <kbd
-          className="ml-2 flex h-4 items-center px-1.5 text-[9px] tracking-wider tabular-nums"
-          style={{
-            fontFamily: "var(--font-geist-mono)",
-            color: DIM,
-            backgroundColor: "rgba(17,17,17,0.04)",
-            border: `1px solid ${HAIRLINE}`,
-          }}
-        >
-          ⌘K
-        </kbd>
-      </button>
     </div>
   );
 }
