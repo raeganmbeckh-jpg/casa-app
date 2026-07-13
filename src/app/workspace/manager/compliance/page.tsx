@@ -1,275 +1,332 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StatusDot,
+  YellowBadge,
+  StaggerIn,
+  ListContainer,
+  ListHeader,
+  ListRow,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  ShieldCheck,
+  ShieldAlert,
+  FileCheck,
+  Eye,
+  Landmark,
+  CheckCircle2,
+  XCircle,
+  AlertTriangle,
+  ArrowRight,
+} from "lucide-react";
 
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
+export const dynamic = "force-dynamic";
 
-/* ── Design tokens ─────────────────────────────────────────── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
+export default async function CompliancePage() {
+  const supabase = createServerClient();
 
-/* ── Types ─────────────────────────────────────────────────── */
-type ComplianceStatus = 'compliant' | 'review_needed' | 'non_compliant';
+  const [
+    { data: properties },
+    { data: leases },
+    { data: inspections },
+    { data: securityDeposits },
+  ] = await Promise.all([
+    supabase.from("properties").select("id, address"),
+    supabase
+      .from("leases")
+      .select("id, property_id, status, end_date, esign_status"),
+    supabase
+      .from("inspections")
+      .select("id, property_id, overall_condition, inspection_date"),
+    supabase.from("security_deposits").select("id, lease_id, status"),
+  ]);
 
-type ChecklistItem = {
-  id: string;
-  category: string;
-  item: string;
-  status: ComplianceStatus;
-  lastChecked: string;
-  notes: string;
-};
+  const propList = properties ?? [];
+  const leaseList = leases ?? [];
+  const inspList = inspections ?? [];
+  const depositList = securityDeposits ?? [];
 
-type LeaseCompliance = {
-  id: string;
-  property: string;
-  totalUnits: number;
-  compliant: number;
-  needsReview: number;
-  nonCompliant: number;
-};
+  // Build lease-to-property map for deposit lookups
+  const leasePropertyMap = new Map(
+    leaseList.map((l: any) => [l.id, l.property_id])
+  );
 
-type OrdinanceAlert = {
-  id: string;
-  title: string;
-  jurisdiction: string;
-  effectiveDate: string;
-  impact: 'high' | 'medium' | 'low';
-  summary: string;
-};
+  const now = new Date();
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-/* ── Mock data ─────────────────────────────────────────────── */
-const CHECKLIST: ChecklistItem[] = [
-  { id: 'c1',  category: 'Fair Housing',         item: 'Non-discriminatory advertising language',       status: 'compliant',      lastChecked: '2026-03-15', notes: 'All listings reviewed and updated.' },
-  { id: 'c2',  category: 'Fair Housing',         item: 'Reasonable accommodation policy posted',        status: 'compliant',      lastChecked: '2026-03-15', notes: 'Posted in all leasing offices.' },
-  { id: 'c3',  category: 'Fair Housing',         item: 'Consistent screening criteria documented',      status: 'review_needed',  lastChecked: '2026-02-20', notes: 'Income threshold varies by property; standardize.' },
-  { id: 'c4',  category: 'Fair Housing',         item: 'Equal access to amenities policy',              status: 'compliant',      lastChecked: '2026-03-15', notes: 'All amenities open equally.' },
-  { id: 'c5',  category: 'Fair Housing',         item: 'Service animal documentation procedures',       status: 'non_compliant',  lastChecked: '2026-01-10', notes: 'Staff requesting breed information -- needs retraining.' },
-  { id: 'c6',  category: 'Safety & Habitability',item: 'Smoke detector inspection log',                 status: 'compliant',      lastChecked: '2026-04-01', notes: 'All units inspected Q1 2026.' },
-  { id: 'c7',  category: 'Safety & Habitability',item: 'Lead paint disclosure (pre-1978 units)',        status: 'review_needed',  lastChecked: '2026-02-28', notes: 'Villa Sonoma Bldg A needs updated disclosure forms.' },
-  { id: 'c8',  category: 'Safety & Habitability',item: 'Fire extinguisher expiration checks',           status: 'compliant',      lastChecked: '2026-03-20', notes: 'All units current through Dec 2026.' },
-  { id: 'c9',  category: 'Lease & Disclosure',   item: 'Security deposit limit compliance (CA)',         status: 'compliant',      lastChecked: '2026-04-01', notes: 'All deposits within CA statutory limits.' },
-  { id: 'c10', category: 'Lease & Disclosure',   item: 'Rent increase notice timing (60 days, > 10%)',  status: 'review_needed',  lastChecked: '2026-03-01', notes: 'One notice sent at 45 days for North Park Row unit D-105.' },
-  { id: 'c11', category: 'Lease & Disclosure',   item: 'Mold disclosure provided at lease signing',     status: 'compliant',      lastChecked: '2026-03-15', notes: 'Included in all new lease packets.' },
-  { id: 'c12', category: 'Data & Privacy',       item: 'Tenant PII stored per CCPA requirements',      status: 'compliant',      lastChecked: '2026-04-05', notes: 'Encrypted at rest and in transit.' },
-  { id: 'c13', category: 'Data & Privacy',       item: 'Data retention & deletion policy',              status: 'non_compliant',  lastChecked: '2026-01-20', notes: 'No automated deletion for former-tenant records > 3 years.' },
-];
+  // Per-property compliance evaluation
+  type ComplianceCheck = {
+    label: string;
+    passed: boolean;
+    detail: string;
+  };
 
-const LEASE_COMPLIANCE: LeaseCompliance[] = [
-  { id: 'lc1', property: 'Villa Sonoma',      totalUnits: 48, compliant: 44, needsReview: 3, nonCompliant: 1 },
-  { id: 'lc2', property: 'Mission Bay Lofts', totalUnits: 36, compliant: 34, needsReview: 2, nonCompliant: 0 },
-  { id: 'lc3', property: 'North Park Row',    totalUnits: 24, compliant: 20, needsReview: 3, nonCompliant: 1 },
-];
+  type PropertyCompliance = {
+    id: string;
+    address: string;
+    checks: ComplianceCheck[];
+    score: number;
+    total: number;
+    actionItems: string[];
+  };
 
-const ORDINANCE_ALERTS: OrdinanceAlert[] = [
-  { id: 'oa1', title: 'San Diego Tenant Protection Ordinance Update', jurisdiction: 'City of San Diego', effectiveDate: '2026-07-01', impact: 'high',   summary: 'Expanded just-cause eviction protections to units built after 1995. Review all lease termination procedures.' },
-  { id: 'oa2', title: 'CA AB-1482 Rent Cap Adjustment',              jurisdiction: 'State of California', effectiveDate: '2026-08-01', impact: 'medium', summary: 'Annual rent cap adjusted to 5% + CPI (currently 3.2%). Maximum allowable increase: 8.2% for covered units.' },
-  { id: 'oa3', title: 'Short-Term Rental Registration Deadline',     jurisdiction: 'City of San Diego', effectiveDate: '2026-06-15', impact: 'low',    summary: 'All STR units must be registered by this date. Non-compliance results in $1,000/day fine.' },
-];
+  const propertyCompliance: PropertyCompliance[] = propList.map((prop) => {
+    const checks: ComplianceCheck[] = [];
+    const actionItems: string[] = [];
 
-/* ── Helpers ───────────────────────────────────────────────── */
-const fmtDate = (iso: string) =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    // 1. Lease status: active + signed = compliant
+    const propLeases = leaseList.filter(
+      (l: any) => l.property_id === prop.id
+    );
+    const hasActiveSigned = propLeases.some(
+      (l: any) =>
+        l.status === "active" &&
+        (l.esign_status === "signed" || l.esign_status === "completed")
+    );
+    checks.push({
+      label: "Active Signed Lease",
+      passed: hasActiveSigned,
+      detail: hasActiveSigned
+        ? "Active lease with valid signature"
+        : propLeases.length === 0
+          ? "No leases found"
+          : "No active signed lease",
+    });
+    if (!hasActiveSigned) {
+      actionItems.push(
+        `${prop.address}: Ensure an active lease is signed for this property.`
+      );
+    }
 
-/* ── Page ──────────────────────────────────────────────────── */
-export default function CompliancePage() {
-  const [categoryFilter, setCategoryFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | ComplianceStatus>('all');
+    // 2. Inspection currency: within last 12 months
+    const propInspections = inspList.filter(
+      (i: any) => i.property_id === prop.id
+    );
+    const recentInspection = propInspections.some((i: any) => {
+      if (!i.inspection_date) return false;
+      return new Date(i.inspection_date) >= oneYearAgo;
+    });
+    checks.push({
+      label: "Inspection Current",
+      passed: recentInspection,
+      detail: recentInspection
+        ? "Inspected within last 12 months"
+        : "No inspection in last 12 months",
+    });
+    if (!recentInspection) {
+      actionItems.push(
+        `${prop.address}: Schedule a property inspection (overdue).`
+      );
+    }
 
-  const categories = useMemo(() => Array.from(new Set(CHECKLIST.map((c) => c.category))), []);
+    // 3. Security deposit held
+    const propLeaseIds = propLeases.map((l: any) => l.id);
+    const propDeposits = depositList.filter((d: any) =>
+      propLeaseIds.includes(d.lease_id)
+    );
+    const depositHeld = propDeposits.some(
+      (d: any) => d.status === "held"
+    );
+    // If no deposits exist at all, treat as N/A (pass if no leases need it)
+    const depositCheck =
+      propDeposits.length === 0 ? propLeases.length === 0 : depositHeld;
+    checks.push({
+      label: "Security Deposit",
+      passed: depositCheck,
+      detail: depositHeld
+        ? "Security deposit held"
+        : propDeposits.length === 0
+          ? "No deposit records"
+          : "Deposit not in held status",
+    });
+    if (!depositCheck) {
+      actionItems.push(
+        `${prop.address}: Verify security deposit status is up to date.`
+      );
+    }
 
-  const filteredItems = useMemo(() => {
-    let items = [...CHECKLIST];
-    if (categoryFilter !== 'all') items = items.filter((i) => i.category === categoryFilter);
-    if (statusFilter !== 'all') items = items.filter((i) => i.status === statusFilter);
-    return items;
-  }, [categoryFilter, statusFilter]);
+    const score = checks.filter((c) => c.passed).length;
 
-  const totalItems = CHECKLIST.length;
-  const compliantCount = CHECKLIST.filter((i) => i.status === 'compliant').length;
-  const reviewCount = CHECKLIST.filter((i) => i.status === 'review_needed').length;
-  const nonCompliantCount = CHECKLIST.filter((i) => i.status === 'non_compliant').length;
-  const complianceScore = Math.round((compliantCount / totalItems) * 100);
+    return {
+      id: prop.id,
+      address: prop.address,
+      checks,
+      score,
+      total: checks.length,
+      actionItems,
+    };
+  });
+
+  // Overall stats
+  const totalProperties = propertyCompliance.length;
+  const fullyCompliant = propertyCompliance.filter(
+    (p) => p.score === p.total
+  ).length;
+  const compliancePct =
+    totalProperties > 0
+      ? Math.round((fullyCompliant / totalProperties) * 100)
+      : 0;
+  const allActionItems = propertyCompliance.flatMap((p) => p.actionItems);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, color: INK, fontFamily: 'var(--font-inter)' }}>
-      {/* ── Header ───────────────────────────────────────────── */}
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10 lg:py-10">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Manager &middot; Compliance</p>
-              <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-                Compliance <em className="italic">Center</em>.
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-                Fair housing, safety, lease, and data-privacy compliance across all managed properties.
-              </p>
-            </div>
-            <motion.button whileHover={{ scale: 1.03 }} className="rounded-md border border-transparent px-3 py-2 text-xs font-medium" style={{ backgroundColor: BUTTER, color: INK }}>Download Audit Report</motion.button>
-          </div>
+    <div style={{ backgroundColor: T.cream, minHeight: "100vh" }}>
+      <div className="mx-auto max-w-7xl px-6 py-10">
+        <PageTitle eyebrow="COMPLIANCE" title="Portfolio Compliance" />
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Compliance score" value={`${complianceScore}%`} accent />
-            <Kpi label="Items needing review" value={String(reviewCount)} hint={`${nonCompliantCount} non-compliant`} />
-            <Kpi label="Last audit date" value="Mar 15, 2026" />
-            <Kpi label="Next audit due" value="Jun 15, 2026" hint="67 days" />
-          </div>
+        {/* Overall Score */}
+        <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <DarkStatCard
+            label="Compliance Score"
+            value={`${compliancePct}%`}
+            subtitle={`${fullyCompliant} of ${totalProperties} properties fully compliant`}
+            progress={compliancePct}
+            icon={<ShieldCheck size={20} className="text-stone-400" />}
+          />
+          <KpiCard
+            label="Properties Reviewed"
+            value={totalProperties}
+            note="In portfolio"
+          />
+          <KpiCard
+            label="Action Items"
+            value={allActionItems.length}
+            note={
+              allActionItems.length === 0
+                ? "All clear"
+                : "Items need attention"
+            }
+          />
         </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-        {/* ── Fair Housing Checklist ─────────────────────────── */}
-        <section className="mb-12">
-          <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-                Compliance <em className="italic">checklist</em>
-              </h2>
-              <p className="text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>{filteredItems.length} items</p>
-            </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <select value={categoryFilter} onChange={(e) => setCategoryFilter(e.target.value)} className="rounded-md border bg-white px-3 py-2 text-sm focus:outline-none" style={{ borderColor: HAIRLINE, color: MID }}>
-                <option value="all">All categories</option>
-                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as 'all' | ComplianceStatus)} className="rounded-md border bg-white px-3 py-2 text-sm focus:outline-none" style={{ borderColor: HAIRLINE, color: MID }}>
-                <option value="all">All statuses</option>
-                <option value="compliant">Compliant</option>
-                <option value="review_needed">Review needed</option>
-                <option value="non_compliant">Non-compliant</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            {filteredItems.map((item) => (
-              <motion.div
-                key={item.id}
-                whileHover={{ y: -1, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-                className="flex flex-col gap-2 rounded-lg border bg-white p-4 sm:flex-row sm:items-center sm:justify-between"
-                style={{ borderColor: HAIRLINE }}
-              >
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <StatusIndicator status={item.status} />
-                    <span className="font-medium text-sm" style={{ color: INK }}>{item.item}</span>
-                  </div>
-                  <div className="mt-1 flex items-center gap-3 text-xs" style={{ color: DIM }}>
-                    <span style={{ fontFamily: 'var(--font-geist-mono)' }}>{item.category}</span>
-                    <span>&middot;</span>
-                    <span>Checked {fmtDate(item.lastChecked)}</span>
-                  </div>
-                  {item.notes && <div className="mt-1 text-xs" style={{ color: MID }}>{item.notes}</div>}
-                </div>
-                <StatusPill status={item.status} />
-              </motion.div>
-            ))}
-          </div>
-        </section>
-
-        {/* ── Lease Compliance by Property ────────────────────── */}
-        <section className="mb-12">
-          <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Lease <em className="italic">compliance</em>
-          </h2>
-          <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>By property</p>
-
-          <div className="grid gap-3 sm:grid-cols-3">
-            {LEASE_COMPLIANCE.map((lc) => {
-              const pct = Math.round((lc.compliant / lc.totalUnits) * 100);
-              return (
-                <motion.div key={lc.id} whileHover={{ y: -2 }} className="rounded-lg border bg-white p-5" style={{ borderColor: HAIRLINE }}>
-                  <div className="text-sm font-medium" style={{ color: INK }}>{lc.property}</div>
-                  <div className="mt-3 text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>{pct}%</div>
-                  <div className="mt-2 h-2 w-full overflow-hidden rounded-full bg-neutral-100">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, backgroundColor: pct >= 90 ? GREEN : pct >= 75 ? '#D97706' : RED }} />
-                  </div>
-                  <div className="mt-3 flex justify-between text-xs" style={{ color: DIM }}>
-                    <span>{lc.compliant} compliant</span>
-                    <span>{lc.needsReview} review</span>
-                    <span>{lc.nonCompliant} non-compliant</span>
-                  </div>
-                  <div className="mt-1 text-xs" style={{ color: DIM }}>{lc.totalUnits} total units</div>
-                </motion.div>
-              );
-            })}
-          </div>
-        </section>
-
-        {/* ── Ordinance Alerts ────────────────────────────────── */}
-        <section>
-          <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Ordinance <em className="italic">alerts</em>
-          </h2>
-          <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>Local and state regulatory changes</p>
-
-          <div className="space-y-3">
-            {ORDINANCE_ALERTS.map((alert) => (
-              <motion.div
-                key={alert.id}
-                whileHover={{ y: -1 }}
-                className="rounded-lg border bg-white p-5"
-                style={{ borderColor: HAIRLINE, borderLeftWidth: 3, borderLeftColor: alert.impact === 'high' ? RED : alert.impact === 'medium' ? '#D97706' : DIM }}
-              >
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm" style={{ color: INK }}>{alert.title}</span>
-                      <ImpactBadge impact={alert.impact} />
+        {/* Per-Property Compliance Cards */}
+        <SectionLabel>PROPERTY COMPLIANCE</SectionLabel>
+        <div className="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {propertyCompliance.length === 0 && (
+            <Card>
+              <p className="text-center text-sm text-stone-500">
+                No properties found.
+              </p>
+            </Card>
+          )}
+          {propertyCompliance.map((prop, i) => {
+            const allPassed = prop.score === prop.total;
+            return (
+              <StaggerIn key={prop.id} index={i}>
+                <Card>
+                  {/* Property header */}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="flex h-10 w-10 items-center justify-center rounded-2xl"
+                        style={{
+                          backgroundColor: allPassed
+                            ? "rgba(21,128,61,0.08)"
+                            : "rgba(217,119,6,0.1)",
+                        }}
+                      >
+                        {allPassed ? (
+                          <ShieldCheck size={18} style={{ color: T.green }} />
+                        ) : (
+                          <ShieldAlert
+                            size={18}
+                            style={{ color: "#D97706" }}
+                          />
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-stone-900">
+                          {prop.address}
+                        </p>
+                        <p className="text-xs text-stone-500">
+                          {prop.score}/{prop.total} checks passed
+                        </p>
+                      </div>
                     </div>
-                    <div className="mt-1 text-xs" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>
-                      {alert.jurisdiction} &middot; Effective {fmtDate(alert.effectiveDate)}
-                    </div>
-                    <div className="mt-2 text-sm" style={{ color: MID }}>{alert.summary}</div>
+
+                    {/* Overall badge */}
+                    {allPassed ? (
+                      <span
+                        className="inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-medium"
+                        style={{
+                          backgroundColor: "rgba(21,128,61,0.08)",
+                          color: T.green,
+                        }}
+                      >
+                        Compliant
+                      </span>
+                    ) : (
+                      <YellowBadge>NEEDS REVIEW</YellowBadge>
+                    )}
                   </div>
-                </div>
-              </motion.div>
-            ))}
+
+                  {/* Compliance items */}
+                  <div className="mt-5 space-y-3">
+                    {prop.checks.map((check) => (
+                      <div
+                        key={check.label}
+                        className="flex items-center gap-3"
+                      >
+                        {check.passed ? (
+                          <CheckCircle2
+                            size={16}
+                            style={{ color: T.green }}
+                            className="shrink-0"
+                          />
+                        ) : (
+                          <XCircle
+                            size={16}
+                            style={{ color: T.red }}
+                            className="shrink-0"
+                          />
+                        )}
+                        <div className="flex-1">
+                          <p className="text-xs font-medium text-stone-800">
+                            {check.label}
+                          </p>
+                          <p className="text-[11px] text-stone-500">
+                            {check.detail}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </Card>
+              </StaggerIn>
+            );
+          })}
+        </div>
+
+        {/* Action Items Section */}
+        {allActionItems.length > 0 && (
+          <div className="mt-10">
+            <SectionLabel>ACTION ITEMS</SectionLabel>
+            <ListContainer className="mt-4">
+              <ListHeader label="RECOMMENDED ACTIONS" />
+              <div className="px-4 pb-4">
+                {allActionItems.map((item, i) => (
+                  <ListRow key={i} last={i === allActionItems.length - 1}>
+                    <div className="flex items-center gap-3">
+                      <AlertTriangle
+                        size={14}
+                        style={{ color: "#D97706" }}
+                        className="shrink-0"
+                      />
+                      <span className="text-sm text-stone-700">{item}</span>
+                    </div>
+                    <ArrowRight size={14} className="shrink-0 text-stone-400" />
+                  </ListRow>
+                ))}
+              </div>
+            </ListContainer>
           </div>
-        </section>
-      </main>
+        )}
+      </div>
     </div>
   );
-}
-
-/* ── Sub-components ────────────────────────────────────────── */
-function Kpi({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
-  return (
-    <motion.div whileHover={{ y: -2 }} className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
-    </motion.div>
-  );
-}
-
-function StatusIndicator({ status }: { status: ComplianceStatus }) {
-  const color = status === 'compliant' ? GREEN : status === 'review_needed' ? '#D97706' : RED;
-  return <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: color }} />;
-}
-
-function StatusPill({ status }: { status: ComplianceStatus }) {
-  const map: Record<ComplianceStatus, { label: string; bg: string; text: string }> = {
-    compliant:      { label: 'Compliant',      bg: '#F0FDF4', text: GREEN },
-    review_needed:  { label: 'Review needed',  bg: '#FFFBEB', text: '#D97706' },
-    non_compliant:  { label: 'Non-compliant',  bg: '#FEF2F2', text: RED },
-  };
-  const m = map[status];
-  return <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: m.bg, color: m.text }}>{m.label}</span>;
-}
-
-function ImpactBadge({ impact }: { impact: 'high' | 'medium' | 'low' }) {
-  const map = {
-    high:   { label: 'High impact',   bg: '#FEF2F2', text: RED },
-    medium: { label: 'Medium',        bg: '#FFFBEB', text: '#D97706' },
-    low:    { label: 'Low',           bg: '#F5F5F5', text: DIM },
-  };
-  const m = map[impact];
-  return <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: m.bg, color: m.text }}>{m.label}</span>;
 }

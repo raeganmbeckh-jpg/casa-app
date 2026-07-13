@@ -1,273 +1,348 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+  YellowBadge,
+  IconChip,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  TrendingUp,
+  Shield,
+  BarChart3,
+  Zap,
+  Brain,
+  AlertCircle,
+} from "lucide-react";
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
+export const dynamic = "force-dynamic";
 
-/* ── Design tokens ─────────────────────────────────────────── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
+function computeQIS(deal: any) {
+  const capRate = Number(deal.cap_rate || 0);
+  const irr = Number(deal.irr_5yr || 0);
+  const riskScore = Number(deal.risk_score || 5);
 
-/* ── Types ─────────────────────────────────────────────────── */
-type Signal = {
-  id: string;
-  type: 'constructive' | 'destructive';
-  label: string;
-  strength: number;
-  description: string;
-};
+  const capRateScore =
+    capRate > 6 ? 10 : capRate > 5 ? 7 : capRate > 4 ? 5 : 3;
+  const irrScore = irr > 18 ? 10 : irr > 14 ? 7 : irr > 10 ? 5 : 3;
+  const riskComponent = 10 - Math.min(riskScore, 10);
 
-type Discovery = {
-  id: string;
-  title: string;
-  probability: number;
-  potentialValue: number;
-  description: string;
-};
-
-/* ── Mock data ─────────────────────────────────────────────── */
-const QIS_SCORE = 82;
-const PROPERTY = {
-  address: '4217 Park Blvd, San Diego, CA 92103',
-  type: 'Multifamily (12 units)',
-  yearBuilt: 1987,
-  sqft: 14400,
-  currentValue: 3200000,
-};
-
-const VALUATIONS = {
-  mostLikely: 3450000,
-  optimistic: 3875000,
-  pessimistic: 2980000,
-  confidence: 0.78,
-};
-
-const SIGNALS: Signal[] = [
-  { id: 's1', type: 'constructive', label: 'Neighborhood appreciation',   strength: 92, description: 'Hillcrest/North Park corridor up 14% YoY. Strong demand from young professionals.' },
-  { id: 's2', type: 'constructive', label: 'Below-market rents',          strength: 85, description: 'Current rents avg $2,180. Market median $2,680. Immediate upside of $6,000/mo on turnover.' },
-  { id: 's3', type: 'constructive', label: 'Transit-oriented location',    strength: 78, description: 'Within 0.3 mi of planned Mid-Coast Trolley extension stop (2027 opening).' },
-  { id: 's4', type: 'constructive', label: 'Low deferred maintenance',     strength: 71, description: 'Roof replaced 2022, HVAC 2024. Estimated CapEx need: $45K over 5 years.' },
-  { id: 's5', type: 'destructive',  label: 'Rent control exposure',       strength: 65, description: 'Subject to CA AB-1482. Max annual increase capped at 8.2% (5% + CPI).' },
-  { id: 's6', type: 'destructive',  label: 'Insurance cost trajectory',   strength: 58, description: 'Premiums increased 22% in 2025. Projected further 15% increase in 2026.' },
-  { id: 's7', type: 'destructive',  label: 'Parking limitations',         strength: 42, description: 'Only 8 spaces for 12 units. Street parking increasingly competitive.' },
-];
-
-const DISCOVERIES: Discovery[] = [
-  { id: 'd1', title: 'ADU conversion potential',         probability: 72, potentialValue: 280000, description: 'Detached garage + laundry building could convert to 2 ADUs under SB-9. Est. $140K each in added value.' },
-  { id: 'd2', title: 'Solar + storage arbitrage',        probability: 61, potentialValue: 95000,  description: 'SDGE NEM 3.0 makes battery storage highly favorable. 8-year payback, $95K NPV.' },
-  { id: 'd3', title: 'Short-term rental carve-out',      probability: 38, potentialValue: 180000, description: 'Two street-facing units could qualify for STR permit if owner-occupied unit added via ADU.' },
-];
-
-/* ── Helpers ───────────────────────────────────────────────── */
-const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-
-/* ── Page ──────────────────────────────────────────────────── */
-export default function QISDashboardPage() {
-  const [activeTab, setActiveTab] = useState<'signals' | 'discoveries'>('signals');
-
-  return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, color: INK, fontFamily: 'var(--font-inter)' }}>
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10 lg:py-10">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Investor &middot; QIS</p>
-              <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-                Quantum <em className="italic">Intelligence</em>.
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-                Multi-dimensional property analysis. Superposition valuation models with signal interference mapping.
-              </p>
-            </div>
-          </div>
-
-          {/* QIS Score + Property info */}
-          <div className="mt-8 grid gap-6 lg:grid-cols-[280px_1fr]">
-            {/* Score gauge */}
-            <motion.div whileHover={{ y: -2 }} className="flex flex-col items-center rounded-lg border bg-white p-6" style={{ borderColor: BUTTER }}>
-              <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>QIS Score</div>
-              <div className="relative mt-4">
-                <svg width="180" height="180" viewBox="0 0 180 180">
-                  {/* Background ring */}
-                  <circle cx="90" cy="90" r="76" fill="none" stroke="#E5E5E5" strokeWidth="8" />
-                  {/* Score ring */}
-                  <motion.circle
-                    cx="90" cy="90" r="76"
-                    fill="none"
-                    stroke={BUTTER}
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray={`${(QIS_SCORE / 100) * 2 * Math.PI * 76} ${2 * Math.PI * 76}`}
-                    transform="rotate(-90 90 90)"
-                    initial={{ strokeDasharray: `0 ${2 * Math.PI * 76}` }}
-                    animate={{ strokeDasharray: `${(QIS_SCORE / 100) * 2 * Math.PI * 76} ${2 * Math.PI * 76}` }}
-                    transition={{ duration: 1.5, ease: 'easeOut' }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <motion.div
-                    className="text-5xl"
-                    style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.5 }}
-                  >
-                    {QIS_SCORE}
-                  </motion.div>
-                  <div className="text-xs" style={{ color: DIM }}>of 100</div>
-                </div>
-              </div>
-              <div className="mt-3 text-center text-sm font-medium" style={{ color: GREEN }}>Strong Buy Signal</div>
-            </motion.div>
-
-            {/* Property + Superposition */}
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="rounded-lg border bg-white p-5" style={{ borderColor: HAIRLINE }}>
-                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Property</div>
-                <div className="mt-2 text-lg font-medium" style={{ color: INK }}>{PROPERTY.address}</div>
-                <div className="mt-2 space-y-1 text-xs" style={{ color: MID }}>
-                  <div>{PROPERTY.type}</div>
-                  <div>Built {PROPERTY.yearBuilt} &middot; {PROPERTY.sqft.toLocaleString()} sqft</div>
-                  <div>Current value: {fmtMoney(PROPERTY.currentValue)}</div>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-white p-5" style={{ borderColor: HAIRLINE }}>
-                <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Superposition valuation</div>
-                <div className="mt-3 space-y-3">
-                  <ValuationRow label="Most likely" value={VALUATIONS.mostLikely} highlight />
-                  <ValuationRow label="Optimistic" value={VALUATIONS.optimistic} />
-                  <ValuationRow label="Pessimistic" value={VALUATIONS.pessimistic} />
-                </div>
-                <div className="mt-3 text-xs" style={{ color: DIM }}>
-                  Confidence: <span style={{ color: INK, fontFamily: 'var(--font-geist-mono)' }}>{(VALUATIONS.confidence * 100).toFixed(0)}%</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-        {/* Tab toggle */}
-        <div className="mb-6 flex gap-1 rounded-lg border bg-white p-1" style={{ borderColor: HAIRLINE, width: 'fit-content' }}>
-          {(['signals', 'discoveries'] as const).map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className="rounded-md px-4 py-2 text-xs font-medium capitalize transition-colors"
-              style={{
-                backgroundColor: activeTab === tab ? BUTTER : 'transparent',
-                color: activeTab === tab ? INK : DIM,
-              }}
-            >
-              {tab === 'signals' ? 'Interference signals' : 'Tunneling discoveries'}
-            </button>
-          ))}
-        </div>
-
-        {activeTab === 'signals' && (
-          <section>
-            <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-              Signal <em className="italic">interference</em>
-            </h2>
-            <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>
-              Constructive signals amplify value. Destructive signals dampen it.
-            </p>
-
-            <div className="space-y-3">
-              {SIGNALS.map((signal) => (
-                <motion.div
-                  key={signal.id}
-                  whileHover={{ y: -1, boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }}
-                  className="rounded-lg border bg-white p-5"
-                  style={{
-                    borderColor: HAIRLINE,
-                    borderLeftWidth: 3,
-                    borderLeftColor: signal.type === 'constructive' ? GREEN : RED,
-                  }}
-                >
-                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase tracking-wider font-medium" style={{ color: signal.type === 'constructive' ? GREEN : RED, fontFamily: 'var(--font-geist-mono)' }}>
-                          {signal.type === 'constructive' ? '+ Constructive' : '- Destructive'}
-                        </span>
-                      </div>
-                      <div className="mt-1 font-medium text-sm" style={{ color: INK }}>{signal.label}</div>
-                      <div className="mt-1 text-xs" style={{ color: MID }}>{signal.description}</div>
-                    </div>
-                    <div className="flex items-center gap-3 shrink-0">
-                      <div className="relative h-1.5 w-24 overflow-hidden rounded-full bg-neutral-100">
-                        <motion.div
-                          className="absolute inset-y-0 left-0 rounded-full"
-                          style={{ backgroundColor: signal.type === 'constructive' ? GREEN : RED }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${signal.strength}%` }}
-                          transition={{ duration: 0.8, delay: 0.1 }}
-                        />
-                      </div>
-                      <span className="text-xs font-medium tabular-nums w-6 text-right" style={{ color: MID, fontFamily: 'var(--font-geist-mono)' }}>{signal.strength}</span>
-                    </div>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {activeTab === 'discoveries' && (
-          <section>
-            <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-              Tunneling <em className="italic">discoveries</em>
-            </h2>
-            <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>
-              Hidden opportunities that conventional analysis misses
-            </p>
-
-            <div className="grid gap-4 sm:grid-cols-3">
-              {DISCOVERIES.map((d) => (
-                <motion.div
-                  key={d.id}
-                  whileHover={{ y: -3, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
-                  className="rounded-lg border bg-white p-5"
-                  style={{ borderColor: HAIRLINE }}
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Discovery</div>
-                    <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: d.probability >= 60 ? '#F0FDF4' : '#FFFBEB', color: d.probability >= 60 ? GREEN : '#D97706' }}>
-                      {d.probability}% prob.
-                    </span>
-                  </div>
-                  <div className="mt-3 font-medium" style={{ color: INK }}>{d.title}</div>
-                  <div className="mt-2 text-2xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: GREEN }}>
-                    +{fmtMoney(d.potentialValue)}
-                  </div>
-                  <div className="mt-2 text-xs" style={{ color: MID }}>{d.description}</div>
-                </motion.div>
-              ))}
-            </div>
-          </section>
-        )}
-      </main>
-    </div>
-  );
+  const qis = (capRateScore + irrScore + riskComponent) / 3;
+  return { qis: Math.round(qis * 10) / 10, capRateScore, irrScore, riskComponent };
 }
 
-/* ── Sub-components ────────────────────────────────────────── */
-function ValuationRow({ label, value, highlight }: { label: string; value: number; highlight?: boolean }) {
+function qisRecommendation(qis: number): {
+  label: string;
+  color: string;
+} {
+  if (qis >= 8) return { label: "Strong Buy", color: T.green };
+  if (qis >= 6.5) return { label: "Buy", color: "#16a34a" };
+  if (qis >= 5) return { label: "Hold / Evaluate", color: "#d97706" };
+  return { label: "Pass", color: T.red };
+}
+
+const fmtMoney = (n: number | null) => {
+  if (!n) return "—";
+  return n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
+};
+
+export default async function QISPage() {
+  const supabase = createServerClient();
+
+  const { data: deals } = await supabase
+    .from("investment_deals")
+    .select("*")
+    .order("created_at", { ascending: false });
+
+  let aiRuns: any[] | null = null;
+  try {
+    const aiRes = await supabase
+      .from("ai_agent_runs")
+      .select("agent_key, output, created_at")
+      .or("agent_key.ilike.%quantum%,agent_key.ilike.%qis%")
+      .order("created_at", { ascending: false })
+      .limit(10);
+    aiRuns = aiRes.data;
+  } catch {
+    aiRuns = null;
+  }
+
+  const dealList = (deals ?? []) as any[];
+
+  // Compute QIS for each deal and sort descending
+  const scoredDeals = dealList
+    .map((deal) => {
+      const scores = computeQIS(deal);
+      const rec = qisRecommendation(scores.qis);
+      return { ...deal, ...scores, recommendation: rec };
+    })
+    .sort((a, b) => b.qis - a.qis);
+
+  // Portfolio QIS average
+  const portfolioQIS =
+    scoredDeals.length > 0
+      ? Math.round(
+          (scoredDeals.reduce((s, d) => s + d.qis, 0) / scoredDeals.length) *
+            10
+        ) / 10
+      : 0;
+
+  const aiRunList = (aiRuns ?? []) as any[];
+
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs" style={{ color: DIM }}>{label}</span>
-      <span className="font-medium" style={{ color: highlight ? INK : MID, fontFamily: 'var(--font-geist-mono)', fontSize: highlight ? '1.125rem' : '0.875rem' }}>
-        {fmtMoney(value)}
-      </span>
+    <div className="space-y-10">
+      <PageTitle
+        eyebrow="INTELLIGENCE"
+        title="QIS Scoring"
+        subtitle="Quantitative Investment Score derived from cap rate, IRR, and risk metrics across your deal pipeline."
+      />
+
+      {/* Portfolio-level dark stat */}
+      <div className="grid gap-4 lg:grid-cols-[1fr_2fr]">
+        <DarkStatCard
+          label="Portfolio QIS Average"
+          value={portfolioQIS ? `${portfolioQIS}` : "—"}
+          subtitle={`Across ${scoredDeals.length} deal${scoredDeals.length !== 1 ? "s" : ""} analyzed`}
+          progress={portfolioQIS ? (portfolioQIS / 10) * 100 : 0}
+          icon={<Zap size={20} className="text-stone-400" />}
+        />
+
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-3">
+          <KpiCard
+            label="Deals Scored"
+            value={scoredDeals.length}
+          />
+          <KpiCard
+            label="Strong Buys"
+            value={scoredDeals.filter((d) => d.qis >= 8).length}
+            note="QIS 8+"
+          />
+          <KpiCard
+            label="Buys"
+            value={scoredDeals.filter((d) => d.qis >= 6.5 && d.qis < 8).length}
+            note="QIS 6.5-8"
+          />
+          <KpiCard
+            label="Hold / Evaluate"
+            value={scoredDeals.filter((d) => d.qis >= 5 && d.qis < 6.5).length}
+            note="QIS 5-6.5"
+          />
+          <KpiCard
+            label="Pass"
+            value={scoredDeals.filter((d) => d.qis < 5).length}
+            note="QIS below 5"
+          />
+          <KpiCard
+            label="Best QIS"
+            value={scoredDeals.length > 0 ? `${scoredDeals[0].qis}/10` : "—"}
+            note={scoredDeals.length > 0 ? scoredDeals[0].property_name || scoredDeals[0].address || "" : ""}
+          />
+        </div>
+      </div>
+
+      {/* Empty state */}
+      {scoredDeals.length === 0 && (
+        <Card>
+          <div className="py-12 text-center">
+            <BarChart3
+              className="mx-auto mb-4 text-stone-300"
+              size={40}
+              strokeWidth={1.2}
+            />
+            <p className="text-lg font-medium text-stone-700">
+              No deals to score
+            </p>
+            <p className="mt-2 text-sm text-stone-500">
+              QIS scores will be computed once investment deals are added to
+              the pipeline.
+            </p>
+          </div>
+        </Card>
+      )}
+
+      {/* Deal QIS cards */}
+      <div className="space-y-4">
+        <SectionLabel>DEAL SCORES</SectionLabel>
+        <div className="grid gap-5 md:grid-cols-2">
+          {scoredDeals.map((deal, i) => (
+            <StaggerIn key={deal.id ?? i} index={i}>
+              <Card>
+                <div className="flex gap-6">
+                  {/* QIS gauge - large number */}
+                  <div className="flex flex-col items-center justify-center">
+                    <div
+                      className="flex h-20 w-20 flex-shrink-0 items-center justify-center rounded-2xl text-3xl font-bold"
+                      style={{
+                        backgroundColor:
+                          deal.qis >= 8
+                            ? "rgba(21,128,61,0.1)"
+                            : deal.qis >= 6.5
+                              ? "rgba(249,217,106,0.25)"
+                              : deal.qis >= 5
+                                ? "rgba(217,119,6,0.1)"
+                                : "rgba(185,28,28,0.1)",
+                        color: deal.recommendation.color,
+                      }}
+                    >
+                      {deal.qis}
+                    </div>
+                    <p className="mt-1.5 text-[10px] uppercase tracking-widest text-stone-400">
+                      /10
+                    </p>
+                  </div>
+
+                  {/* Deal info */}
+                  <div className="flex-1 space-y-3">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-base font-medium text-stone-900">
+                          {deal.property_name || deal.address || `Deal #${deal.id}`}
+                        </h3>
+                        <span
+                          className="inline-flex rounded-full px-2 py-0.5 text-[11px] font-medium"
+                          style={{
+                            backgroundColor:
+                              deal.qis >= 8
+                                ? "#F0FDF4"
+                                : deal.qis >= 6.5
+                                  ? "rgba(249,217,106,0.2)"
+                                  : deal.qis >= 5
+                                    ? "#FFFBEB"
+                                    : "#FEF2F2",
+                            color: deal.recommendation.color,
+                          }}
+                        >
+                          {deal.recommendation.label}
+                        </span>
+                      </div>
+                      {(deal.city || deal.state) && (
+                        <p className="text-sm text-stone-500">
+                          {[deal.city, deal.state].filter(Boolean).join(", ")}
+                        </p>
+                      )}
+                    </div>
+
+                    {/* Component scores */}
+                    <div className="grid grid-cols-3 gap-3 rounded-xl bg-[#FAFAF7] p-3">
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-400">
+                          Cap Rate
+                        </p>
+                        <p className="text-sm font-semibold text-stone-800">
+                          {deal.capRateScore}/10
+                        </p>
+                        {deal.cap_rate && (
+                          <p className="text-[11px] text-stone-400">
+                            {Number(deal.cap_rate).toFixed(1)}%
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-400">
+                          IRR
+                        </p>
+                        <p className="text-sm font-semibold text-stone-800">
+                          {deal.irrScore}/10
+                        </p>
+                        {deal.irr_5yr && (
+                          <p className="text-[11px] text-stone-400">
+                            {Number(deal.irr_5yr).toFixed(1)}%
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <p className="text-[10px] uppercase tracking-widest text-stone-400">
+                          Risk
+                        </p>
+                        <p className="text-sm font-semibold text-stone-800">
+                          {deal.riskComponent}/10
+                        </p>
+                        {deal.risk_score != null && (
+                          <p className="text-[11px] text-stone-400">
+                            Score: {deal.risk_score}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Extra deal details */}
+                    <div className="flex flex-wrap gap-3 text-xs text-stone-500">
+                      {deal.purchase_price && (
+                        <span>Price: {fmtMoney(deal.purchase_price)}</span>
+                      )}
+                      {deal.property_type && <span>{deal.property_type}</span>}
+                      {deal.status && (
+                        <YellowBadge>{deal.status}</YellowBadge>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </StaggerIn>
+          ))}
+        </div>
+      </div>
+
+      {/* AI Agent Section */}
+      <div className="space-y-4">
+        <SectionLabel>AI SCORING INSIGHTS</SectionLabel>
+        {aiRunList.length > 0 ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {aiRunList.map((run, i) => (
+              <StaggerIn key={i} index={i}>
+                <Card>
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <IconChip>
+                        <Brain size={16} />
+                      </IconChip>
+                      <div>
+                        <p className="text-sm font-medium text-stone-900">
+                          {run.agent_key}
+                        </p>
+                        <p className="text-xs text-stone-400">
+                          {new Date(run.created_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                    </div>
+                    <p className="text-sm text-stone-600">
+                      {typeof run.output === "string"
+                        ? run.output.slice(0, 300)
+                        : JSON.stringify(run.output).slice(0, 300)}
+                      {(typeof run.output === "string"
+                        ? run.output.length
+                        : JSON.stringify(run.output).length) > 300 && "..."}
+                    </p>
+                  </div>
+                </Card>
+              </StaggerIn>
+            ))}
+          </div>
+        ) : (
+          <Card>
+            <div className="flex items-center gap-3 py-4">
+              <AlertCircle size={20} className="text-stone-400" />
+              <div>
+                <p className="text-sm font-medium text-stone-700">
+                  AI scoring not yet available
+                </p>
+                <p className="text-xs text-stone-500">
+                  Quantum scoring agent runs will appear here once they are
+                  triggered for your deals.
+                </p>
+              </div>
+            </div>
+          </Card>
+        )}
+      </div>
     </div>
   );
 }

@@ -1,269 +1,537 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+  YellowBadge,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  TrendingDown,
+  TrendingUp,
+  AlertCircle,
+  CheckCircle,
+  DollarSign,
+  BarChart3,
+} from "lucide-react";
 
-import { useMemo } from 'react';
-import { motion } from 'framer-motion';
+export const dynamic = "force-dynamic";
 
-/* ── Design tokens ── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
+const fmtMoney = (n: number) =>
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-/* ── Types ── */
-type CostCategory = 'Hard Costs' | 'Soft Costs' | 'Financing';
-
-type LineItem = {
-  id: string;
-  category: CostCategory;
-  description: string;
-  budgeted: number;
-  committed: number;
-  actual: number;
+const fmtVariance = (n: number) => {
+  const prefix = n >= 0 ? "+" : "";
+  return `${prefix}${fmtMoney(n)}`;
 };
 
-/* ── Mock data: 12 line items ── */
-const MOCK_LINE_ITEMS: LineItem[] = [
-  // Hard Costs
-  { id: 'li1',  category: 'Hard Costs', description: 'Structural concrete',       budgeted: 4_200_000, committed: 4_350_000, actual: 4_180_000 },
-  { id: 'li2',  category: 'Hard Costs', description: 'Structural steel',          budgeted: 2_800_000, committed: 2_950_000, actual: 2_720_000 },
-  { id: 'li3',  category: 'Hard Costs', description: 'MEP rough-in',              budgeted: 3_100_000, committed: 3_100_000, actual: 2_450_000 },
-  { id: 'li4',  category: 'Hard Costs', description: 'Exterior envelope',         budgeted: 2_400_000, committed: 2_600_000, actual: 1_900_000 },
-  { id: 'li5',  category: 'Hard Costs', description: 'Interior finishes',         budgeted: 1_800_000, committed: 1_750_000, actual: 620_000 },
-  { id: 'li6',  category: 'Hard Costs', description: 'Site work & grading',       budgeted: 1_500_000, committed: 1_480_000, actual: 1_510_000 },
-  { id: 'li7',  category: 'Hard Costs', description: 'Fire protection',           budgeted: 950_000,   committed: 980_000,   actual: 410_000 },
-  // Soft Costs
-  { id: 'li8',  category: 'Soft Costs', description: 'Architecture & engineering', budgeted: 1_200_000, committed: 1_200_000, actual: 1_080_000 },
-  { id: 'li9',  category: 'Soft Costs', description: 'Permits & fees',            budgeted: 680_000,   committed: 720_000,   actual: 720_000 },
-  { id: 'li10', category: 'Soft Costs', description: 'Legal & insurance',         budgeted: 450_000,   committed: 430_000,   actual: 380_000 },
-  // Financing
-  { id: 'li11', category: 'Financing',  description: 'Construction loan interest', budgeted: 1_800_000, committed: 1_800_000, actual: 1_250_000 },
-  { id: 'li12', category: 'Financing',  description: 'Loan fees & closing',       budgeted: 340_000,   committed: 340_000,   actual: 340_000 },
-];
+const fmtCompact = (n: number) => {
+  if (Math.abs(n) >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return fmtMoney(n);
+};
 
-const CONTINGENCY_BUDGET = 1_200_000;
+const fmtCompactSigned = (n: number) => {
+  const prefix = n >= 0 ? "+" : "";
+  if (Math.abs(n) >= 1_000_000) return `${prefix}$${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${prefix}$${(n / 1_000).toFixed(0)}K`;
+  return `${prefix}${fmtMoney(n)}`;
+};
 
-/* ── Helpers ── */
-const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+const CATEGORY_STYLES: Record<string, { bg: string; text: string }> = {
+  land:         { bg: "#E0E7FF", text: "#3730A3" },
+  hard_costs:   { bg: "#DBEAFE", text: "#1E40AF" },
+  soft_costs:   { bg: "#FEF3C7", text: "#92400E" },
+  financing:    { bg: "#FCE7F3", text: "#9D174D" },
+  contingency:  { bg: "#F3E8FF", text: "#6B21A8" },
+  other:        { bg: "#F3F4F6", text: "#374151" },
+};
 
-const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+const STATUS_STYLES: Record<string, { bg: string; text: string; dot: string }> = {
+  on_track: { bg: "#D1FAE5", text: "#065F46", dot: T.green },
+  at_risk:  { bg: "#FEF3C7", text: "#92400E", dot: "#D97706" },
+  over:     { bg: "#FEE2E2", text: "#991B1B", dot: T.red },
+};
 
-const categories: CostCategory[] = ['Hard Costs', 'Soft Costs', 'Financing'];
+const fmtCategory = (s: string) =>
+  s
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
-export default function CostVariancePage() {
-  const items = MOCK_LINE_ITEMS;
+const fmtStatus = (s: string) =>
+  s
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
-  /* ── Computed ── */
-  const totalBudgeted = items.reduce((s, i) => s + i.budgeted, 0);
-  const totalCommitted = items.reduce((s, i) => s + i.committed, 0);
-  const totalActual = items.reduce((s, i) => s + i.actual, 0);
-  const totalVariance = totalBudgeted - totalCommitted;
-  const contingencyUsed = Math.max(0, totalCommitted - totalBudgeted);
-  const contingencyRemaining = CONTINGENCY_BUDGET - contingencyUsed;
+export default async function CostVariancePage() {
+  const supabase = createServerClient();
 
-  /* ── Category rollups ── */
-  const rollups = useMemo(() => {
-    return categories.map(cat => {
-      const catItems = items.filter(i => i.category === cat);
-      const budgeted = catItems.reduce((s, i) => s + i.budgeted, 0);
-      const committed = catItems.reduce((s, i) => s + i.committed, 0);
-      const actual = catItems.reduce((s, i) => s + i.actual, 0);
-      const variance = budgeted - committed;
-      return { category: cat, budgeted, committed, actual, variance, pctSpent: budgeted > 0 ? (actual / budgeted) * 100 : 0 };
-    });
-  }, []);
+  const [{ data: lineItems }, { data: projects }] = await Promise.all([
+    supabase.from("budget_line_items").select("*"),
+    supabase.from("dev_projects").select("id, name, address"),
+  ]);
+
+  const rows = lineItems ?? [];
+  const projectList = projects ?? [];
+
+  // Project lookup
+  const projectMap = new Map<string, { name: string; address: string }>();
+  for (const p of projectList) {
+    projectMap.set(p.id, { name: p.name, address: p.address });
+  }
+
+  // KPIs
+  const totalBudgeted = rows.reduce((s, r) => s + Number(r.budgeted ?? 0), 0);
+  const totalCommitted = rows.reduce((s, r) => s + Number(r.committed ?? 0), 0);
+  const totalActual = rows.reduce((s, r) => s + Number(r.actual ?? 0), 0);
+  const totalVariance = rows.reduce((s, r) => s + Number(r.variance ?? 0), 0);
+  const onTrack = rows.filter((r) => r.status === "on_track").length;
+  const atRisk = rows.filter((r) => r.status === "at_risk").length;
+  const over = rows.filter((r) => r.status === "over").length;
+
+  // Group by project
+  const byProject = new Map<string, typeof rows>();
+  for (const r of rows) {
+    const key = r.project_id ?? "unassigned";
+    if (!byProject.has(key)) byProject.set(key, []);
+    byProject.get(key)!.push(r);
+  }
+
+  // Category-level variance totals
+  const byCategory = new Map<string, { budgeted: number; committed: number; actual: number; variance: number }>();
+  for (const r of rows) {
+    const cat = r.category ?? "other";
+    const existing = byCategory.get(cat) ?? { budgeted: 0, committed: 0, actual: 0, variance: 0 };
+    existing.budgeted += Number(r.budgeted ?? 0);
+    existing.committed += Number(r.committed ?? 0);
+    existing.actual += Number(r.actual ?? 0);
+    existing.variance += Number(r.variance ?? 0);
+    byCategory.set(cat, existing);
+  }
+
+  if (rows.length === 0) {
+    return (
+      <div
+        className="min-h-screen px-6 py-8 lg:px-10"
+        style={{ backgroundColor: T.cream, color: T.ink }}
+      >
+        <PageTitle
+          eyebrow="COST CONTROL"
+          title={
+            <>
+              Budget <em className="italic text-stone-500">Variance</em>.
+            </>
+          }
+        />
+        <Card>
+          <div className="py-16 text-center">
+            <BarChart3 className="mx-auto h-10 w-10 text-stone-300" />
+            <p className="mt-4 text-sm text-stone-500">
+              No budget line items found.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, fontFamily: 'var(--font-inter)', color: INK }}>
-      {/* ── Header ── */}
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Developer &middot; Cost Variance</p>
-              <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-                Cost <em className="italic">Variance</em>.
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-                Budget vs. actuals at a glance. Red means over, green means under. No surprises.
-              </p>
-            </div>
-            <button className="rounded-md border bg-white px-3 py-2 text-xs font-medium transition-colors hover:border-neutral-900" style={{ borderColor: HAIRLINE, color: MID }}>Export Report</button>
-          </div>
+    <div
+      className="min-h-screen px-6 py-8 lg:px-10"
+      style={{ backgroundColor: T.cream, color: T.ink }}
+    >
+      <PageTitle
+        eyebrow="COST CONTROL"
+        title={
+          <>
+            Budget <em className="italic text-stone-500">Variance</em>.
+          </>
+        }
+        subtitle={`${rows.length} line items across ${byProject.size} projects. Variance figures from live budget data.`}
+      />
 
-          {/* KPIs */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Total budget" value={fmtMoney(totalBudgeted + CONTINGENCY_BUDGET)} />
-            <Kpi label="Total spent" value={fmtMoney(totalActual)} hint={fmtPct((totalActual / totalBudgeted) * 100) + ' of budget'} />
-            <Kpi label="Budget variance" value={fmtMoney(totalVariance)} positive={totalVariance >= 0} />
-            <Kpi label="Contingency left" value={fmtMoney(contingencyRemaining)} hint={fmtPct((contingencyRemaining / CONTINGENCY_BUDGET) * 100) + ' remaining'} accent />
-          </div>
-        </div>
-      </header>
+      {/* Hero stat */}
+      <section className="mb-8">
+        <DarkStatCard
+          label="Total Variance"
+          value={fmtCompactSigned(totalVariance)}
+          subtitle={
+            totalVariance >= 0
+              ? "Portfolio is under budget overall."
+              : "Portfolio is over budget. Review at-risk items."
+          }
+          icon={
+            totalVariance >= 0 ? (
+              <TrendingUp className="h-5 w-5 text-emerald-400" />
+            ) : (
+              <TrendingDown className="h-5 w-5 text-red-400" />
+            )
+          }
+        />
+      </section>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        {/* ── Category rollup cards ── */}
-        <section className="mb-8">
-          <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Category <em className="italic">Summary</em>
-          </h2>
-          <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Rollup by cost category</p>
+      {/* KPI Row */}
+      <section className="mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard
+          label="ON TRACK"
+          value={onTrack}
+          note={`${rows.length > 0 ? Math.round((onTrack / rows.length) * 100) : 0}% of items`}
+        />
+        <KpiCard label="AT RISK" value={atRisk} />
+        <KpiCard label="OVER BUDGET" value={over} />
+        <KpiCard label="TOTAL BUDGETED" value={fmtCompact(totalBudgeted)} />
+      </section>
 
-          <div className="grid gap-4 sm:grid-cols-3">
-            {rollups.map(r => (
-              <motion.div key={r.category} whileHover={{ y: -2, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }} className="rounded-lg border bg-white p-5" style={{ borderColor: HAIRLINE }}>
-                <div className="flex items-baseline justify-between">
-                  <h3 className="text-lg tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>{r.category}</h3>
-                  <span className="text-xs font-medium tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: r.variance >= 0 ? GREEN : RED }}>
-                    {r.variance >= 0 ? '+' : ''}{fmtMoney(r.variance)}
+      {/* Per-project breakdown */}
+      {Array.from(byProject.entries()).map(([projectId, items], pi) => {
+        const project = projectMap.get(projectId);
+        const projVariance = items.reduce(
+          (s, r) => s + Number(r.variance ?? 0),
+          0,
+        );
+        const projBudgeted = items.reduce(
+          (s, r) => s + Number(r.budgeted ?? 0),
+          0,
+        );
+
+        return (
+          <StaggerIn key={projectId} index={pi}>
+            <section className="mb-8">
+              {/* Project header */}
+              <div className="mb-4 flex items-baseline justify-between">
+                <div>
+                  <SectionLabel>
+                    {project?.name?.toUpperCase() ?? "UNASSIGNED"}
+                  </SectionLabel>
+                  {project?.address && (
+                    <p className="mt-0.5 text-xs text-stone-500">
+                      {project.address}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <span
+                    className="text-lg font-semibold"
+                    style={{
+                      color: projVariance >= 0 ? T.green : T.red,
+                      fontFamily: "var(--font-geist-mono)",
+                    }}
+                  >
+                    {fmtVariance(projVariance)}
                   </span>
+                  <p className="text-xs text-stone-500">
+                    of {fmtCompact(projBudgeted)} budgeted
+                  </p>
                 </div>
-                <div className="mt-3 space-y-2 text-xs" style={{ color: MID }}>
-                  <div className="flex justify-between"><span>Budgeted</span><span className="tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(r.budgeted)}</span></div>
-                  <div className="flex justify-between"><span>Committed</span><span className="tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(r.committed)}</span></div>
-                  <div className="flex justify-between"><span>Actual to date</span><span className="tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(r.actual)}</span></div>
+              </div>
+
+              {/* Line items table */}
+              <Card padded={false}>
+                {/* Desktop table */}
+                <div className="hidden overflow-x-auto md:block">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr
+                        className="border-b text-left text-[11px] uppercase tracking-[0.14em]"
+                        style={{
+                          borderColor: T.border,
+                          color: T.dim,
+                          fontFamily: "var(--font-geist-mono)",
+                        }}
+                      >
+                        <th className="px-5 py-3 font-medium">Line Item</th>
+                        <th className="px-5 py-3 font-medium">Category</th>
+                        <th className="px-5 py-3 text-right font-medium">
+                          Budgeted
+                        </th>
+                        <th className="px-5 py-3 text-right font-medium">
+                          Committed
+                        </th>
+                        <th className="px-5 py-3 text-right font-medium">
+                          Actual
+                        </th>
+                        <th className="px-5 py-3 text-right font-medium">
+                          Variance
+                        </th>
+                        <th className="px-5 py-3 font-medium">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {items.map((item) => {
+                        const variance = Number(item.variance ?? 0);
+                        const cat = item.category ?? "other";
+                        const cs =
+                          CATEGORY_STYLES[cat] ?? CATEGORY_STYLES.other;
+                        const st =
+                          STATUS_STYLES[item.status] ?? STATUS_STYLES.on_track;
+
+                        return (
+                          <tr
+                            key={item.id}
+                            className="border-b last:border-0"
+                            style={{ borderColor: T.borderLight }}
+                          >
+                            <td className="px-5 py-3 font-medium text-stone-900">
+                              {item.line_item}
+                              {item.notes && (
+                                <p className="mt-0.5 text-[11px] text-stone-400">
+                                  {item.notes}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-5 py-3">
+                              <span
+                                className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                style={{
+                                  backgroundColor: cs.bg,
+                                  color: cs.text,
+                                }}
+                              >
+                                {fmtCategory(cat)}
+                              </span>
+                            </td>
+                            <td
+                              className="px-5 py-3 text-right tabular-nums text-stone-600"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              {fmtMoney(Number(item.budgeted ?? 0))}
+                            </td>
+                            <td
+                              className="px-5 py-3 text-right tabular-nums text-stone-600"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              {fmtMoney(Number(item.committed ?? 0))}
+                            </td>
+                            <td
+                              className="px-5 py-3 text-right tabular-nums text-stone-900"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              {fmtMoney(Number(item.actual ?? 0))}
+                            </td>
+                            <td
+                              className="px-5 py-3 text-right tabular-nums font-semibold"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                                color:
+                                  variance >= 0 ? T.green : T.red,
+                              }}
+                            >
+                              {fmtVariance(variance)}
+                            </td>
+                            <td className="px-5 py-3">
+                              <span
+                                className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-medium"
+                                style={{
+                                  backgroundColor: st.bg,
+                                  color: st.text,
+                                }}
+                              >
+                                <span
+                                  className="h-1.5 w-1.5 rounded-full"
+                                  style={{ backgroundColor: st.dot }}
+                                />
+                                {fmtStatus(item.status ?? "on_track")}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
-                {/* % spent bar */}
-                <div className="mt-3">
-                  <div className="flex items-baseline justify-between">
-                    <span className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Spent</span>
-                    <span className="text-[11px] tabular-nums font-medium" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtPct(r.pctSpent)}</span>
-                  </div>
-                  <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full" style={{ backgroundColor: HAIRLINE }}>
-                    <div className="h-full rounded-full transition-all" style={{ width: `${Math.min(100, r.pctSpent)}%`, backgroundColor: r.pctSpent > 100 ? RED : r.pctSpent > 75 ? '#D97706' : GREEN }} />
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
 
-        {/* ── Line items table ── */}
-        <section>
-          <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Budget <em className="italic">Detail</em>
-          </h2>
-          <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{items.length} line items across {categories.length} categories</p>
+                {/* Mobile cards */}
+                <div className="space-y-3 p-4 md:hidden">
+                  {items.map((item) => {
+                    const variance = Number(item.variance ?? 0);
+                    const cat = item.category ?? "other";
+                    const cs = CATEGORY_STYLES[cat] ?? CATEGORY_STYLES.other;
+                    const st =
+                      STATUS_STYLES[item.status] ?? STATUS_STYLES.on_track;
 
-          {/* Desktop */}
-          <div className="hidden overflow-hidden rounded-lg border bg-white md:block" style={{ borderColor: HAIRLINE }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-neutral-50 text-left text-[11px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM, fontFamily: 'var(--font-geist-mono)' }}>
-                  <th className="px-4 py-3 font-medium">Category</th>
-                  <th className="px-4 py-3 font-medium">Description</th>
-                  <th className="px-4 py-3 text-right font-medium">Budgeted</th>
-                  <th className="px-4 py-3 text-right font-medium">Committed</th>
-                  <th className="px-4 py-3 text-right font-medium">Actual</th>
-                  <th className="px-4 py-3 text-right font-medium">Variance</th>
-                  <th className="px-4 py-3 font-medium">% Spent</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map(item => {
-                  const variance = item.budgeted - item.committed;
-                  const pctSpent = item.budgeted > 0 ? (item.actual / item.budgeted) * 100 : 0;
-                  const barColor = pctSpent > 100 ? RED : pctSpent > 75 ? '#D97706' : GREEN;
-
-                  return (
-                    <motion.tr key={item.id} whileHover={{ backgroundColor: '#FDF8E8' }} className="border-b last:border-0" style={{ borderColor: HAIRLINE }}>
-                      <td className="px-4 py-3">
-                        <span className="text-[11px] uppercase tracking-wider" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{item.category}</span>
-                      </td>
-                      <td className="px-4 py-3 font-medium" style={{ color: INK }}>{item.description}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{fmtMoney(item.budgeted)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{fmtMoney(item.committed)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(item.actual)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums font-medium" style={{ fontFamily: 'var(--font-geist-mono)', color: variance >= 0 ? GREEN : RED }}>
-                        {variance >= 0 ? '+' : ''}{fmtMoney(variance)}
-                      </td>
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-2">
-                          <div className="h-1.5 w-20 overflow-hidden rounded-full" style={{ backgroundColor: HAIRLINE }}>
-                            <div className="h-full rounded-full" style={{ width: `${Math.min(100, pctSpent)}%`, backgroundColor: barColor }} />
+                    return (
+                      <div
+                        key={item.id}
+                        className="rounded-2xl border border-stone-200 bg-[#FAFAF7] p-4"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium text-stone-900">
+                              {item.line_item}
+                            </p>
+                            <span
+                              className="mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-medium"
+                              style={{
+                                backgroundColor: cs.bg,
+                                color: cs.text,
+                              }}
+                            >
+                              {fmtCategory(cat)}
+                            </span>
                           </div>
-                          <span className="text-xs tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{fmtPct(pctSpent)}</span>
+                          <span
+                            className="text-sm font-semibold tabular-nums"
+                            style={{
+                              fontFamily: "var(--font-geist-mono)",
+                              color: variance >= 0 ? T.green : T.red,
+                            }}
+                          >
+                            {fmtVariance(variance)}
+                          </span>
                         </div>
-                      </td>
-                    </motion.tr>
-                  );
-                })}
-              </tbody>
-              {/* Totals row */}
-              <tfoot>
-                <tr className="border-t-2 bg-neutral-50" style={{ borderColor: HAIRLINE }}>
-                  <td className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider" style={{ fontFamily: 'var(--font-geist-mono)' }}>Total</td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(totalBudgeted)}</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(totalCommitted)}</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(totalActual)}</td>
-                  <td className="px-4 py-3 text-right font-semibold tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: totalVariance >= 0 ? GREEN : RED }}>
-                    {totalVariance >= 0 ? '+' : ''}{fmtMoney(totalVariance)}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-20 overflow-hidden rounded-full" style={{ backgroundColor: HAIRLINE }}>
-                        <div className="h-full rounded-full" style={{ width: `${Math.min(100, (totalActual / totalBudgeted) * 100)}%`, backgroundColor: (totalActual / totalBudgeted) * 100 > 100 ? RED : GREEN }} />
+                        <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-stone-500">
+                          <div>
+                            <p className="text-[10px] uppercase">Budgeted</p>
+                            <p
+                              className="tabular-nums text-stone-800"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              {fmtMoney(Number(item.budgeted ?? 0))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase">Committed</p>
+                            <p
+                              className="tabular-nums text-stone-800"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              {fmtMoney(Number(item.committed ?? 0))}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-[10px] uppercase">Actual</p>
+                            <p
+                              className="tabular-nums text-stone-800"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              {fmtMoney(Number(item.actual ?? 0))}
+                            </p>
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-xs tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{fmtPct((totalActual / totalBudgeted) * 100)}</span>
-                    </div>
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            </section>
+          </StaggerIn>
+        );
+      })}
 
-          {/* Mobile cards */}
-          <div className="grid gap-3 md:hidden">
-            {items.map(item => {
-              const variance = item.budgeted - item.committed;
-              const pctSpent = item.budgeted > 0 ? (item.actual / item.budgeted) * 100 : 0;
-              const barColor = pctSpent > 100 ? RED : pctSpent > 75 ? '#D97706' : GREEN;
+      {/* Category-level summary */}
+      <section className="mt-4">
+        <SectionLabel>VARIANCE BY CATEGORY</SectionLabel>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from(byCategory.entries()).map(([cat, totals], ci) => {
+            const cs = CATEGORY_STYLES[cat] ?? CATEGORY_STYLES.other;
+            const pctSpent =
+              totals.budgeted > 0
+                ? (totals.actual / totals.budgeted) * 100
+                : 0;
+            const barColor =
+              pctSpent > 100 ? T.red : pctSpent > 80 ? "#D97706" : T.green;
 
-              return (
-                <div key={item.id} className="rounded-lg border bg-white p-4" style={{ borderColor: HAIRLINE }}>
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <div className="font-medium" style={{ color: INK }}>{item.description}</div>
-                      <div className="text-[10px] uppercase tracking-wider" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{item.category}</div>
-                    </div>
-                    <span className="shrink-0 text-sm font-medium tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: variance >= 0 ? GREEN : RED }}>
-                      {variance >= 0 ? '+' : ''}{fmtMoney(variance)}
+            return (
+              <StaggerIn key={cat} index={ci}>
+                <Card>
+                  <div className="flex items-baseline justify-between">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-[11px] font-medium"
+                      style={{ backgroundColor: cs.bg, color: cs.text }}
+                    >
+                      {fmtCategory(cat)}
+                    </span>
+                    <span
+                      className="text-lg font-semibold tabular-nums"
+                      style={{
+                        fontFamily: "var(--font-geist-mono)",
+                        color: totals.variance >= 0 ? T.green : T.red,
+                      }}
+                    >
+                      {fmtVariance(totals.variance)}
                     </span>
                   </div>
-                  <div className="mt-3 grid grid-cols-3 gap-2 text-xs" style={{ color: MID }}>
-                    <div><div className="text-[10px] uppercase" style={{ fontFamily: 'var(--font-geist-mono)' }}>Budget</div><div className="tabular-nums" style={{ color: INK, fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(item.budgeted)}</div></div>
-                    <div><div className="text-[10px] uppercase" style={{ fontFamily: 'var(--font-geist-mono)' }}>Committed</div><div className="tabular-nums" style={{ color: INK, fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(item.committed)}</div></div>
-                    <div><div className="text-[10px] uppercase" style={{ fontFamily: 'var(--font-geist-mono)' }}>Actual</div><div className="tabular-nums" style={{ color: INK, fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(item.actual)}</div></div>
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <div className="h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: HAIRLINE }}>
-                      <div className="h-full rounded-full" style={{ width: `${Math.min(100, pctSpent)}%`, backgroundColor: barColor }} />
+                  <div className="mt-4 space-y-1.5 text-xs text-stone-500">
+                    <div className="flex justify-between">
+                      <span>Budgeted</span>
+                      <span
+                        className="tabular-nums text-stone-800"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {fmtMoney(totals.budgeted)}
+                      </span>
                     </div>
-                    <span className="text-xs tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{fmtPct(pctSpent)}</span>
+                    <div className="flex justify-between">
+                      <span>Committed</span>
+                      <span
+                        className="tabular-nums text-stone-800"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {fmtMoney(totals.committed)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Actual</span>
+                      <span
+                        className="tabular-nums text-stone-800"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {fmtMoney(totals.actual)}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
-        </section>
-      </main>
-    </div>
-  );
-}
-
-/* ── Sub-components ── */
-
-function Kpi({ label, value, hint, accent, positive }: { label: string; value: string; hint?: string; accent?: boolean; positive?: boolean }) {
-  return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: positive === undefined ? INK : positive ? GREEN : RED }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
+                  <div className="mt-3">
+                    <div className="flex items-baseline justify-between">
+                      <span
+                        className="text-[10px] uppercase tracking-[0.16em] text-stone-400"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        Spent
+                      </span>
+                      <span
+                        className="text-[11px] font-medium tabular-nums"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {pctSpent.toFixed(1)}%
+                      </span>
+                    </div>
+                    <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-stone-100">
+                      <div
+                        className="h-full rounded-full"
+                        style={{
+                          width: `${Math.min(100, pctSpent)}%`,
+                          backgroundColor: barColor,
+                        }}
+                      />
+                    </div>
+                  </div>
+                </Card>
+              </StaggerIn>
+            );
+          })}
+        </div>
+      </section>
     </div>
   );
 }

@@ -78,16 +78,6 @@ export function Sidebar({
         })}
       </nav>
 
-      {/* ── Live Swarm card ── */}
-      <div className="mt-6 rounded-3xl border border-stone-200 bg-[#fffdf6] p-4">
-        <div className="mb-3 flex items-center gap-2 text-xs uppercase tracking-[0.2em] text-stone-500">
-          <Command className="h-3.5 w-3.5" /> Live Swarm
-        </div>
-        <div className="text-sm leading-6 text-stone-700">
-          4 agents monitoring market, debt, zoning, and risk signals.
-        </div>
-      </div>
-
       {/* ── Switch Role ── */}
       <div className="mt-4">
         <div className="mb-2 px-1 text-[10px] uppercase tracking-[0.2em] text-stone-400">

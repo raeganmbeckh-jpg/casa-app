@@ -1,222 +1,316 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  YellowBadge,
+  StaggerIn,
+  ListContainer,
+  ListHeader,
+  ListRow,
+  StatusDot,
+  IconChip,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  LineChart,
+  Building2,
+  TrendingUp,
+  MapPin,
+  AlertTriangle,
+  Zap,
+  BarChart3,
+} from "lucide-react";
 
-import { useState } from 'react';
-import { motion } from 'framer-motion';
-
-type MarketData = {
-  zip: string;
-  neighborhood: string;
-  medianPrice: number;
-  priceTrend: number[];
-  inventoryCount: number;
-  daysOnMarket: number;
-  absorptionRate: number;
-  newListings: number;
-  closings: number;
-  priceChangeYoY: number;
-};
-
-const MOCK_MARKETS: MarketData[] = [
-  {
-    zip: '92103',
-    neighborhood: 'Hillcrest / Mission Hills',
-    medianPrice: 985000,
-    priceTrend: [910, 920, 935, 940, 950, 955, 960, 970, 975, 980, 982, 985],
-    inventoryCount: 68,
-    daysOnMarket: 24,
-    absorptionRate: 2.1,
-    newListings: 32,
-    closings: 28,
-    priceChangeYoY: 5.4,
-  },
-  {
-    zip: '92104',
-    neighborhood: 'North Park / University Heights',
-    medianPrice: 1050000,
-    priceTrend: [960, 975, 985, 990, 1000, 1010, 1015, 1025, 1030, 1040, 1045, 1050],
-    inventoryCount: 45,
-    daysOnMarket: 18,
-    absorptionRate: 1.6,
-    newListings: 28,
-    closings: 31,
-    priceChangeYoY: 7.2,
-  },
-  {
-    zip: '92109',
-    neighborhood: 'Pacific Beach / Mission Beach',
-    medianPrice: 1325000,
-    priceTrend: [1200, 1215, 1230, 1245, 1260, 1270, 1280, 1290, 1300, 1310, 1318, 1325],
-    inventoryCount: 52,
-    daysOnMarket: 31,
-    absorptionRate: 2.8,
-    newListings: 19,
-    closings: 15,
-    priceChangeYoY: 4.1,
-  },
-];
+export const dynamic = "force-dynamic";
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-const MONTHS = ['May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
+export default async function MarketPulsePage() {
+  const supabase = createServerClient();
 
-export default function MarketPulsePage() {
-  const [zipInput, setZipInput] = useState('');
-  const [selectedZip, setSelectedZip] = useState<string | null>(null);
+  const [listingsRes, offMarketRes] = await Promise.all([
+    supabase.from("listings").select("*"),
+    supabase
+      .from("off_market_leads")
+      .select("*")
+      .order("opportunity_score", { ascending: false }),
+  ]);
 
-  const handleSearch = () => {
-    const trimmed = zipInput.trim();
-    const match = MOCK_MARKETS.find((m) => m.zip === trimmed);
-    setSelectedZip(match ? match.zip : null);
-  };
+  const listings = listingsRes.data ?? [];
+  const offMarketLeads = offMarketRes.data ?? [];
 
-  const displayMarkets = selectedZip
-    ? MOCK_MARKETS.filter((m) => m.zip === selectedZip)
-    : MOCK_MARKETS;
+  const totalInventory = listings.length;
+  const avgListPrice = listings.length
+    ? Math.round(
+        listings.reduce((s, l) => s + Number(l.list_price || 0), 0) /
+          listings.length
+      )
+    : 0;
+  const avgDom = listings.length
+    ? Math.round(
+        listings.reduce((s, l) => s + (l.days_on_market || 0), 0) /
+          listings.length
+      )
+    : 0;
 
-  return (
-    <div className="min-h-screen bg-[#FAFAF7] text-[#111111]" style={{ fontFamily: 'var(--font-inter, Inter, system-ui, sans-serif)' }}>
-      <header className="border-b bg-white" style={{ borderColor: 'rgba(17,17,17,0.08)' }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <div>
-            <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: 'rgba(17,17,17,0.45)', fontFamily: 'var(--font-geist-mono, monospace)' }}>Broker · Market</p>
-            <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading, Cormorant Garamond, serif)', fontWeight: 500, color: '#111111' }}>
-              Market <em className="italic">Pulse</em>.
-            </h1>
-            <p className="mt-2 max-w-2xl text-sm" style={{ color: 'rgba(17,17,17,0.65)' }}>
-              Real-time market intelligence for San Diego zip codes. Track pricing, inventory, and absorption.
-            </p>
-          </div>
+  const activeCount = listings.filter((l) => l.status === "active").length;
+  const pendingCount = listings.filter((l) => l.status === "pending").length;
+  const soldCount = listings.filter((l) => l.status === "sold").length;
 
-          <div className="mt-8 flex gap-2">
-            <input
-              value={zipInput}
-              onChange={(e) => setZipInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="Enter zip code (e.g. 92103)"
-              className="w-full rounded-md border bg-white px-4 py-3 text-sm placeholder:text-neutral-400 focus:outline-none sm:w-72"
-              style={{ borderColor: 'rgba(17,17,17,0.08)' }}
-            />
-            <button
-              onClick={handleSearch}
-              className="rounded-md px-5 py-3 text-xs font-medium transition-colors hover:opacity-90"
-              style={{ backgroundColor: '#F9D96A', color: '#111111' }}
-            >
-              Search
-            </button>
-            {selectedZip && (
-              <button
-                onClick={() => { setSelectedZip(null); setZipInput(''); }}
-                className="rounded-md border bg-white px-3 py-3 text-xs font-medium transition-colors hover:border-[#111111]"
-                style={{ borderColor: 'rgba(17,17,17,0.08)', color: 'rgba(17,17,17,0.65)' }}
-              >
-                Show all
-              </button>
-            )}
-          </div>
-        </div>
-      </header>
+  const statusBreakdown = [
+    { label: "Active", count: activeCount, color: T.green },
+    { label: "Pending", count: pendingCount, color: T.yellow },
+    { label: "Sold", count: soldCount, color: T.dim },
+  ];
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        <div className="grid gap-6">
-          {displayMarkets.map((market) => (
-            <MarketCard key={market.zip} market={market} />
-          ))}
-        </div>
-      </main>
-    </div>
-  );
-}
+  const totalShowings = listings.reduce((s, l) => s + (l.showings || 0), 0);
+  const totalOffers = listings.reduce((s, l) => s + (l.offers || 0), 0);
 
-function MarketCard({ market }: { market: MarketData }) {
-  const trendMin = Math.min(...market.priceTrend);
-  const trendMax = Math.max(...market.priceTrend);
-  const trendRange = trendMax - trendMin || 1;
-  const sparkWidth = 240;
-  const sparkHeight = 48;
-
-  const points = market.priceTrend.map((val, i) => {
-    const x = (i / (market.priceTrend.length - 1)) * sparkWidth;
-    const y = sparkHeight - ((val - trendMin) / trendRange) * (sparkHeight - 4) - 2;
-    return `${x},${y}`;
-  }).join(' ');
-
-  const marketType = market.absorptionRate < 2 ? "Seller's Market" : market.absorptionRate > 4 ? "Buyer's Market" : 'Balanced';
-  const marketColor = market.absorptionRate < 2 ? '#B91C1C' : market.absorptionRate > 4 ? '#15803D' : '#D97706';
+  // Property type breakdown
+  const typeMap: Record<string, number> = {};
+  for (const l of listings) {
+    const t = l.property_type || "Unknown";
+    typeMap[t] = (typeMap[t] || 0) + 1;
+  }
+  const typeBreakdown = Object.entries(typeMap).sort((a, b) => b[1] - a[1]);
 
   return (
-    <motion.div
-      whileHover={{ y: -2 }}
-      transition={{ duration: 0.15 }}
-      className="rounded-lg border bg-white p-6"
-      style={{ borderColor: 'rgba(17,17,17,0.08)' }}
-    >
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="rounded-md px-2 py-1 text-sm font-medium" style={{ backgroundColor: 'rgba(17,17,17,0.04)', fontFamily: 'var(--font-geist-mono, monospace)', color: '#111111' }}>
-              {market.zip}
-            </span>
-            <span className="text-lg font-medium" style={{ color: '#111111' }}>{market.neighborhood}</span>
-          </div>
-          <div className="mt-1 flex items-center gap-2">
-            <span className="rounded-full border px-2 py-0.5 text-[10px] font-medium" style={{ color: marketColor, borderColor: marketColor + '33', backgroundColor: marketColor + '0a' }}>
-              {marketType}
-            </span>
-          </div>
-        </div>
+    <div className="min-h-screen bg-[#FAFAF7] px-4 py-10 sm:px-6 lg:px-10">
+      <PageTitle
+        eyebrow="MARKET PULSE"
+        title="Market Intelligence"
+        subtitle="Aggregated market data, inventory analysis, and off-market opportunities."
+      />
 
-        {/* Sparkline */}
-        <div className="flex flex-col items-end">
-          <div className="text-[9px] uppercase tracking-[0.14em]" style={{ color: 'rgba(17,17,17,0.45)', fontFamily: 'var(--font-geist-mono, monospace)' }}>12-month price trend</div>
-          <svg width={sparkWidth} height={sparkHeight} className="mt-1">
-            <polyline
-              points={points}
-              fill="none"
-              stroke="#F9D96A"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
-          <div className="mt-1 flex gap-4 text-[9px]" style={{ color: 'rgba(17,17,17,0.45)', fontFamily: 'var(--font-geist-mono, monospace)' }}>
-            <span>{MONTHS[0]}</span>
-            <span>{MONTHS[11]}</span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-        <MetricCell label="Median price" value={fmtMoney(market.medianPrice)} />
-        <MetricCell
-          label="YoY change"
-          value={`+${market.priceChangeYoY}%`}
-          color={market.priceChangeYoY > 0 ? '#15803D' : '#B91C1C'}
+      <div className="mt-8 grid gap-6 lg:grid-cols-3">
+        <DarkStatCard
+          label="Total Inventory"
+          value={totalInventory}
+          subtitle={`${fmtMoney(avgListPrice)} avg list price`}
+          icon={<Building2 size={20} className="text-stone-400" />}
         />
-        <MetricCell label="Inventory" value={String(market.inventoryCount)} hint="active listings" />
-        <MetricCell label="Days on market" value={String(market.daysOnMarket)} hint="median" />
-        <MetricCell label="Absorption rate" value={`${market.absorptionRate} mo`} hint="months of supply" />
-        <div className="rounded-md border p-3" style={{ borderColor: 'rgba(17,17,17,0.08)' }}>
-          <div className="text-[10px] uppercase tracking-[0.14em]" style={{ color: 'rgba(17,17,17,0.45)', fontFamily: 'var(--font-geist-mono, monospace)' }}>New vs closed</div>
-          <div className="mt-1 flex items-baseline gap-1">
-            <span className="text-lg font-medium" style={{ fontFamily: 'var(--font-geist-mono, monospace)', color: '#111111' }}>{market.newListings}</span>
-            <span className="text-xs" style={{ color: 'rgba(17,17,17,0.45)' }}>new</span>
-            <span className="mx-1 text-xs" style={{ color: 'rgba(17,17,17,0.08)' }}>/</span>
-            <span className="text-lg font-medium" style={{ fontFamily: 'var(--font-geist-mono, monospace)', color: '#111111' }}>{market.closings}</span>
-            <span className="text-xs" style={{ color: 'rgba(17,17,17,0.45)' }}>closed</span>
-          </div>
+        <div className="grid grid-cols-2 gap-4 lg:col-span-2">
+          <KpiCard
+            label="Avg List Price"
+            value={fmtMoney(avgListPrice)}
+            note="All listings"
+          />
+          <KpiCard
+            label="Avg DOM"
+            value={`${avgDom} days`}
+            note="Days on market"
+          />
+          <KpiCard
+            label="Total Showings"
+            value={totalShowings}
+            note="Market activity"
+          />
+          <KpiCard
+            label="Total Offers"
+            value={totalOffers}
+            note="Buyer interest"
+          />
         </div>
       </div>
-    </motion.div>
-  );
-}
 
-function MetricCell({ label, value, hint, color }: { label: string; value: string; hint?: string; color?: string }) {
-  return (
-    <div className="rounded-md border p-3" style={{ borderColor: 'rgba(17,17,17,0.08)' }}>
-      <div className="text-[10px] uppercase tracking-[0.14em]" style={{ color: 'rgba(17,17,17,0.45)', fontFamily: 'var(--font-geist-mono, monospace)' }}>{label}</div>
-      <div className="mt-1 text-lg font-medium" style={{ fontFamily: 'var(--font-geist-mono, monospace)', color: color || '#111111' }}>{value}</div>
-      {hint && <div className="mt-0.5 text-[10px]" style={{ color: 'rgba(17,17,17,0.45)' }}>{hint}</div>}
+      {/* Market Activity Indicators */}
+      <div className="mt-10">
+        <SectionLabel>MARKET ACTIVITY</SectionLabel>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {/* Status Breakdown */}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <IconChip>
+                <BarChart3 size={14} className="text-stone-700" />
+              </IconChip>
+              <p className="text-sm font-semibold text-stone-900">
+                Status Breakdown
+              </p>
+            </div>
+            <div className="space-y-3">
+              {statusBreakdown.map((s) => (
+                <div key={s.label} className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <StatusDot color={s.color} />
+                    <span className="text-sm text-stone-700">{s.label}</span>
+                  </div>
+                  <span className="text-lg font-semibold text-stone-900">
+                    {s.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Property Type Mix */}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <IconChip>
+                <Building2 size={14} className="text-stone-700" />
+              </IconChip>
+              <p className="text-sm font-semibold text-stone-900">
+                Property Types
+              </p>
+            </div>
+            <div className="space-y-2">
+              {typeBreakdown.map(([type, count]) => (
+                <div
+                  key={type}
+                  className="flex items-center justify-between rounded-lg border border-stone-100 bg-[#FAFAF7] px-3 py-2"
+                >
+                  <YellowBadge>{type}</YellowBadge>
+                  <span className="text-sm font-medium text-stone-800">
+                    {count}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          {/* Absorption Indicator */}
+          <Card>
+            <div className="flex items-center gap-2 mb-4">
+              <IconChip>
+                <TrendingUp size={14} className="text-stone-700" />
+              </IconChip>
+              <p className="text-sm font-semibold text-stone-900">
+                Market Velocity
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-stone-500">
+                  Showings/Listing
+                </span>
+                <span className="font-mono text-sm font-medium text-stone-900">
+                  {listings.length
+                    ? (totalShowings / listings.length).toFixed(1)
+                    : 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-stone-500">
+                  Offers/Listing
+                </span>
+                <span className="font-mono text-sm font-medium text-stone-900">
+                  {listings.length
+                    ? (totalOffers / listings.length).toFixed(1)
+                    : 0}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-stone-500">
+                  Conversion Rate
+                </span>
+                <span className="font-mono text-sm font-medium text-stone-900">
+                  {totalShowings > 0
+                    ? ((totalOffers / totalShowings) * 100).toFixed(1)
+                    : 0}
+                  %
+                </span>
+              </div>
+              <div className="mt-2 rounded-lg border border-stone-200 bg-stone-50 p-2 text-center">
+                <span
+                  className="text-xs font-medium"
+                  style={{
+                    color:
+                      avgDom < 21 ? T.green : avgDom < 45 ? T.yellow : T.red,
+                  }}
+                >
+                  {avgDom < 21
+                    ? "Hot Market"
+                    : avgDom < 45
+                    ? "Balanced Market"
+                    : "Cooling Market"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        </div>
+      </div>
+
+      {/* Off-Market Leads */}
+      {offMarketLeads.length > 0 && (
+        <div className="mt-12">
+          <SectionLabel>OFF-MARKET LEADS</SectionLabel>
+          <div className="mt-4">
+            <ListContainer>
+              <ListHeader label="OPPORTUNITY PIPELINE" />
+              {offMarketLeads.map((lead, i) => (
+                <div key={i} className="px-4 pb-2">
+                  <ListRow last={i === offMarketLeads.length - 1}>
+                    <div className="flex items-center gap-3">
+                      <IconChip>
+                        <Zap size={14} className="text-stone-700" />
+                      </IconChip>
+                      <div>
+                        <p className="text-sm font-medium text-stone-900">
+                          {lead.address}
+                        </p>
+                        <p className="text-xs text-stone-500">
+                          {lead.city} &middot; Owner: {lead.owner_name}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                      {lead.est_value && (
+                        <div className="text-right">
+                          <p className="text-sm font-medium text-stone-800">
+                            {fmtMoney(Number(lead.est_value))}
+                          </p>
+                          <p className="text-[9px] uppercase tracking-wider text-stone-400">
+                            Est. Value
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex flex-col items-center gap-0.5">
+                        <div className="flex items-center gap-1">
+                          {lead.distress_score != null && (
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                              style={{
+                                backgroundColor:
+                                  lead.distress_score >= 7
+                                    ? "rgba(185,28,28,0.1)"
+                                    : "rgba(249,217,106,0.3)",
+                                color:
+                                  lead.distress_score >= 7
+                                    ? T.red
+                                    : "#92700C",
+                              }}
+                            >
+                              D:{lead.distress_score}
+                            </span>
+                          )}
+                          {lead.opportunity_score != null && (
+                            <span
+                              className="rounded-full px-1.5 py-0.5 text-[10px] font-medium"
+                              style={{
+                                backgroundColor: "rgba(21,128,61,0.1)",
+                                color: T.green,
+                              }}
+                            >
+                              O:{lead.opportunity_score}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </ListRow>
+                </div>
+              ))}
+            </ListContainer>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

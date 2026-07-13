@@ -1,196 +1,188 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import { Users, ShieldAlert } from "lucide-react";
 
-import { motion } from 'framer-motion';
-
-/* ── design tokens ── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
-
-/* ── types ── */
-type PaymentStatus = 'current' | 'late' | 'default';
-
-type ActiveLoan = {
-  id: string;
-  borrower: string;
-  property: string;
-  balance: number;
-  rate: number;
-  ltvCurrent: number;
-  dscrCurrent: number;
-  paymentStatus: PaymentStatus;
-  covenantFlag: string | null;
-};
-
-const MOCK_LOANS: ActiveLoan[] = [
-  { id: 'bl1', borrower: 'Elena Vasquez',   property: '1842 Olive St, San Diego, CA',     balance: 412000,  rate: 6.50,  ltvCurrent: 71.2, dscrCurrent: 1.38, paymentStatus: 'current', covenantFlag: null },
-  { id: 'bl2', borrower: 'James Whitfield', property: '330 Harbor Dr #12, Oceanside, CA',  balance: 598000,  rate: 6.875, ltvCurrent: 76.7, dscrCurrent: 1.21, paymentStatus: 'current', covenantFlag: 'DSCR approaching 1.20 min' },
-  { id: 'bl3', borrower: 'Priya Sharma',    property: '9100 Mira Mesa Blvd, SD, CA',      balance: 325000,  rate: 7.00,  ltvCurrent: 66.3, dscrCurrent: 1.45, paymentStatus: 'current', covenantFlag: null },
-  { id: 'bl4', borrower: 'Marcus Thompson', property: '2715 5th Ave, San Diego, CA',      balance: 510000,  rate: 6.875, ltvCurrent: 82.1, dscrCurrent: 0.94, paymentStatus: 'late',    covenantFlag: 'DSCR below 1.0 — watchlist' },
-  { id: 'bl5', borrower: 'Sarah Chen',      property: '4480 Clairemont Dr, SD, CA',       balance: 362000,  rate: 6.25,  ltvCurrent: 70.0, dscrCurrent: 1.52, paymentStatus: 'current', covenantFlag: null },
-];
+export const dynamic = "force-dynamic";
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-export default function PortfolioMonitorPage() {
-  const totalPortfolio = MOCK_LOANS.reduce((s, l) => s + l.balance, 0);
-  const weightedDscr = MOCK_LOANS.reduce((s, l) => s + l.dscrCurrent * l.balance, 0) / totalPortfolio;
-  const avgLtv = MOCK_LOANS.reduce((s, l) => s + l.ltvCurrent, 0) / MOCK_LOANS.length;
-  const watchlist = MOCK_LOANS.filter((l) => l.dscrCurrent < 1.0 || l.paymentStatus !== 'current').length;
+const fmtCompact = (n: number) => {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return fmtMoney(n);
+};
+
+function paymentStatusStyle(status: string) {
+  switch (status) {
+    case "current":
+      return { bg: "#DCFCE7", text: T.green, label: "Current" };
+    case "late":
+      return { bg: "#FEE2E2", text: T.red, label: "Late" };
+    case "grace_period":
+      return { bg: "#FEF3C7", text: "#D97706", label: "Grace Period" };
+    default:
+      return { bg: "#F3F4F6", text: "#6B7280", label: status };
+  }
+}
+
+export default async function BorrowersPage() {
+  const supabase = createServerClient();
+  const { data } = await supabase.from("active_loans").select("*");
+  const loans = data ?? [];
+
+  const totalBalance = loans.reduce(
+    (sum, l) => sum + Number(l.current_balance ?? 0),
+    0
+  );
+  const lateCount = loans.filter((l) => l.payment_status === "late").length;
+  const covenantIssues = loans.filter(
+    (l) => l.covenant_flags && l.covenant_flags.length > 0
+  ).length;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, fontFamily: 'var(--font-inter)', color: INK }}>
-      {/* ── header ── */}
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Lender · Borrowers</p>
-          <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Portfolio <em className="italic">Monitor</em>.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-            Active loans at a glance. Red rows mean DSCR is below 1.0 — those borrowers need attention now.
-          </p>
+    <div className="min-h-screen px-6 py-10 lg:px-10" style={{ backgroundColor: T.cream }}>
+      <PageTitle
+        eyebrow="PORTFOLIO"
+        title="Active Borrowers"
+        subtitle="Every active loan relationship with real-time payment and covenant status."
+      />
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Total portfolio" value={fmtMoney(totalPortfolio)} />
-            <Kpi label="Weighted avg DSCR" value={`${weightedDscr.toFixed(2)}x`} />
-            <Kpi label="Avg LTV" value={`${avgLtv.toFixed(1)}%`} />
-            <Kpi label="Watchlist" value={String(watchlist)} accent />
-          </div>
-        </div>
-      </header>
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerIn index={0}>
+          <KpiCard label="Active Borrowers" value={loans.length} note="Serviced loans" />
+        </StaggerIn>
+        <StaggerIn index={1}>
+          <KpiCard label="Total Outstanding" value={fmtCompact(totalBalance)} />
+        </StaggerIn>
+        <StaggerIn index={2}>
+          <KpiCard
+            label="Late Payments"
+            value={lateCount}
+            note={lateCount > 0 ? "Requires follow-up" : "All current"}
+          />
+        </StaggerIn>
+        <StaggerIn index={3}>
+          <KpiCard
+            label="Covenant Issues"
+            value={covenantIssues}
+            note={covenantIssues > 0 ? "Active flags" : "All compliant"}
+          />
+        </StaggerIn>
+      </div>
 
-      {/* ── table ── */}
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        {/* desktop table */}
-        <div className="hidden overflow-hidden rounded-lg border bg-white md:block" style={{ borderColor: HAIRLINE }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-[11px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM, fontFamily: 'var(--font-geist-mono)' }}>
-                <th className="px-4 py-3 font-medium">Borrower</th>
-                <th className="px-4 py-3 font-medium">Property</th>
-                <th className="px-4 py-3 font-medium">Balance</th>
-                <th className="px-4 py-3 font-medium">Rate</th>
-                <th className="px-4 py-3 font-medium">LTV</th>
-                <th className="px-4 py-3 font-medium">DSCR</th>
-                <th className="px-4 py-3 font-medium">Payment</th>
-                <th className="px-4 py-3 font-medium">Covenant</th>
-              </tr>
-            </thead>
-            <tbody>
-              {MOCK_LOANS.map((loan) => {
-                const isAlert = loan.dscrCurrent < 1.0;
-                return (
-                  <motion.tr
-                    key={loan.id}
-                    whileHover={{ backgroundColor: 'rgba(249,217,106,0.1)' }}
-                    className="border-b last:border-0"
-                    style={{
-                      borderColor: HAIRLINE,
-                      backgroundColor: isAlert ? 'rgba(185,28,28,0.04)' : 'transparent',
-                    }}
-                  >
-                    <td className="px-4 py-3 font-medium" style={{ color: INK }}>{loan.borrower}</td>
-                    <td className="px-4 py-3" style={{ color: MID }}>{loan.property}</td>
-                    <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(loan.balance)}</td>
-                    <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{loan.rate}%</td>
-                    <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: loan.ltvCurrent > 80 ? RED : INK }}>{loan.ltvCurrent}%</td>
-                    <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: loan.dscrCurrent < 1.0 ? RED : loan.dscrCurrent < 1.25 ? '#D97706' : GREEN }}>{loan.dscrCurrent.toFixed(2)}x</td>
-                    <td className="px-4 py-3"><PaymentBadge status={loan.paymentStatus} /></td>
-                    <td className="px-4 py-3">
-                      {loan.covenantFlag ? (
-                        <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium" style={{ borderColor: 'rgba(185,28,28,0.2)', backgroundColor: 'rgba(185,28,28,0.06)', color: RED }}>
-                          {loan.covenantFlag}
-                        </span>
-                      ) : (
-                        <span className="text-xs" style={{ color: DIM }}>—</span>
-                      )}
-                    </td>
-                  </motion.tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+      <SectionLabel>BORROWER DETAIL</SectionLabel>
+      <div className="mt-4 space-y-5">
+        {loans.map((loan, i) => {
+          const dscr = Number(loan.dscr_current ?? 0);
+          const ltv = Number(loan.ltv_current ?? 0);
+          const isRedAlert = dscr < 1.0 || loan.payment_status === "late";
+          const hasCovFlags = loan.covenant_flags && loan.covenant_flags.length > 0;
+          const ps = paymentStatusStyle(loan.payment_status ?? "unknown");
 
-        {/* mobile cards */}
-        <div className="grid gap-3 md:hidden">
-          {MOCK_LOANS.map((loan) => {
-            const isAlert = loan.dscrCurrent < 1.0;
-            return (
-              <motion.div
-                key={loan.id}
-                whileHover={{ y: -2 }}
-                className="rounded-lg border bg-white p-4"
-                style={{ borderColor: isAlert ? RED : HAIRLINE, backgroundColor: isAlert ? 'rgba(185,28,28,0.02)' : 'white' }}
+          return (
+            <StaggerIn key={loan.id} index={i}>
+              <Card
+                className={
+                  isRedAlert ? "!border-2 !border-red-500 !shadow-lg !shadow-red-100" : ""
+                }
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="font-medium" style={{ color: INK }}>{loan.borrower}</div>
-                    <div className="text-xs" style={{ color: MID }}>{loan.property}</div>
-                  </div>
-                  <PaymentBadge status={loan.paymentStatus} />
-                </div>
-                <div className="mt-3 grid grid-cols-4 gap-2 text-xs">
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Balance</div>
-                    <div className="mt-0.5 font-medium" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(loan.balance)}</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Rate</div>
-                    <div className="mt-0.5 font-medium" style={{ fontFamily: 'var(--font-geist-mono)' }}>{loan.rate}%</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>LTV</div>
-                    <div className="mt-0.5 font-medium" style={{ fontFamily: 'var(--font-geist-mono)', color: loan.ltvCurrent > 80 ? RED : INK }}>{loan.ltvCurrent}%</div>
-                  </div>
-                  <div>
-                    <div className="text-[10px] uppercase tracking-wider" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>DSCR</div>
-                    <div className="mt-0.5 font-medium" style={{ fontFamily: 'var(--font-geist-mono)', color: loan.dscrCurrent < 1.0 ? RED : GREEN }}>{loan.dscrCurrent.toFixed(2)}x</div>
-                  </div>
-                </div>
-                {loan.covenantFlag && (
-                  <div className="mt-3 rounded-md border px-3 py-2 text-xs" style={{ borderColor: 'rgba(185,28,28,0.2)', backgroundColor: 'rgba(185,28,28,0.04)', color: RED }}>
-                    {loan.covenantFlag}
+                {isRedAlert && (
+                  <div className="mb-4 flex items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 py-2">
+                    <ShieldAlert className="h-4 w-4 text-red-600" />
+                    <span className="text-sm font-bold text-red-700">
+                      RED ALERT — Immediate attention required
+                    </span>
                   </div>
                 )}
-              </motion.div>
-            );
-          })}
-        </div>
-      </main>
+
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className={`text-lg font-semibold ${isRedAlert ? "text-red-900" : "text-stone-900"}`}>
+                      {loan.borrower_name}
+                    </h3>
+                    <p className="mt-0.5 text-sm text-stone-500">{loan.property_address}</p>
+                  </div>
+                  <span
+                    className="rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wider"
+                    style={{ backgroundColor: ps.bg, color: ps.text }}
+                  >
+                    {ps.label}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400">Current Balance</p>
+                    <p className="mt-1 text-base font-semibold text-stone-900">
+                      {fmtMoney(Number(loan.current_balance))}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400">Rate</p>
+                    <p className="mt-1 text-base font-semibold text-stone-900">
+                      {Number(loan.rate).toFixed(2)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400">LTV</p>
+                    <p
+                      className="mt-1 text-base font-bold"
+                      style={{ color: ltv > 80 ? T.red : ltv > 75 ? "#D97706" : T.green }}
+                    >
+                      {ltv.toFixed(1)}%
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400">DSCR</p>
+                    <p
+                      className={`mt-1 font-bold ${dscr < 1.0 ? "text-3xl" : "text-base"}`}
+                      style={{ color: dscr < 1.0 ? T.red : dscr < 1.25 ? "#D97706" : T.green }}
+                    >
+                      {dscr.toFixed(2)}
+                    </p>
+                    {dscr < 1.0 && (
+                      <p className="text-[10px] font-bold text-red-600">COVENANT BREACH</p>
+                    )}
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400">Origination</p>
+                    <p className="mt-1 text-sm text-stone-700">{loan.origination_date}</p>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wider text-stone-400">Maturity</p>
+                    <p className="mt-1 text-sm text-stone-700">{loan.maturity_date}</p>
+                  </div>
+                </div>
+
+                {hasCovFlags && (
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {loan.covenant_flags.map((flag: string, fi: number) => (
+                      <span
+                        key={fi}
+                        className="rounded-full border border-red-300 bg-red-50 px-3 py-1 text-xs font-medium text-red-800"
+                      >
+                        {flag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            </StaggerIn>
+          );
+        })}
+      </div>
     </div>
-  );
-}
-
-/* ── components ── */
-
-function Kpi({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
-  return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
-    </div>
-  );
-}
-
-function PaymentBadge({ status }: { status: PaymentStatus }) {
-  const map: Record<PaymentStatus, { label: string; bg: string; fg: string; border: string }> = {
-    current: { label: 'Current', bg: 'rgba(21,128,61,0.06)', fg: GREEN, border: 'rgba(21,128,61,0.2)' },
-    late:    { label: 'Late',    bg: 'rgba(217,119,6,0.06)',  fg: '#D97706', border: 'rgba(217,119,6,0.2)' },
-    default: { label: 'Default', bg: 'rgba(185,28,28,0.06)',  fg: RED,   border: 'rgba(185,28,28,0.2)' },
-  };
-  const m = map[status];
-  return (
-    <span className="inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium" style={{ backgroundColor: m.bg, color: m.fg, borderColor: m.border }}>
-      {m.label}
-    </span>
   );
 }

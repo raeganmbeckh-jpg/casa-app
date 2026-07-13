@@ -1,262 +1,538 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+  StatusDot,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  Building,
+  Wallet,
+  Percent,
+  ArrowUpRight,
+  Briefcase,
+} from "lucide-react";
 
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const GREEN = '#15803D';
-const RED = '#B91C1C';
-
-type Property = {
-  id: string;
-  name: string;
-  address: string;
-  market: string;
-  type: string;
-  units: number;
-  acquisitionDate: string;
-  purchasePrice: number;
-  currentValue: number;
-  equity: number;
-  irr: number;
-  noi: number;
-  capRate: number;
-};
-
-const PORTFOLIO: Property[] = [
-  { id: 'p1', name: 'Villa Sonoma', address: '4821 El Cajon Blvd', market: 'San Diego - East', type: 'Multifamily', units: 12, acquisitionDate: '2022-06-15', purchasePrice: 3200000, currentValue: 3850000, equity: 1420000, irr: 14.2, noi: 198000, capRate: 5.14 },
-  { id: 'p2', name: 'Mission Bay Lofts', address: '1930 Mission Bay Dr', market: 'San Diego - Coast', type: 'Multifamily', units: 18, acquisitionDate: '2021-03-01', purchasePrice: 5400000, currentValue: 6720000, equity: 2850000, irr: 16.8, noi: 342000, capRate: 5.09 },
-  { id: 'p3', name: 'North Park Row', address: '3055 University Ave', market: 'San Diego - Central', type: 'Mixed Use', units: 8, acquisitionDate: '2023-01-10', purchasePrice: 2100000, currentValue: 2380000, equity: 780000, irr: 11.5, noi: 138000, capRate: 5.80 },
-  { id: 'p4', name: 'Kettner Crossing', address: '2280 Kettner Blvd', market: 'San Diego - Downtown', type: 'Mixed Use', units: 14, acquisitionDate: '2020-09-22', purchasePrice: 4100000, currentValue: 5200000, equity: 2100000, irr: 18.3, noi: 286000, capRate: 5.50 },
-  { id: 'p5', name: 'Pacific Terrace', address: '940 Garnet Ave', market: 'Pacific Beach', type: 'Multifamily', units: 6, acquisitionDate: '2024-02-14', purchasePrice: 1850000, currentValue: 2050000, equity: 620000, irr: 9.8, noi: 108000, capRate: 5.27 },
-  { id: 'p6', name: 'Laurel Heights', address: '555 Laurel St', market: 'San Diego - Bankers Hill', type: 'Multifamily', units: 10, acquisitionDate: '2023-08-01', purchasePrice: 2750000, currentValue: 3100000, equity: 1050000, irr: 12.7, noi: 172000, capRate: 5.55 },
-];
+export const dynamic = "force-dynamic";
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
-
-const fmtPct = (n: number) => `${n.toFixed(1)}%`;
-
-const ALLOC_COLORS = ['#111111', '#6B7280', '#9CA3AF', '#D1D5DB', '#F9D96A', '#E5E7EB'];
-
-export default function PortfolioPage() {
-  const [sortBy, setSortBy] = useState<'irr' | 'equity' | 'value' | 'name'>('irr');
-
-  const totalEquity = PORTFOLIO.reduce((s, p) => s + p.equity, 0);
-  const totalValue = PORTFOLIO.reduce((s, p) => s + p.currentValue, 0);
-  const weightedIRR = PORTFOLIO.reduce((s, p) => s + p.irr * p.equity, 0) / totalEquity;
-  const totalUnits = PORTFOLIO.reduce((s, p) => s + p.units, 0);
-
-  const sorted = useMemo(() => {
-    const arr = [...PORTFOLIO];
-    switch (sortBy) {
-      case 'irr': return arr.sort((a, b) => b.irr - a.irr);
-      case 'equity': return arr.sort((a, b) => b.equity - a.equity);
-      case 'value': return arr.sort((a, b) => b.currentValue - a.currentValue);
-      case 'name': return arr.sort((a, b) => a.name.localeCompare(b.name));
-    }
-  }, [sortBy]);
-
-  const allocations = PORTFOLIO.map((p, i) => ({
-    name: p.name,
-    pct: (p.equity / totalEquity) * 100,
-    color: ALLOC_COLORS[i % ALLOC_COLORS.length],
-  }));
-
-  // Geographic concentration
-  const geoMap: Record<string, { count: number; equity: number }> = {};
-  PORTFOLIO.forEach((p) => {
-    if (!geoMap[p.market]) geoMap[p.market] = { count: 0, equity: 0 };
-    geoMap[p.market].count++;
-    geoMap[p.market].equity += p.equity;
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
   });
-  const geoList = Object.entries(geoMap)
-    .map(([market, data]) => ({ market, ...data, pct: (data.equity / totalEquity) * 100 }))
-    .sort((a, b) => b.equity - a.equity);
+
+const fmtCompact = (n: number) => {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return fmtMoney(n);
+};
+
+const fmtPct = (n: number) => `${n.toFixed(2)}%`;
+
+export default async function PortfolioPage() {
+  const supabase = createServerClient();
+
+  const [{ data: deals }, { data: debt }, { data: exits }] =
+    await Promise.all([
+      supabase
+        .from("investment_deals")
+        .select("*")
+        .eq("status", "closed"),
+      supabase.from("debt_stack").select("*"),
+      supabase.from("exit_models").select("*"),
+    ]);
+
+  const closedDeals = deals ?? [];
+  const debtList = debt ?? [];
+  const exitList = exits ?? [];
+
+  // ── Portfolio value ───────────────────────────────────────────
+  const portfolioValue = closedDeals.reduce(
+    (s, d) => s + Number(d.arv || d.asking_price || 0),
+    0,
+  );
+  const totalAcquisitionCost = closedDeals.reduce(
+    (s, d) => s + Number(d.asking_price || 0),
+    0,
+  );
+  const totalNoi = closedDeals.reduce(
+    (s, d) => s + Number(d.noi || 0),
+    0,
+  );
+  const avgCapRate =
+    closedDeals.length > 0
+      ? closedDeals.reduce((s, d) => s + Number(d.cap_rate || 0), 0) /
+        closedDeals.length
+      : 0;
+
+  // ── Debt summary ──────────────────────────────────────────────
+  const totalDebtBalance = debtList.reduce(
+    (s, d) => s + Number(d.current_balance || 0),
+    0,
+  );
+  const weightedAvgRate =
+    totalDebtBalance > 0
+      ? debtList.reduce(
+          (s, d) =>
+            s +
+            Number(d.interest_rate || 0) * Number(d.current_balance || 0),
+          0,
+        ) / totalDebtBalance
+      : 0;
+
+  // ── Build lookup maps ─────────────────────────────────────────
+  const debtByDeal = new Map<string, typeof debtList>();
+  for (const d of debtList) {
+    const key = d.deal_id || d.property_id || "";
+    if (!debtByDeal.has(key)) debtByDeal.set(key, []);
+    debtByDeal.get(key)!.push(d);
+  }
+
+  const exitByDeal = new Map<string, (typeof exitList)[number]>();
+  for (const e of exitList) {
+    const key = e.deal_id || e.property_id || "";
+    exitByDeal.set(key, e);
+  }
+
+  // ── Empty state ───────────────────────────────────────────────
+  if (closedDeals.length === 0) {
+    return (
+      <div
+        className="min-h-screen px-5 py-8 lg:px-8"
+        style={{ backgroundColor: T.cream, color: T.ink }}
+      >
+        <PageTitle
+          eyebrow="PORTFOLIO"
+          title={
+            <>
+              Owned <em className="italic text-stone-500">Assets</em>.
+            </>
+          }
+        />
+        <Card>
+          <div className="py-16 text-center">
+            <Briefcase className="mx-auto h-10 w-10 text-stone-300" />
+            <h2
+              className="mt-4 text-2xl font-medium tracking-tight text-stone-400"
+              style={{ fontFamily: "var(--font-heading)" }}
+            >
+              No closed deals yet.
+            </h2>
+            <p className="mt-2 text-sm text-stone-400">
+              Deals that reach &ldquo;closed&rdquo; status in your pipeline
+              will appear here as portfolio assets.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, fontFamily: 'var(--font-inter)', color: INK }}>
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Investor &middot; Portfolio</p>
-          <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>
-            Portfolio <em className="italic">Analytics</em>.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-            {PORTFOLIO.length} properties, {totalUnits} units. Your entire portfolio at a glance.
-          </p>
+    <div
+      className="min-h-screen px-5 py-8 lg:px-8"
+      style={{ backgroundColor: T.cream, color: T.ink }}
+    >
+      {/* ── Title ──────────────────────────────────────────────── */}
+      <PageTitle
+        eyebrow="PORTFOLIO"
+        title={
+          <>
+            Owned <em className="italic text-stone-500">Assets</em>.
+          </>
+        }
+        subtitle={`${closedDeals.length} ${closedDeals.length === 1 ? "property" : "properties"} acquired. Total portfolio value tracked live.`}
+      />
 
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Total equity" value={fmtMoney(totalEquity)} />
-            <Kpi label="Weighted IRR" value={fmtPct(weightedIRR)} accent />
-            <Kpi label="Portfolio value" value={fmtMoney(totalValue)} />
-            <Kpi label="Properties" value={String(PORTFOLIO.length)} hint={`${totalUnits} total units`} />
+      {/* ── Hero Stat ──────────────────────────────────────────── */}
+      <section className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <StaggerIn index={0}>
+          <DarkStatCard
+            label="Portfolio Value"
+            value={fmtCompact(portfolioValue)}
+            subtitle={`Based on ARV where available, otherwise acquisition price. ${closedDeals.length} assets held.`}
+            icon={
+              <Building className="h-5 w-5" style={{ color: T.yellow }} />
+            }
+          />
+        </StaggerIn>
+
+        <StaggerIn index={1}>
+          <div className="grid grid-cols-2 gap-4">
+            <KpiCard
+              label="Total NOI"
+              value={fmtCompact(totalNoi)}
+              note="Annual net operating income"
+            />
+            <KpiCard
+              label="Avg Cap Rate"
+              value={fmtPct(avgCapRate)}
+              note="Across portfolio"
+            />
+            <KpiCard
+              label="Total Debt"
+              value={fmtCompact(totalDebtBalance)}
+              note={`${debtList.length} positions`}
+            />
+            <KpiCard
+              label="Wtd Avg Rate"
+              value={fmtPct(weightedAvgRate)}
+              note="Debt-weighted interest"
+            />
           </div>
+        </StaggerIn>
+      </section>
+
+      {/* ── Owned Asset Cards ──────────────────────────────────── */}
+      <section className="mt-8">
+        <SectionLabel>Owned Assets</SectionLabel>
+        <div className="mt-4 space-y-5">
+          {closedDeals.map((deal, idx) => {
+            const dealDebt = debtByDeal.get(deal.id) ?? [];
+            const dealExit = exitByDeal.get(deal.id);
+
+            return (
+              <StaggerIn key={deal.id} index={idx}>
+                <Card>
+                  {/* ── Property Header ────────────────────────── */}
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Building className="h-4 w-4 text-stone-400" />
+                        <h3
+                          className="text-xl font-medium tracking-tight"
+                          style={{ fontFamily: "var(--font-heading)" }}
+                        >
+                          {deal.address}
+                        </h3>
+                      </div>
+                      <p className="mt-1 text-sm text-stone-500">
+                        {deal.city} &middot;{" "}
+                        {deal.property_type?.replace(/_/g, " ")}
+                      </p>
+                    </div>
+                    <div className="text-right">
+                      <div
+                        className="text-[9px] uppercase tracking-wider text-stone-400"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        Acquisition
+                      </div>
+                      <div
+                        className="mt-0.5 text-base font-medium tabular-nums"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {fmtMoney(Number(deal.asking_price || 0))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Performance Metrics ────────────────────── */}
+                  <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4">
+                    <div className="rounded-xl border border-stone-200 bg-[#FAFAF7] p-3">
+                      <div
+                        className="text-[9px] uppercase tracking-wider text-stone-400"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        NOI
+                      </div>
+                      <div
+                        className="mt-1 text-sm font-medium tabular-nums"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {deal.noi
+                          ? fmtMoney(Number(deal.noi))
+                          : "--"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-[#FAFAF7] p-3">
+                      <div
+                        className="text-[9px] uppercase tracking-wider text-stone-400"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        Cap Rate
+                      </div>
+                      <div
+                        className="mt-1 text-sm font-medium tabular-nums"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {deal.cap_rate
+                          ? fmtPct(Number(deal.cap_rate))
+                          : "--"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-[#FAFAF7] p-3">
+                      <div
+                        className="text-[9px] uppercase tracking-wider text-stone-400"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        5yr IRR
+                      </div>
+                      <div
+                        className="mt-1 text-sm font-medium tabular-nums"
+                        style={{
+                          fontFamily: "var(--font-geist-mono)",
+                          color:
+                            Number(deal.irr_5yr) >= 15
+                              ? T.green
+                              : T.ink,
+                        }}
+                      >
+                        {deal.irr_5yr
+                          ? fmtPct(Number(deal.irr_5yr))
+                          : "--"}
+                      </div>
+                    </div>
+                    <div className="rounded-xl border border-stone-200 bg-[#FAFAF7] p-3">
+                      <div
+                        className="text-[9px] uppercase tracking-wider text-stone-400"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        ARV
+                      </div>
+                      <div
+                        className="mt-1 text-sm font-medium tabular-nums"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {deal.arv
+                          ? fmtMoney(Number(deal.arv))
+                          : "--"}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Debt Section ───────────────────────────── */}
+                  {dealDebt.length > 0 && (
+                    <div className="mt-5">
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <Wallet className="h-3.5 w-3.5 text-stone-400" />
+                        <SectionLabel>Debt Stack</SectionLabel>
+                      </div>
+                      <div className="space-y-2">
+                        {dealDebt.map((d, i) => (
+                          <div
+                            key={i}
+                            className="flex items-center justify-between rounded-xl border border-stone-200 bg-white px-4 py-3"
+                          >
+                            <div>
+                              <div className="text-sm font-medium">
+                                {d.lender || "Unknown Lender"}
+                              </div>
+                              <div className="mt-0.5 text-xs text-stone-500">
+                                {d.loan_type?.replace(/_/g, " ") || "Loan"}
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div
+                                className="text-sm font-medium tabular-nums"
+                                style={{
+                                  fontFamily: "var(--font-geist-mono)",
+                                }}
+                              >
+                                {fmtMoney(Number(d.current_balance || 0))}
+                              </div>
+                              <div
+                                className="mt-0.5 text-xs tabular-nums text-stone-500"
+                                style={{
+                                  fontFamily: "var(--font-geist-mono)",
+                                }}
+                              >
+                                {fmtPct(Number(d.interest_rate || 0))} rate
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* ── Exit Model ─────────────────────────────── */}
+                  {dealExit && (
+                    <div className="mt-5 rounded-2xl border border-[#F9D96A]/30 bg-[#F9D96A]/5 p-4">
+                      <div className="flex items-center gap-1.5 mb-3">
+                        <ArrowUpRight className="h-3.5 w-3.5 text-stone-500" />
+                        <span
+                          className="text-[9px] uppercase tracking-wider text-stone-500"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          Exit Model
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+                        <div>
+                          <div className="text-[9px] uppercase tracking-wider text-stone-400" style={{ fontFamily: "var(--font-geist-mono)" }}>
+                            Strategy
+                          </div>
+                          <div className="mt-1 text-sm font-medium capitalize">
+                            {dealExit.recommended_strategy?.replace(/_/g, " ") || "--"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] uppercase tracking-wider text-stone-400" style={{ fontFamily: "var(--font-geist-mono)" }}>
+                            Hold IRR
+                          </div>
+                          <div
+                            className="mt-1 text-sm font-medium tabular-nums"
+                            style={{ fontFamily: "var(--font-geist-mono)" }}
+                          >
+                            {dealExit.hold_irr
+                              ? fmtPct(Number(dealExit.hold_irr))
+                              : "--"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] uppercase tracking-wider text-stone-400" style={{ fontFamily: "var(--font-geist-mono)" }}>
+                            Sale IRR
+                          </div>
+                          <div
+                            className="mt-1 text-sm font-medium tabular-nums"
+                            style={{ fontFamily: "var(--font-geist-mono)" }}
+                          >
+                            {dealExit.sale_irr
+                              ? fmtPct(Number(dealExit.sale_irr))
+                              : "--"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[9px] uppercase tracking-wider text-stone-400" style={{ fontFamily: "var(--font-geist-mono)" }}>
+                            Equity Multiple
+                          </div>
+                          <div
+                            className="mt-1 text-sm font-medium tabular-nums"
+                            style={{ fontFamily: "var(--font-geist-mono)" }}
+                          >
+                            {dealExit.equity_multiple
+                              ? `${Number(dealExit.equity_multiple).toFixed(2)}x`
+                              : "--"}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              </StaggerIn>
+            );
+          })}
         </div>
-      </header>
+      </section>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        {/* Allocation Bar */}
-        <section className="mb-8">
-          <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>
-            Equity <em className="italic">Allocation</em>
-          </h2>
-          <p className="mb-4 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>Proportional allocation by property equity</p>
-          <div className="overflow-hidden rounded-lg border bg-white p-4" style={{ borderColor: HAIRLINE }}>
-            <div className="flex h-8 overflow-hidden rounded-md">
-              {allocations.map((a, i) => (
-                <motion.div
-                  key={a.name}
-                  initial={{ width: 0 }}
-                  animate={{ width: `${a.pct}%` }}
-                  transition={{ duration: 0.6, delay: i * 0.1 }}
-                  className="relative h-full"
-                  style={{ backgroundColor: a.color }}
-                  title={`${a.name}: ${a.pct.toFixed(1)}%`}
-                />
-              ))}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1">
-              {allocations.map((a) => (
-                <div key={a.name} className="flex items-center gap-1.5 text-xs" style={{ color: MID }}>
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: a.color }} />
-                  <span>{a.name}</span>
-                  <span className="tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{a.pct.toFixed(1)}%</span>
+      {/* ── Debt Summary ───────────────────────────────────────── */}
+      {debtList.length > 0 && (
+        <section className="mt-8">
+          <StaggerIn index={0}>
+            <Card>
+              <div className="flex items-center gap-2 mb-5">
+                <Percent className="h-4 w-4 text-stone-400" />
+                <SectionLabel>Debt Summary</SectionLabel>
+              </div>
+              <div className="grid gap-6 sm:grid-cols-3">
+                <div>
+                  <div
+                    className="text-[10px] uppercase tracking-wider text-stone-400"
+                    style={{ fontFamily: "var(--font-geist-mono)" }}
+                  >
+                    Total Outstanding
+                  </div>
+                  <div
+                    className="mt-2 text-2xl font-medium tracking-tight tabular-nums"
+                    style={{ fontFamily: "var(--font-heading)" }}
+                  >
+                    {fmtCompact(totalDebtBalance)}
+                  </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        </section>
+                <div>
+                  <div
+                    className="text-[10px] uppercase tracking-wider text-stone-400"
+                    style={{ fontFamily: "var(--font-geist-mono)" }}
+                  >
+                    Weighted Avg Rate
+                  </div>
+                  <div
+                    className="mt-2 text-2xl font-medium tracking-tight tabular-nums"
+                    style={{ fontFamily: "var(--font-heading)" }}
+                  >
+                    {fmtPct(weightedAvgRate)}
+                  </div>
+                </div>
+                <div>
+                  <div
+                    className="text-[10px] uppercase tracking-wider text-stone-400"
+                    style={{ fontFamily: "var(--font-geist-mono)" }}
+                  >
+                    Positions
+                  </div>
+                  <div
+                    className="mt-2 text-2xl font-medium tracking-tight"
+                    style={{ fontFamily: "var(--font-heading)" }}
+                  >
+                    {debtList.length}
+                  </div>
+                </div>
+              </div>
 
-        {/* Property Table */}
-        <section className="mb-8">
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <h2 className="text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>
-                Property <em className="italic">Detail</em>
-              </h2>
-              <p className="text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>{PORTFOLIO.length} properties</p>
-            </div>
-            <select
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="rounded-md border bg-white px-3 py-2 text-sm focus:border-neutral-900 focus:outline-none"
-              style={{ borderColor: 'rgba(17,17,17,0.2)', color: MID }}
-            >
-              <option value="irr">Sort: IRR</option>
-              <option value="equity">Sort: Equity</option>
-              <option value="value">Sort: Value</option>
-              <option value="name">Sort: Name</option>
-            </select>
-          </div>
-
-          <div className="overflow-x-auto rounded-lg border bg-white" style={{ borderColor: HAIRLINE }}>
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b bg-neutral-50 text-left" style={{ borderColor: HAIRLINE }}>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Property</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Type</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium text-right" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Value</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium text-right" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Equity</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium text-right" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>NOI</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium text-right" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Cap Rate</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium text-right" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>IRR</th>
-                  <th className="px-4 py-3 text-[10px] uppercase tracking-[0.14em] font-medium text-right" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Alloc %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((p) => {
-                  const alloc = (p.equity / totalEquity) * 100;
-                  const irrColor = p.irr >= 15 ? GREEN : p.irr >= 10 ? INK : RED;
+              {/* Lender breakdown */}
+              <div className="mt-6 space-y-2">
+                {debtList.map((d, i) => {
+                  const pct =
+                    totalDebtBalance > 0
+                      ? (Number(d.current_balance || 0) / totalDebtBalance) *
+                        100
+                      : 0;
                   return (
-                    <motion.tr
-                      key={p.id}
-                      whileHover={{ backgroundColor: '#FDF8E8' }}
-                      className="border-b last:border-0 cursor-pointer"
-                      style={{ borderColor: HAIRLINE }}
+                    <div
+                      key={i}
+                      className="flex items-center gap-3"
                     >
-                      <td className="px-4 py-3">
-                        <div className="font-medium">{p.name}</div>
-                        <div className="text-xs" style={{ color: DIM }}>{p.address} &middot; {p.units} units</div>
-                      </td>
-                      <td className="px-4 py-3" style={{ color: MID }}>{p.type}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(p.currentValue)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(p.equity)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(p.noi)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtPct(p.capRate)}</td>
-                      <td className="px-4 py-3 text-right font-medium tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: irrColor }}>{fmtPct(p.irr)}</td>
-                      <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: DIM }}>{alloc.toFixed(1)}%</td>
-                    </motion.tr>
+                      <StatusDot
+                        color={
+                          i === 0
+                            ? T.ink
+                            : i === 1
+                              ? "#6B7280"
+                              : i === 2
+                                ? "#9CA3AF"
+                                : "#D1D5DB"
+                        }
+                      />
+                      <span className="min-w-[140px] text-sm text-stone-600">
+                        {d.lender || `Lender ${i + 1}`}
+                      </span>
+                      <div className="flex-1">
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-stone-200">
+                          <div
+                            className="h-full rounded-full bg-stone-900"
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      </div>
+                      <span
+                        className="text-xs tabular-nums text-stone-500"
+                        style={{ fontFamily: "var(--font-geist-mono)" }}
+                      >
+                        {fmtCompact(Number(d.current_balance || 0))}
+                      </span>
+                    </div>
                   );
                 })}
-              </tbody>
-              <tfoot>
-                <tr className="border-t bg-neutral-50 font-medium" style={{ borderColor: HAIRLINE }}>
-                  <td className="px-4 py-3">Totals</td>
-                  <td className="px-4 py-3" />
-                  <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(totalValue)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(totalEquity)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{fmtMoney(PORTFOLIO.reduce((s, p) => s + p.noi, 0))}</td>
-                  <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>&mdash;</td>
-                  <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: GREEN }}>{fmtPct(weightedIRR)}</td>
-                  <td className="px-4 py-3 text-right tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>100%</td>
-                </tr>
-              </tfoot>
-            </table>
-          </div>
+              </div>
+            </Card>
+          </StaggerIn>
         </section>
+      )}
 
-        {/* Geographic Concentration */}
-        <section>
-          <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>
-            Geographic <em className="italic">Concentration</em>
-          </h2>
-          <p className="mb-4 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>Equity by sub-market</p>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {geoList.map((g) => (
-              <motion.div
-                key={g.market}
-                whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
-                className="rounded-lg border bg-white p-4"
-                style={{ borderColor: HAIRLINE }}
-              >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">{g.market}</span>
-                  <span className="text-xs tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: DIM }}>{g.count} {g.count === 1 ? 'property' : 'properties'}</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="relative h-1.5 flex-1 overflow-hidden rounded-full" style={{ backgroundColor: 'rgba(17,17,17,0.06)' }}>
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${g.pct}%` }}
-                      transition={{ duration: 0.6 }}
-                      className="absolute inset-y-0 left-0 rounded-full"
-                      style={{ backgroundColor: g.pct > 30 ? BUTTER : INK }}
-                    />
-                  </div>
-                  <span className="text-sm font-medium tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{g.pct.toFixed(1)}%</span>
-                </div>
-                <div className="mt-1 text-xs" style={{ color: DIM }}>{fmtMoney(g.equity)} equity</div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      </main>
-    </div>
-  );
-}
-
-function Kpi({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
-  return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
+      {/* ── Footer ─────────────────────────────────────────────── */}
+      <div className="mt-10 flex items-center justify-between text-[10px] tracking-[0.18em] text-stone-400">
+        <span>
+          {closedDeals.length} owned{" "}
+          {closedDeals.length === 1 ? "asset" : "assets"}
+        </span>
+        <span>CASA &middot; INVESTOR &middot; PORTFOLIO</span>
+      </div>
     </div>
   );
 }

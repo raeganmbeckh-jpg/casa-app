@@ -8,21 +8,9 @@ import type { ReactNode } from "react";
 // ONE source of truth. Every workspace page imports from here.
 // ═══════════════════════════════════════════════════════════════
 
-// ── Tokens ────────────────────────────────────────────────────
-export const T = {
-  cream: "#FAFAF7",
-  ink: "#111111",
-  yellow: "#F9D96A",
-  cardBg: "#fffdf8",
-  cardBgAlt: "#fffdf6",
-  border: "rgba(168,162,158,0.3)",    // stone-200-ish
-  borderLight: "rgba(168,162,158,0.2)",
-  dim: "rgba(120,113,108,1)",          // stone-500
-  mid: "rgba(87,83,78,1)",            // stone-600
-  red: "#B91C1C",
-  green: "#15803D",
-  shadow: "0 1px 3px rgba(168,162,158,0.15)",
-} as const;
+// Import tokens for internal use and re-export for existing client-side imports
+import { T } from "./tokens";
+export { T };
 
 // ── Page Title ────────────────────────────────────────────────
 export function PageTitle({

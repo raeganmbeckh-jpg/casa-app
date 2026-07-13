@@ -1,256 +1,332 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StatusDot,
+  StaggerIn,
+  YellowBadge,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import { ShieldAlert, ShieldCheck, AlertTriangle, Siren } from "lucide-react";
 
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-
-/* ── Design tokens ─────────────────────────────────────────────── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
-
-/* ── Types ─────────────────────────────────────────────────────── */
-type ComplianceStatus = 'met' | 'warning' | 'breach';
-
-type Covenant = {
-  name: string;
-  requirement: string;
-  currentValue: string;
-  status: ComplianceStatus;
-};
-
-type Loan = {
-  id: string;
-  borrower: string;
-  property: string;
-  loanAmount: number;
-  maturityDate: string;
-  covenants: Covenant[];
-};
-
-/* ── Mock data ─────────────────────────────────────────────────── */
-const MOCK_LOANS: Loan[] = [
-  {
-    id: 'ln1',
-    borrower: 'Citrus Heights Development LLC',
-    property: '88 Citrus Blvd, Escondido',
-    loanAmount: 12_400_000,
-    maturityDate: '2028-06-01',
-    covenants: [
-      { name: 'Min DSCR', requirement: '>= 1.25x', currentValue: '1.08x', status: 'breach' },
-      { name: 'Max LTV', requirement: '<= 75%', currentValue: '72%', status: 'met' },
-      { name: 'Insurance', requirement: 'Current', currentValue: 'Current', status: 'met' },
-      { name: 'Quarterly reporting', requirement: 'Within 45 days', currentValue: '38 days', status: 'met' },
-    ],
-  },
-  {
-    id: 'ln2',
-    borrower: 'Pacific Ridge Capital',
-    property: '2200 Camino del Rio, San Diego',
-    loanAmount: 8_750_000,
-    maturityDate: '2027-12-15',
-    covenants: [
-      { name: 'Min DSCR', requirement: '>= 1.20x', currentValue: '1.31x', status: 'met' },
-      { name: 'Max LTV', requirement: '<= 70%', currentValue: '68%', status: 'met' },
-      { name: 'Insurance', requirement: 'Current', currentValue: 'Current', status: 'met' },
-      { name: 'Annual audit', requirement: 'By Mar 31', currentValue: 'Received', status: 'met' },
-    ],
-  },
-  {
-    id: 'ln3',
-    borrower: 'Mesa Verde Holdings',
-    property: '4500 University Ave, La Mesa',
-    loanAmount: 5_200_000,
-    maturityDate: '2026-09-30',
-    covenants: [
-      { name: 'Min DSCR', requirement: '>= 1.15x', currentValue: '1.18x', status: 'met' },
-      { name: 'Max LTV', requirement: '<= 80%', currentValue: '78%', status: 'warning' },
-      { name: 'Insurance', requirement: 'Current', currentValue: 'Expiring May 15', status: 'warning' },
-      { name: 'Monthly reporting', requirement: 'Within 30 days', currentValue: '22 days', status: 'met' },
-    ],
-  },
-  {
-    id: 'ln4',
-    borrower: 'Harbor Point Investors',
-    property: '1100 Harbor Dr, Oceanside',
-    loanAmount: 15_600_000,
-    maturityDate: '2029-03-01',
-    covenants: [
-      { name: 'Min DSCR', requirement: '>= 1.30x', currentValue: '1.42x', status: 'met' },
-      { name: 'Max LTV', requirement: '<= 65%', currentValue: '58%', status: 'met' },
-      { name: 'Insurance', requirement: 'Current', currentValue: 'Current', status: 'met' },
-      { name: 'Quarterly reporting', requirement: 'Within 45 days', currentValue: '41 days', status: 'met' },
-    ],
-  },
-  {
-    id: 'ln5',
-    borrower: 'Rancho Vista LLC',
-    property: '7800 El Camino Real, Carlsbad',
-    loanAmount: 6_800_000,
-    maturityDate: '2027-01-15',
-    covenants: [
-      { name: 'Min DSCR', requirement: '>= 1.20x', currentValue: '1.22x', status: 'met' },
-      { name: 'Max LTV', requirement: '<= 75%', currentValue: '74%', status: 'warning' },
-      { name: 'Insurance', requirement: 'Current', currentValue: 'Current', status: 'met' },
-      { name: 'Annual audit', requirement: 'By Mar 31', currentValue: 'Pending', status: 'warning' },
-    ],
-  },
-];
+export const dynamic = "force-dynamic";
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-const fmtDate = (iso: string) =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const fmtCompact = (n: number) => {
+  if (n >= 1_000_000) return `$${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
+  return fmtMoney(n);
+};
 
-/* ── Page ──────────────────────────────────────────────────────── */
-export default function CovenantMonitoringPage() {
-  const [statusFilter, setStatusFilter] = useState<'all' | ComplianceStatus>('all');
+export default async function CovenantsPage() {
+  const supabase = createServerClient();
 
-  const allCovenants = MOCK_LOANS.flatMap((l) => l.covenants);
-  const metCount = allCovenants.filter((c) => c.status === 'met').length;
-  const metPct = Math.round((metCount / allCovenants.length) * 100);
-  const breachCount = allCovenants.filter((c) => c.status === 'breach').length;
-  const upcomingMaturities = MOCK_LOANS.filter((l) => {
-    const d = new Date(l.maturityDate).getTime() - new Date('2026-04-09').getTime();
-    return d > 0 && d < 365 * 24 * 60 * 60 * 1000;
-  }).length;
+  const [{ data: activeLoans }, debtResult] = await Promise.all([
+    supabase.from("active_loans").select("*"),
+    supabase.from("debt_stack").select("*"),
+  ]);
 
-  const filteredLoans = useMemo(() => {
-    if (statusFilter === 'all') return MOCK_LOANS;
-    return MOCK_LOANS.filter((l) => l.covenants.some((c) => c.status === statusFilter));
-  }, [statusFilter]);
+  const debtStack = debtResult.data;
+
+  const loans = activeLoans ?? [];
+  const debt = debtStack ?? [];
+
+  // Loans with covenant issues
+  const breachLoans = loans.filter(
+    (l) => l.covenant_flags && l.covenant_flags.length > 0
+  );
+  const compliantLoans = loans.filter(
+    (l) => !l.covenant_flags || l.covenant_flags.length === 0
+  );
+
+  const totalBreaches = breachLoans.reduce(
+    (sum, l) => sum + (l.covenant_flags?.length ?? 0),
+    0
+  );
+  const breachExposure = breachLoans.reduce(
+    (sum, l) => sum + Number(l.current_balance ?? 0),
+    0
+  );
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, color: INK, fontFamily: 'var(--font-inter)' }}>
-      {/* Header */}
-      <header style={{ borderBottom: `1px solid ${HAIRLINE}`, backgroundColor: '#fff' }}>
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10 lg:py-10">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Lender &middot; Covenants</p>
-          <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Covenant <em className="italic">Monitoring</em>.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-            Real-time compliance tracking across your loan portfolio. Breaches surface immediately so you can act before they escalate.
-          </p>
+    <div className="min-h-screen px-6 py-10 lg:px-10" style={{ backgroundColor: T.cream }}>
+      <PageTitle
+        eyebrow="COVENANT MONITORING"
+        title="Covenant Compliance"
+        subtitle="Real-time covenant tracking across the entire loan portfolio. Breaches demand immediate action."
+      />
 
-          {/* KPIs */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Loans monitored" value={String(MOCK_LOANS.length)} />
-            <Kpi label="Covenants met" value={`${metPct}%`} hint={`${metCount} of ${allCovenants.length}`} />
-            <Kpi label="Active breaches" value={String(breachCount)} accent={breachCount > 0} />
-            <Kpi label="Upcoming maturities" value={String(upcomingMaturities)} hint="Within 12 months" />
+      {/* ══════════════════════════════════════════════════════════════
+          RED ALERT SECTION — 88 Citrus Blvd tracer + all breaches
+          ══════════════════════════════════════════════════════════════ */}
+      {breachLoans.length > 0 && (
+        <div className="mb-10">
+          <div className="mb-4 flex items-center gap-3">
+            <Siren className="h-5 w-5 text-red-600" />
+            <SectionLabel>RED ALERT — COVENANT BREACHES</SectionLabel>
           </div>
-        </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-        {/* Breach alerts */}
-        {breachCount > 0 && (
-          <section className="mb-8">
-            <h2 className="mb-1 text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>
-              Breach <em className="italic">Alerts</em>
-            </h2>
-            <p className="mb-5 text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>Immediate attention required</p>
-            {MOCK_LOANS.filter((l) => l.covenants.some((c) => c.status === 'breach')).map((l) => (
-              <motion.div key={l.id} whileHover={{ x: 2 }} className="mb-3 rounded-lg border bg-white p-5" style={{ borderColor: RED, borderLeftWidth: 4, borderLeftColor: RED }}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-base font-medium" style={{ color: INK }}>{l.property}</h3>
-                    <p className="text-xs" style={{ color: DIM }}>{l.borrower} &middot; {fmtMoney(l.loanAmount)}</p>
-                  </div>
-                  <span className="rounded-full border px-2.5 py-0.5 text-[11px] font-medium" style={{ backgroundColor: '#FEF2F2', color: RED, borderColor: '#FECACA' }}>BREACH</span>
-                </div>
-                <div className="mt-3">
-                  {l.covenants.filter((c) => c.status === 'breach').map((c) => (
-                    <div key={c.name} className="text-sm" style={{ color: MID }}>
-                      <strong style={{ color: RED }}>{c.name}</strong>: current {c.currentValue} vs required {c.requirement}
+          <div className="space-y-5">
+            {breachLoans.map((loan, i) => {
+              const dscr = Number(loan.dscr_current ?? 0);
+              const ltv = Number(loan.ltv_current ?? 0);
+              const isLate = loan.payment_status === "late";
+
+              return (
+                <StaggerIn key={loan.id} index={i}>
+                  <div
+                    className="rounded-[2.5rem] border-2 border-red-600 bg-red-50 p-8"
+                    style={{ boxShadow: "0 0 30px rgba(185,28,28,0.2)" }}
+                  >
+                    {/* Alert header */}
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="mt-1 rounded-2xl bg-red-600 p-3">
+                          <ShieldAlert className="h-6 w-6 text-white" />
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-3 flex-wrap">
+                            <h3 className="text-xl font-bold text-red-900">
+                              {loan.property_address}
+                            </h3>
+                            <span className="rounded-full bg-red-600 px-4 py-1 text-xs font-bold uppercase tracking-wider text-white animate-pulse">
+                              RED ALERT
+                            </span>
+                            {isLate && (
+                              <span className="rounded-full border-2 border-red-400 bg-red-100 px-3 py-0.5 text-[11px] font-bold uppercase tracking-wider text-red-700">
+                                PAYMENT LATE
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-1 text-sm text-red-800">
+                            {loan.borrower_name} &middot;{" "}
+                            {fmtMoney(Number(loan.current_balance))} outstanding
+                          </p>
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </motion.div>
-            ))}
-          </section>
-        )}
 
-        {/* Filter */}
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>Loan <em className="italic">Portfolio</em></h2>
-            <p className="text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>{filteredLoans.length} loans</p>
+                    {/* Big DSCR number */}
+                    <div className="mt-6 flex flex-wrap gap-10">
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-red-600 font-semibold">
+                          DSCR — Debt Service Coverage
+                        </p>
+                        <p className="text-6xl font-black text-red-700 tracking-tight">
+                          {dscr.toFixed(2)}
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-red-600">
+                          {dscr < 1.0
+                            ? "BELOW 1.0 THRESHOLD — COVENANT BREACH"
+                            : dscr < 1.25
+                            ? "Below 1.25 watch level"
+                            : "Within covenant"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-red-600 font-semibold">
+                          LTV — Loan-to-Value
+                        </p>
+                        <p className="text-6xl font-black text-red-700 tracking-tight">
+                          {ltv.toFixed(1)}%
+                        </p>
+                        <p className="mt-1 text-sm font-bold text-red-600">
+                          {ltv > 80
+                            ? "ABOVE 80% TRIGGER"
+                            : ltv > 75
+                            ? "Elevated"
+                            : "Within covenant"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-xs uppercase tracking-wider text-red-600 font-semibold">
+                          Payment Status
+                        </p>
+                        <p className="text-4xl font-black text-red-700 uppercase tracking-tight">
+                          {loan.payment_status}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Covenant flags */}
+                    <div className="mt-6">
+                      <p className="text-xs uppercase tracking-wider text-red-600 font-semibold mb-2">
+                        ACTIVE COVENANT FLAGS
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {loan.covenant_flags.map((flag: string, fi: number) => (
+                          <span
+                            key={fi}
+                            className="rounded-full border-2 border-red-400 bg-white px-4 py-1.5 text-sm font-semibold text-red-800"
+                          >
+                            {flag}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </StaggerIn>
+              );
+            })}
           </div>
-          <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as any)} className="rounded-md border bg-white px-3 py-2 text-sm" style={{ borderColor: HAIRLINE, color: MID }}>
-            <option value="all">All statuses</option>
-            <option value="met">Met</option>
-            <option value="warning">Warning</option>
-            <option value="breach">Breach</option>
-          </select>
         </div>
+      )}
 
-        {/* Loan cards with covenant tables */}
-        <div className="space-y-4">
-          {filteredLoans.map((l) => (
-            <motion.div key={l.id} whileHover={{ y: -1, boxShadow: '0 4px 24px rgba(0,0,0,0.06)' }} className="rounded-lg border bg-white overflow-hidden" style={{ borderColor: HAIRLINE }}>
-              <div className="p-5" style={{ borderBottom: `1px solid ${HAIRLINE}` }}>
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h3 className="text-lg font-medium" style={{ color: INK }}>{l.property}</h3>
-                    <p className="text-sm" style={{ color: DIM }}>{l.borrower}</p>
+      {/* Breach summary */}
+      <div className="mb-8 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerIn index={breachLoans.length}>
+          <DarkStatCard
+            label="Covenant Breaches"
+            value={breachLoans.length}
+            subtitle={`${totalBreaches} total flags across ${breachLoans.length} loan${breachLoans.length !== 1 ? "s" : ""}`}
+            icon={<ShieldAlert className="h-5 w-5 text-red-400" />}
+          />
+        </StaggerIn>
+        <StaggerIn index={breachLoans.length + 1}>
+          <KpiCard
+            label="Breach Exposure"
+            value={fmtCompact(breachExposure)}
+            note="Outstanding on flagged loans"
+          />
+        </StaggerIn>
+        <StaggerIn index={breachLoans.length + 2}>
+          <KpiCard
+            label="Compliant Loans"
+            value={compliantLoans.length}
+            note="No active flags"
+          />
+        </StaggerIn>
+        <StaggerIn index={breachLoans.length + 3}>
+          <KpiCard
+            label="Total Monitored"
+            value={loans.length}
+            note="Active loan portfolio"
+          />
+        </StaggerIn>
+      </div>
+
+      {/* Debt stack covenant thresholds */}
+      {debt.length > 0 && (
+        <div className="mb-8">
+          <SectionLabel>DEBT STACK COVENANT THRESHOLDS</SectionLabel>
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {debt.map((d, i) => (
+              <StaggerIn key={`${d.property_id}-${d.lender}-${i}`} index={i}>
+                <Card>
+                  <p className="text-sm font-medium text-stone-900">
+                    {d.lender}
+                  </p>
+                  <p className="text-xs text-stone-500">{d.loan_type}</p>
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-stone-400">Balance</p>
+                      <p className="text-sm font-semibold text-stone-800">
+                        {fmtCompact(Number(d.current_balance ?? 0))}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] uppercase tracking-wider text-stone-400">Rate</p>
+                      <p className="text-sm font-semibold text-stone-800">
+                        {Number(d.interest_rate ?? 0).toFixed(2)}%
+                      </p>
+                    </div>
+                    {d.dscr_covenant && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-stone-400">DSCR Covenant</p>
+                        <p className="text-sm font-semibold text-stone-800">
+                          {Number(d.dscr_covenant).toFixed(2)}x
+                        </p>
+                      </div>
+                    )}
+                    {d.ltv_covenant && (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-wider text-stone-400">LTV Covenant</p>
+                        <p className="text-sm font-semibold text-stone-800">
+                          {Number(d.ltv_covenant).toFixed(0)}%
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  <div className="text-right">
-                    <div className="text-lg font-medium" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(l.loanAmount)}</div>
-                    <div className="text-xs" style={{ color: DIM }}>Matures {fmtDate(l.maturityDate)}</div>
-                  </div>
-                </div>
-              </div>
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b text-left text-[11px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM, backgroundColor: CREAM }}>
-                    <th className="px-5 py-2.5 font-medium">Covenant</th>
-                    <th className="px-5 py-2.5 font-medium">Requirement</th>
-                    <th className="px-5 py-2.5 font-medium">Current</th>
-                    <th className="px-5 py-2.5 font-medium">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {l.covenants.map((c) => (
-                    <tr key={c.name} className="border-b last:border-0" style={{ borderColor: HAIRLINE }}>
-                      <td className="px-5 py-2.5 font-medium" style={{ color: INK }}>{c.name}</td>
-                      <td className="px-5 py-2.5" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{c.requirement}</td>
-                      <td className="px-5 py-2.5" style={{ fontFamily: 'var(--font-geist-mono)', color: c.status === 'breach' ? RED : c.status === 'warning' ? '#D97706' : INK }}>{c.currentValue}</td>
-                      <td className="px-5 py-2.5"><CompliancePill status={c.status} /></td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </motion.div>
-          ))}
+                </Card>
+              </StaggerIn>
+            ))}
+          </div>
         </div>
-      </main>
+      )}
+
+      {/* Compliant loans */}
+      {compliantLoans.length > 0 && (
+        <div>
+          <SectionLabel>COMPLIANT LOANS</SectionLabel>
+          <div className="mt-4 space-y-3">
+            {compliantLoans.map((loan, i) => {
+              const dscr = Number(loan.dscr_current ?? 0);
+              const ltv = Number(loan.ltv_current ?? 0);
+              return (
+                <StaggerIn key={loan.id} index={i + breachLoans.length + 4}>
+                  <Card>
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-3">
+                        <ShieldCheck className="h-5 w-5 text-green-600" />
+                        <div>
+                          <h3 className="text-base font-medium text-stone-900">
+                            {loan.property_address}
+                          </h3>
+                          <p className="text-xs text-stone-500">{loan.borrower_name}</p>
+                        </div>
+                      </div>
+                      <span className="rounded-full bg-green-50 border border-green-200 px-3 py-0.5 text-[11px] font-medium text-green-800">
+                        COMPLIANT
+                      </span>
+                    </div>
+                    <div className="mt-4 flex items-center gap-8">
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-stone-400">DSCR</span>
+                        <p
+                          className="text-lg font-bold"
+                          style={{ color: dscr < 1.25 ? "#D97706" : T.green }}
+                        >
+                          {dscr.toFixed(2)}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-stone-400">LTV</span>
+                        <p
+                          className="text-lg font-bold"
+                          style={{ color: ltv > 75 ? "#D97706" : T.green }}
+                        >
+                          {ltv.toFixed(1)}%
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-stone-400">Balance</span>
+                        <p className="text-lg font-semibold text-stone-900">
+                          {fmtCompact(Number(loan.current_balance))}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-[10px] uppercase tracking-wider text-stone-400">Payment</span>
+                        <p className="text-sm font-medium text-green-700 capitalize">
+                          {loan.payment_status}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
+                </StaggerIn>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
-}
-
-/* ── Components ────────────────────────────────────────────────── */
-function Kpi({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
-  return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? RED : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: accent ? RED : INK }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
-    </div>
-  );
-}
-
-function CompliancePill({ status }: { status: ComplianceStatus }) {
-  const map: Record<ComplianceStatus, string> = {
-    met: 'bg-emerald-50 text-emerald-800 border-emerald-200',
-    warning: 'bg-amber-50 text-amber-800 border-amber-200',
-    breach: 'bg-rose-50 text-rose-800 border-rose-200',
-  };
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${map[status]}`}>{status}</span>;
 }

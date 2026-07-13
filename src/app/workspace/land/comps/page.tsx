@@ -1,150 +1,230 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+  ListContainer,
+  ListHeader,
+  ListRow,
+  YellowBadge,
+  IconChip,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import { BarChart3, MapPin, Calendar, Ruler } from "lucide-react";
 
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-
-/* ── Design tokens ─────────────────────────────────────────────── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-
-/* ── Types ─────────────────────────────────────────────────────── */
-type LandSale = {
-  id: string;
-  apn: string;
-  address: string;
-  acres: number;
-  zoning: string;
-  salePrice: number;
-  pricePerAcre: number;
-  saleDate: string;
-  buyerType: string;
-};
-
-/* ── Mock data — 8 San Diego land sales ───────────────────────── */
-const MOCK_SALES: LandSale[] = [
-  { id: 's1', apn: '362-041-12', address: '1840 E Valley Pkwy, Escondido', acres: 4.2, zoning: 'A70', salePrice: 1_890_000, pricePerAcre: 450_000, saleDate: '2026-01-15', buyerType: 'Developer' },
-  { id: 's2', apn: '263-182-07', address: '9500 Miramar Rd, San Diego', acres: 2.8, zoning: 'IL-3-1', salePrice: 3_640_000, pricePerAcre: 1_300_000, saleDate: '2025-11-22', buyerType: 'Institutional' },
-  { id: 's3', apn: '174-120-34', address: '3120 Sweetwater Springs Blvd', acres: 6.1, zoning: 'RS-1-7', salePrice: 2_745_000, pricePerAcre: 450_000, saleDate: '2025-09-10', buyerType: 'Builder' },
-  { id: 's4', apn: '580-260-18', address: '14450 Lake Jennings Park Rd', acres: 10.3, zoning: 'RR', salePrice: 2_060_000, pricePerAcre: 200_000, saleDate: '2025-07-03', buyerType: 'Private' },
-  { id: 's5', apn: '440-310-22', address: '2800 Main St, Chula Vista', acres: 1.5, zoning: 'MU-2', salePrice: 2_850_000, pricePerAcre: 1_900_000, saleDate: '2026-02-28', buyerType: 'Developer' },
-  { id: 's6', apn: '211-060-45', address: '7770 Regents Rd, San Diego', acres: 0.9, zoning: 'CC-1-3', salePrice: 2_430_000, pricePerAcre: 2_700_000, saleDate: '2025-06-17', buyerType: 'REIT' },
-  { id: 's7', apn: '310-091-11', address: '1690 Capalina Rd, San Marcos', acres: 3.4, zoning: 'R-3', salePrice: 2_380_000, pricePerAcre: 700_000, saleDate: '2026-03-05', buyerType: 'Builder' },
-  { id: 's8', apn: '495-150-30', address: '4550 Otay Valley Rd, San Diego', acres: 8.7, zoning: 'IP-1-1', salePrice: 3_480_000, pricePerAcre: 400_000, saleDate: '2024-12-11', buyerType: 'Institutional' },
-];
+export const dynamic = "force-dynamic";
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-const fmtDate = (iso: string) =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+export default async function CompsPage() {
+  const supabase = createServerClient();
 
-/* ── Page ──────────────────────────────────────────────────────── */
-export default function ComparableLandSalesPage() {
-  const [sortBy, setSortBy] = useState<'date' | 'price' | 'ppa' | 'acres'>('date');
+  const [{ data: comps }, { data: parcels }] = await Promise.all([
+    supabase.from("land_comps").select("*").order("sale_date", { ascending: false }),
+    supabase.from("land_parcels").select("id, address, city, acreage, zoning_code"),
+  ]);
 
-  const rows = useMemo(() => {
-    const r = [...MOCK_SALES];
-    r.sort((a, b) => {
-      switch (sortBy) {
-        case 'date': return new Date(b.saleDate).getTime() - new Date(a.saleDate).getTime();
-        case 'price': return b.salePrice - a.salePrice;
-        case 'ppa': return b.pricePerAcre - a.pricePerAcre;
-        case 'acres': return b.acres - a.acres;
-      }
-    });
-    return r;
-  }, [sortBy]);
+  const compList = comps ?? [];
+  const parcelList = parcels ?? [];
 
-  const medianPPA = [...MOCK_SALES].sort((a, b) => a.pricePerAcre - b.pricePerAcre)[Math.floor(MOCK_SALES.length / 2)].pricePerAcre;
-  const totalVolume = MOCK_SALES.reduce((s, c) => s + c.salePrice, 0);
-  const avgAcres = MOCK_SALES.reduce((s, c) => s + c.acres, 0) / MOCK_SALES.length;
-  const salesVelocity = '0.7 / mo';
+  // Build parcel lookup
+  const parcelMap = new Map(parcelList.map((p) => [p.id, p]));
+
+  // Group comps by subject parcel
+  const grouped = new Map<string, { parcel: (typeof parcelList)[0] | null; comps: typeof compList }>();
+  compList.forEach((c) => {
+    const key = c.subject_parcel_id || "unlinked";
+    if (!grouped.has(key)) {
+      grouped.set(key, {
+        parcel: c.subject_parcel_id ? parcelMap.get(c.subject_parcel_id) ?? null : null,
+        comps: [],
+      });
+    }
+    grouped.get(key)!.comps.push(c);
+  });
+
+  // KPIs
+  const totalComps = compList.length;
+  const avgPricePerAcre =
+    compList.length > 0
+      ? compList.reduce((s, c) => s + Number(c.price_per_acre || 0), 0) /
+        compList.length
+      : 0;
+  const maxSalePrice = compList.reduce(
+    (m, c) => Math.max(m, Number(c.sale_price || 0)),
+    0
+  );
+  const subjectParcelsWithComps = new Set(
+    compList.map((c) => c.subject_parcel_id).filter(Boolean)
+  ).size;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, color: INK, fontFamily: 'var(--font-inter)' }}>
-      {/* Header */}
-      <header style={{ borderBottom: `1px solid ${HAIRLINE}`, backgroundColor: '#fff' }}>
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10 lg:py-10">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Land &middot; Comps</p>
-          <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Comparable Land <em className="italic">Sales</em>.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-            {MOCK_SALES.length} verified land transactions in San Diego County over the last 24 months.
-          </p>
+    <div
+      className="min-h-screen px-6 py-8 lg:px-10"
+      style={{ backgroundColor: T.cream }}
+    >
+      <PageTitle
+        eyebrow="LAND COMPS"
+        title={
+          <>
+            Comparable <em className="italic text-stone-500">Sales</em>
+          </>
+        }
+        subtitle="Recent land transactions grouped by subject parcel for valuation analysis."
+      />
 
-          {/* KPIs */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Median $/acre" value={fmtMoney(medianPPA)} />
-            <Kpi label="Total volume" value={fmtMoney(totalVolume)} />
-            <Kpi label="Avg parcel size" value={`${avgAcres.toFixed(1)} ac`} />
-            <Kpi label="Sales velocity" value={salesVelocity} hint="Comps per month" />
+      {/* KPIs */}
+      <section className="mb-10 grid gap-4 grid-cols-2 lg:grid-cols-4">
+        <KpiCard label="TOTAL COMPS" value={totalComps} />
+        <KpiCard
+          label="AVG $/ACRE"
+          value={avgPricePerAcre > 0 ? fmtMoney(avgPricePerAcre) : "$0"}
+          note="Across all comps"
+        />
+        <KpiCard
+          label="MAX SALE PRICE"
+          value={maxSalePrice > 0 ? fmtMoney(maxSalePrice) : "$0"}
+        />
+        <KpiCard
+          label="PARCELS W/ COMPS"
+          value={subjectParcelsWithComps}
+          note={`of ${parcelList.length} tracked`}
+        />
+      </section>
+
+      {/* Grouped by subject parcel */}
+      {Array.from(grouped.entries()).map(([key, { parcel, comps: groupComps }], gi) => (
+        <section key={key} className="mb-8">
+          {/* Subject header */}
+          <div className="flex items-center gap-3 mb-4">
+            <IconChip>
+              <MapPin className="h-4 w-4 text-stone-700" />
+            </IconChip>
+            <div>
+              <h2 className="text-lg font-medium text-stone-900">
+                {parcel?.address || "Unlinked Comps"}
+              </h2>
+              {parcel && (
+                <p className="text-xs text-stone-500">
+                  {parcel.city}
+                  {parcel.acreage ? ` | ${Number(parcel.acreage).toFixed(2)} ac` : ""}
+                  {parcel.zoning_code ? ` | ${parcel.zoning_code}` : ""}
+                </p>
+              )}
+            </div>
           </div>
-        </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-        {/* Sort control */}
-        <div className="mb-5 flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>Sales <em className="italic">table</em></h2>
-            <p className="text-xs uppercase tracking-[0.16em]" style={{ color: DIM }}>{rows.length} transactions</p>
+          {/* Comp cards */}
+          <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            {groupComps.map((c, i) => (
+              <StaggerIn key={c.id} index={i}>
+                <Card>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <h3 className="truncate text-base font-medium text-stone-900">
+                        {c.comp_address || "No Address"}
+                      </h3>
+                      <p className="text-xs text-stone-500">
+                        {c.comp_city || "Unknown City"}
+                      </p>
+                    </div>
+                    {c.product_type && (
+                      <YellowBadge>{c.product_type}</YellowBadge>
+                    )}
+                  </div>
+
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <CompDetail
+                      label="Sale Price"
+                      value={c.sale_price ? fmtMoney(Number(c.sale_price)) : "N/A"}
+                      highlight
+                    />
+                    <CompDetail
+                      label="$/Acre"
+                      value={c.price_per_acre ? fmtMoney(Number(c.price_per_acre)) : "N/A"}
+                      highlight
+                    />
+                    <CompDetail
+                      label="Acreage"
+                      value={c.acreage ? `${Number(c.acreage).toFixed(2)} ac` : "N/A"}
+                    />
+                    <CompDetail
+                      label="Zoning"
+                      value={c.zoning_code || "N/A"}
+                    />
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between border-t border-stone-200 pt-3">
+                    {c.sale_date && (
+                      <div className="flex items-center gap-1 text-xs text-stone-500">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(c.sale_date + "T00:00:00").toLocaleDateString(
+                          "en-US",
+                          { month: "short", day: "numeric", year: "numeric" }
+                        )}
+                      </div>
+                    )}
+                    {c.distance_miles != null && (
+                      <div className="flex items-center gap-1 text-xs text-stone-500">
+                        <Ruler className="h-3 w-3" />
+                        {Number(c.distance_miles).toFixed(1)} mi
+                      </div>
+                    )}
+                    {c.source && (
+                      <span className="text-[10px] text-stone-400">
+                        {c.source}
+                      </span>
+                    )}
+                  </div>
+                </Card>
+              </StaggerIn>
+            ))}
           </div>
-          <select value={sortBy} onChange={(e) => setSortBy(e.target.value as any)} className="rounded-md border bg-white px-3 py-2 text-sm" style={{ borderColor: HAIRLINE, color: MID }}>
-            <option value="date">Sort: Date</option>
-            <option value="price">Sort: Price</option>
-            <option value="ppa">Sort: $/Acre</option>
-            <option value="acres">Sort: Acreage</option>
-          </select>
-        </div>
+        </section>
+      ))}
 
-        {/* Table */}
-        <div className="overflow-x-auto rounded-lg border bg-white" style={{ borderColor: HAIRLINE }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-[11px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM, backgroundColor: CREAM }}>
-                <th className="px-4 py-3 font-medium">APN</th>
-                <th className="px-4 py-3 font-medium">Address</th>
-                <th className="px-4 py-3 font-medium">Acres</th>
-                <th className="px-4 py-3 font-medium">Zoning</th>
-                <th className="px-4 py-3 font-medium">Sale price</th>
-                <th className="px-4 py-3 font-medium">$/Acre</th>
-                <th className="px-4 py-3 font-medium">Sale date</th>
-                <th className="px-4 py-3 font-medium">Buyer</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((s) => (
-                <motion.tr key={s.id} whileHover={{ backgroundColor: '#FDF8E8' }} className="border-b last:border-0 cursor-default" style={{ borderColor: HAIRLINE }}>
-                  <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{s.apn}</td>
-                  <td className="px-4 py-3 font-medium" style={{ color: INK }}>{s.address}</td>
-                  <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{s.acres.toFixed(1)}</td>
-                  <td className="px-4 py-3"><span className="rounded-full border px-2 py-0.5 text-[11px] font-medium" style={{ borderColor: HAIRLINE }}>{s.zoning}</span></td>
-                  <td className="px-4 py-3 font-medium" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtMoney(s.salePrice)}</td>
-                  <td className="px-4 py-3" style={{ fontFamily: 'var(--font-geist-mono)', color: MID }}>{fmtMoney(s.pricePerAcre)}</td>
-                  <td className="px-4 py-3" style={{ color: MID }}>{fmtDate(s.saleDate)}</td>
-                  <td className="px-4 py-3" style={{ color: MID }}>{s.buyerType}</td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </main>
+      {compList.length === 0 && (
+        <Card>
+          <div className="flex flex-col items-center py-12 text-stone-400">
+            <BarChart3 className="h-8 w-8 mb-3" />
+            <p className="text-sm">No comparable sales found in the database.</p>
+          </div>
+        </Card>
+      )}
     </div>
   );
 }
 
-/* ── Components ────────────────────────────────────────────────── */
-function Kpi({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
+function CompDetail({
+  label,
+  value,
+  highlight,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
   return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
+    <div>
+      <span
+        className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+        style={{ fontFamily: "var(--font-geist-mono)" }}
+      >
+        {label}
+      </span>
+      <p
+        className={`text-sm ${highlight ? "font-medium" : ""} text-stone-900`}
+        style={{ fontFamily: "var(--font-geist-mono)" }}
+      >
+        {value}
+      </p>
     </div>
   );
 }

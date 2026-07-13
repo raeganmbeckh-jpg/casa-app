@@ -1,216 +1,526 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  DollarSign,
+  TrendingUp,
+  BarChart3,
+  Layers,
+  ArrowDownRight,
+  ArrowUpRight,
+} from "lucide-react";
 
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+export const dynamic = "force-dynamic";
 
-/* ── Design tokens ── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
-
-/* ── Helpers ── */
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-const fmtPct = (n: number) => `${n.toFixed(2)}%`;
+const fmtPct = (n: number | null) =>
+  n != null ? `${Number(n).toFixed(2)}%` : "--";
 
-export default function ProFormaPage() {
-  /* ── Inputs ── */
-  const [productType, setProductType] = useState('Multifamily');
-  const [units, setUnits] = useState(120);
-  const [avgUnitSize, setAvgUnitSize] = useState(850);
-  const [targetRent, setTargetRent] = useState(2800);
-  const [landCostPerSqft, setLandCostPerSqft] = useState(95);
+export default async function ProFormaPage() {
+  const supabase = createServerClient();
 
-  /* ── Calculations ── */
-  const calc = useMemo(() => {
-    const totalSqft = units * avgUnitSize;
-    const landCost = totalSqft * landCostPerSqft;
-    const hardCosts = totalSqft * 175;
-    const softCosts = hardCosts * 0.25;
-    const totalHardSoft = landCost + hardCosts + softCosts;
-    const financing = totalHardSoft * 0.06;
-    const tdc = totalHardSoft + financing;
+  const [{ data: projects }, { data: budgetItems }] = await Promise.all([
+    supabase.from("dev_projects").select("*").order("name"),
+    supabase
+      .from("budget_line_items")
+      .select("*")
+      .order("category"),
+  ]);
 
-    const grossRent = units * targetRent * 12;
-    const vacancy = grossRent * 0.05;
-    const effectiveGross = grossRent - vacancy;
-    const opex = effectiveGross * 0.35;
-    const noi = effectiveGross - opex;
+  const projectList = projects ?? [];
+  const budgetList = budgetItems ?? [];
 
-    const devYield = (noi / tdc) * 100;
-    const equityRequired = tdc * 0.30;
+  // ── Group budget items by project ─────────────────────────────
+  const budgetByProject: Record<string, any[]> = {};
+  for (const b of budgetList) {
+    if (!budgetByProject[b.project_id]) {
+      budgetByProject[b.project_id] = [];
+    }
+    budgetByProject[b.project_id].push(b);
+  }
 
-    // IRR estimate: simplified (dev yield + assumed 2% annual growth spread)
-    const irrEstimate = devYield + 2;
+  // ── Portfolio totals ──────────────────────────────────────────
+  const totalBudget = projectList.reduce(
+    (s, p) => s + Number(p.total_budget || 0),
+    0,
+  );
+  const totalSpent = projectList.reduce(
+    (s, p) => s + Number(p.spent_to_date || 0),
+    0,
+  );
+  const totalNoi = projectList.reduce(
+    (s, p) => s + Number(p.projected_noi || 0),
+    0,
+  );
+  const avgYield =
+    projectList.length > 0
+      ? projectList.reduce(
+          (s, p) => s + Number(p.development_yield || 0),
+          0,
+        ) / projectList.filter((p) => p.development_yield).length || 0
+      : 0;
+  const avgIrr =
+    projectList.length > 0
+      ? projectList.reduce(
+          (s, p) => s + Number(p.projected_irr || 0),
+          0,
+        ) / projectList.filter((p) => p.projected_irr).length || 0
+      : 0;
 
-    return { totalSqft, landCost, hardCosts, softCosts, financing, tdc, grossRent, vacancy, effectiveGross, opex, noi, devYield, equityRequired, irrEstimate };
-  }, [units, avgUnitSize, targetRent, landCostPerSqft]);
+  // ── Category labels ───────────────────────────────────────────
+  const categoryLabel = (cat: string) =>
+    cat
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, (c) => c.toUpperCase());
 
-  /* ── Sensitivity: 3 exit caps x 3 rent scenarios ── */
-  const exitCaps = [4.5, 5.0, 5.5];
-  const rentDeltas = [-5, 0, 5]; // % change from target
-  const sensitivity = useMemo(() => {
-    return exitCaps.map(cap => {
-      return rentDeltas.map(delta => {
-        const adjRent = targetRent * (1 + delta / 100);
-        const gross = units * adjRent * 12;
-        const egi = gross * 0.95;
-        const opx = egi * 0.35;
-        const adjNoi = egi - opx;
-        const exitValue = adjNoi / (cap / 100);
-        const profit = exitValue - calc.tdc;
-        const equity = calc.tdc * 0.30;
-        // Simplified 3-year IRR proxy
-        const irr = ((profit / equity) / 3) * 100 + calc.devYield;
-        return { cap, delta, irr: Math.max(0, irr) };
-      });
-    });
-  }, [targetRent, units, calc.tdc, calc.devYield]);
+  const categoryOrder = [
+    "land",
+    "hard_costs",
+    "soft_costs",
+    "financing",
+    "contingency",
+    "other",
+  ];
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, fontFamily: 'var(--font-inter)', color: INK }}>
-      {/* ── Header ── */}
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Developer &middot; Pro Forma</p>
-          <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Pro Forma <em className="italic">Engine</em>.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-            Model your next deal in seconds. Adjust inputs and watch the returns update in real time.
-          </p>
+    <div
+      className="min-h-screen px-6 py-8 lg:px-10"
+      style={{ backgroundColor: T.cream }}
+    >
+      {/* ── Title ──────────────────────────────────────────────── */}
+      <PageTitle
+        eyebrow="FINANCIAL MODELING"
+        title={
+          <>
+            Pro <em className="italic text-stone-500">Forma</em>
+          </>
+        }
+        subtitle="Financial analysis across every development. Costs, returns, and line-item detail."
+      />
+
+      {/* ── Portfolio Summary ──────────────────────────────────── */}
+      <section className="mb-10 grid gap-4 lg:grid-cols-5">
+        <div className="lg:col-span-2">
+          <DarkStatCard
+            label="PORTFOLIO TOTAL BUDGET"
+            value={fmtMoney(totalBudget)}
+            subtitle={`${fmtMoney(totalSpent)} deployed across ${projectList.length} projects`}
+            progress={
+              totalBudget > 0
+                ? Math.round((totalSpent / totalBudget) * 100)
+                : 0
+            }
+            icon={<TrendingUp className="h-5 w-5 text-stone-400" />}
+          />
         </div>
-      </header>
+        <KpiCard
+          label="TOTAL PROJECTED NOI"
+          value={fmtMoney(totalNoi)}
+          note="All projects combined"
+        />
+        <KpiCard
+          label="AVG DEV YIELD"
+          value={fmtPct(avgYield)}
+          note="Weighted by project"
+        />
+        <KpiCard
+          label="AVG PROJECTED IRR"
+          value={fmtPct(avgIrr)}
+          note="Across portfolio"
+        />
+      </section>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        <div className="grid gap-8 lg:grid-cols-[380px_1fr]">
-          {/* ── Inputs Card ── */}
-          <div className="rounded-lg border bg-white p-6" style={{ borderColor: HAIRLINE }}>
-            <h2 className="mb-4 text-xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>Deal <em className="italic">Inputs</em></h2>
+      {/* ── Per-Project Pro Forma ───────────────────────────────── */}
+      <section className="space-y-8">
+        {projectList.map((project, i) => {
+          const items = budgetByProject[project.id] ?? [];
+          const spent = Number(project.spent_to_date || 0);
+          const budget = Number(project.total_budget || 0);
+          const utilization = budget > 0 ? (spent / budget) * 100 : 0;
 
-            <div className="space-y-4">
-              <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Product type</label>
-                <select value={productType} onChange={e => setProductType(e.target.value)} className="w-full rounded-md border bg-white px-3 py-2 text-sm focus:outline-none" style={{ borderColor: HAIRLINE }}>
-                  {['Multifamily', 'Mixed-Use', 'Condos', 'Townhomes', 'Student Housing'].map(t => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <NumInput label="Units" value={units} onChange={setUnits} />
-              <NumInput label="Avg unit size (sf)" value={avgUnitSize} onChange={setAvgUnitSize} />
-              <NumInput label="Target rent ($/mo)" value={targetRent} onChange={setTargetRent} />
-              <NumInput label="Land cost ($/sf)" value={landCostPerSqft} onChange={setLandCostPerSqft} />
-            </div>
-          </div>
+          // Group items by category
+          const byCategory: Record<string, any[]> = {};
+          for (const item of items) {
+            const cat = item.category || "other";
+            if (!byCategory[cat]) byCategory[cat] = [];
+            byCategory[cat].push(item);
+          }
 
-          {/* ── Results ── */}
-          <div className="space-y-6">
-            {/* Cost stack */}
-            <div className="rounded-lg border bg-white p-6" style={{ borderColor: HAIRLINE }}>
-              <h2 className="mb-4 text-xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>Development <em className="italic">Costs</em></h2>
-              <div className="space-y-3">
-                <LineItem label="Land cost" sublabel={`${calc.totalSqft.toLocaleString()} sf @ $${landCostPerSqft}/sf`} value={fmtMoney(calc.landCost)} />
-                <LineItem label="Hard costs" sublabel={`${calc.totalSqft.toLocaleString()} sf @ $175/sf`} value={fmtMoney(calc.hardCosts)} />
-                <LineItem label="Soft costs" sublabel="25% of hard costs" value={fmtMoney(calc.softCosts)} />
-                <LineItem label="Financing" sublabel="6% of hard + soft + land" value={fmtMoney(calc.financing)} />
-                <div className="border-t pt-3" style={{ borderColor: HAIRLINE }}>
-                  <LineItem label="Total development cost" value={fmtMoney(calc.tdc)} bold />
+          // Sort categories
+          const sortedCategories = Object.keys(byCategory).sort(
+            (a, b) =>
+              categoryOrder.indexOf(a) - categoryOrder.indexOf(b),
+          );
+
+          return (
+            <StaggerIn key={project.id} index={i}>
+              <Card>
+                {/* Project header */}
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-6">
+                  <div>
+                    <h2
+                      className="text-2xl tracking-tight text-stone-900"
+                      style={{
+                        fontFamily: "var(--font-heading)",
+                        fontWeight: 500,
+                      }}
+                    >
+                      {project.name}
+                    </h2>
+                    <p className="mt-0.5 text-sm text-stone-500">
+                      {project.address}, {project.city}, {project.state}
+                    </p>
+                  </div>
+                  <div
+                    className="rounded-full px-3 py-1 text-xs font-medium tabular-nums"
+                    style={{
+                      backgroundColor:
+                        utilization > 90
+                          ? "rgba(185,28,28,0.1)"
+                          : "rgba(21,128,61,0.1)",
+                      color: utilization > 90 ? T.red : T.green,
+                      fontFamily: "var(--font-geist-mono)",
+                    }}
+                  >
+                    {Math.round(utilization)}% utilized
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Income */}
-            <div className="rounded-lg border bg-white p-6" style={{ borderColor: HAIRLINE }}>
-              <h2 className="mb-4 text-xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>Operating <em className="italic">Income</em></h2>
-              <div className="space-y-3">
-                <LineItem label="Gross potential rent" sublabel={`${units} units @ ${fmtMoney(targetRent)}/mo`} value={fmtMoney(calc.grossRent)} />
-                <LineItem label="Vacancy" sublabel="5%" value={`(${fmtMoney(calc.vacancy)})`} negative />
-                <LineItem label="Effective gross income" value={fmtMoney(calc.effectiveGross)} />
-                <LineItem label="Operating expenses" sublabel="35% of EGI" value={`(${fmtMoney(calc.opex)})`} negative />
-                <div className="border-t pt-3" style={{ borderColor: HAIRLINE }}>
-                  <LineItem label="Net operating income" value={fmtMoney(calc.noi)} bold />
+                {/* Cost breakdown */}
+                <div className="grid gap-6 lg:grid-cols-2">
+                  {/* Left: cost stack */}
+                  <div>
+                    <SectionLabel>COST BREAKDOWN</SectionLabel>
+                    <div className="mt-3 space-y-2">
+                      <CostRow
+                        label="Land Cost"
+                        value={Number(project.land_cost || 0)}
+                      />
+                      <CostRow
+                        label="Hard Costs"
+                        value={Number(project.hard_costs || 0)}
+                      />
+                      <CostRow
+                        label="Soft Costs"
+                        value={Number(project.soft_costs || 0)}
+                      />
+                      <CostRow
+                        label="Financing Costs"
+                        value={Number(project.financing_costs || 0)}
+                      />
+                      <div className="border-t border-stone-200 pt-2">
+                        <CostRow
+                          label="Total Budget"
+                          value={budget}
+                          bold
+                        />
+                      </div>
+                      <CostRow
+                        label="Spent to Date"
+                        value={spent}
+                        highlight
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right: returns */}
+                  <div>
+                    <SectionLabel>RETURNS</SectionLabel>
+                    <div className="mt-3 grid grid-cols-3 gap-4 rounded-2xl bg-[#FAFAF7] p-5">
+                      <div>
+                        <div
+                          className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          Projected NOI
+                        </div>
+                        <div
+                          className="mt-2 text-xl font-medium tabular-nums text-stone-900"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          {project.projected_noi
+                            ? fmtMoney(Number(project.projected_noi))
+                            : "--"}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          Dev Yield
+                        </div>
+                        <div
+                          className="mt-2 text-xl font-medium tabular-nums"
+                          style={{
+                            fontFamily: "var(--font-geist-mono)",
+                            color:
+                              Number(project.development_yield || 0) >= 5.5
+                                ? T.green
+                                : T.ink,
+                          }}
+                        >
+                          {fmtPct(project.development_yield)}
+                        </div>
+                      </div>
+                      <div>
+                        <div
+                          className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          Projected IRR
+                        </div>
+                        <div
+                          className="mt-2 text-xl font-medium tabular-nums"
+                          style={{
+                            fontFamily: "var(--font-geist-mono)",
+                            color:
+                              Number(project.projected_irr || 0) >= 12
+                                ? T.green
+                                : T.ink,
+                          }}
+                        >
+                          {fmtPct(project.projected_irr)}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Utilization bar */}
+                    <div className="mt-4">
+                      <div className="flex items-baseline justify-between">
+                        <span
+                          className="text-[10px] uppercase tracking-[0.16em] text-stone-500"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          Budget Utilization
+                        </span>
+                        <span
+                          className="text-sm font-medium tabular-nums text-stone-900"
+                          style={{ fontFamily: "var(--font-geist-mono)" }}
+                        >
+                          {fmtMoney(spent)} / {fmtMoney(budget)}
+                        </span>
+                      </div>
+                      <div className="mt-1.5 h-2 w-full overflow-hidden rounded-full bg-stone-200/60">
+                        <div
+                          className="h-full rounded-full"
+                          style={{
+                            width: `${Math.min(utilization, 100)}%`,
+                            backgroundColor:
+                              utilization > 90 ? T.red : T.green,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </div>
 
-            {/* Returns */}
-            <div className="grid gap-4 sm:grid-cols-4">
-              <ReturnKpi label="Dev yield" value={fmtPct(calc.devYield)} good={calc.devYield >= 5.5} />
-              <ReturnKpi label="Equity required" value={fmtMoney(calc.equityRequired)} />
-              <ReturnKpi label="Est. IRR" value={fmtPct(calc.irrEstimate)} good={calc.irrEstimate >= 12} />
-              <ReturnKpi label="NOI" value={fmtMoney(calc.noi)} good={calc.noi > 0} />
-            </div>
-
-            {/* Sensitivity table */}
-            <div className="rounded-lg border bg-white p-6" style={{ borderColor: HAIRLINE }}>
-              <h2 className="mb-1 text-xl tracking-tight" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>Sensitivity <em className="italic">Matrix</em></h2>
-              <p className="mb-4 text-xs" style={{ color: DIM }}>Estimated IRR across exit cap rates and rent scenarios</p>
-
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b text-left text-[11px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM, fontFamily: 'var(--font-geist-mono)' }}>
-                      <th className="px-4 py-3 font-medium">Exit Cap</th>
-                      {rentDeltas.map(d => (
-                        <th key={d} className="px-4 py-3 text-center font-medium">Rent {d >= 0 ? '+' : ''}{d}%</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sensitivity.map((row, ri) => (
-                      <tr key={ri} className="border-b last:border-0" style={{ borderColor: HAIRLINE }}>
-                        <td className="px-4 py-3 font-medium tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)' }}>{exitCaps[ri].toFixed(1)}%</td>
-                        {row.map((cell, ci) => (
-                          <td key={ci} className="px-4 py-3 text-center tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: cell.irr >= 15 ? GREEN : cell.irr < 8 ? RED : INK }}>
-                            {cell.irr.toFixed(1)}%
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        </div>
-      </main>
+                {/* Line items table by category */}
+                {items.length > 0 && (
+                  <div className="mt-6 border-t border-stone-200 pt-6">
+                    <SectionLabel>BUDGET LINE ITEMS</SectionLabel>
+                    <div className="mt-3 overflow-hidden rounded-2xl border border-stone-200 bg-white">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr
+                            className="border-b border-stone-200 text-left text-[11px] uppercase tracking-[0.14em] text-stone-500"
+                            style={{
+                              fontFamily: "var(--font-geist-mono)",
+                            }}
+                          >
+                            <th className="px-4 py-3 font-medium">
+                              Line Item
+                            </th>
+                            <th className="px-4 py-3 font-medium text-right">
+                              Budgeted
+                            </th>
+                            <th className="px-4 py-3 font-medium text-right">
+                              Actual
+                            </th>
+                            <th className="px-4 py-3 font-medium text-right">
+                              Variance
+                            </th>
+                            <th className="px-4 py-3 font-medium">
+                              Status
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sortedCategories.map((cat) => (
+                            <>
+                              {/* Category header */}
+                              <tr
+                                key={`cat-${cat}`}
+                                className="border-b border-stone-100 bg-[#FAFAF7]"
+                              >
+                                <td
+                                  colSpan={5}
+                                  className="px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500"
+                                >
+                                  {categoryLabel(cat)}
+                                </td>
+                              </tr>
+                              {byCategory[cat].map((item: any) => {
+                                const variance = Number(
+                                  item.variance || 0,
+                                );
+                                const isNeg = variance < 0;
+                                return (
+                                  <tr
+                                    key={item.id}
+                                    className="border-b border-stone-100 last:border-0"
+                                  >
+                                    <td className="px-4 py-2.5 text-stone-800">
+                                      {item.line_item}
+                                    </td>
+                                    <td
+                                      className="px-4 py-2.5 text-right tabular-nums text-stone-600"
+                                      style={{
+                                        fontFamily:
+                                          "var(--font-geist-mono)",
+                                      }}
+                                    >
+                                      {fmtMoney(
+                                        Number(item.budgeted || 0),
+                                      )}
+                                    </td>
+                                    <td
+                                      className="px-4 py-2.5 text-right tabular-nums text-stone-600"
+                                      style={{
+                                        fontFamily:
+                                          "var(--font-geist-mono)",
+                                      }}
+                                    >
+                                      {fmtMoney(
+                                        Number(item.actual || 0),
+                                      )}
+                                    </td>
+                                    <td
+                                      className="px-4 py-2.5 text-right tabular-nums font-medium"
+                                      style={{
+                                        fontFamily:
+                                          "var(--font-geist-mono)",
+                                        color: isNeg ? T.red : T.green,
+                                      }}
+                                    >
+                                      <span className="inline-flex items-center gap-1">
+                                        {isNeg ? (
+                                          <ArrowDownRight className="h-3 w-3" />
+                                        ) : (
+                                          <ArrowUpRight className="h-3 w-3" />
+                                        )}
+                                        {fmtMoney(Math.abs(variance))}
+                                      </span>
+                                    </td>
+                                    <td className="px-4 py-2.5">
+                                      <StatusBadge
+                                        status={item.status}
+                                      />
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                            </>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
+              </Card>
+            </StaggerIn>
+          );
+        })}
+        {projectList.length === 0 && (
+          <Card>
+            <p className="py-12 text-center text-sm text-stone-400">
+              No projects found for pro forma analysis.
+            </p>
+          </Card>
+        )}
+      </section>
     </div>
   );
 }
 
-/* ── Sub-components ── */
+/* ── Sub-components ────────────────────────────────────────────── */
 
-function LineItem({ label, sublabel, value, bold, negative }: { label: string; sublabel?: string; value: string; bold?: boolean; negative?: boolean }) {
+function CostRow({
+  label,
+  value,
+  bold,
+  highlight,
+}: {
+  label: string;
+  value: number;
+  bold?: boolean;
+  highlight?: boolean;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <div>
-        <div className={`text-sm ${bold ? 'font-semibold' : ''}`} style={{ color: INK }}>{label}</div>
-        {sublabel && <div className="text-xs" style={{ color: DIM }}>{sublabel}</div>}
-      </div>
-      <div className={`shrink-0 text-sm tabular-nums ${bold ? 'font-semibold' : 'font-medium'}`} style={{ fontFamily: 'var(--font-geist-mono)', color: negative ? RED : INK }}>{value}</div>
+      <span
+        className={`text-sm ${bold ? "font-semibold text-stone-900" : "text-stone-700"}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`shrink-0 text-sm tabular-nums ${bold ? "font-semibold text-stone-900" : "font-medium"}`}
+        style={{
+          fontFamily: "var(--font-geist-mono)",
+          color: highlight ? T.yellow : undefined,
+        }}
+      >
+        {fmtMoney(value)}
+      </span>
     </div>
   );
 }
 
-function ReturnKpi({ label, value, good }: { label: string; value: string; good?: boolean }) {
-  return (
-    <motion.div whileHover={{ y: -1 }} className="rounded-lg border bg-white p-4" style={{ borderColor: good ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</div>
-      <div className="mt-2 text-xl sm:text-2xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: good ? GREEN : INK }}>{value}</div>
-    </motion.div>
-  );
-}
+function StatusBadge({ status }: { status: string }) {
+  const styles = (() => {
+    switch (status) {
+      case "on_track":
+        return {
+          backgroundColor: "rgba(21,128,61,0.1)",
+          color: T.green,
+        };
+      case "at_risk":
+        return {
+          backgroundColor: "rgba(249,217,106,0.2)",
+          color: "#92700C",
+        };
+      case "over":
+        return {
+          backgroundColor: "rgba(185,28,28,0.1)",
+          color: T.red,
+        };
+      default:
+        return {
+          backgroundColor: "rgba(17,17,17,0.06)",
+          color: T.dim,
+        };
+    }
+  })();
 
-function NumInput({ label, value, onChange }: { label: string; value: number; onChange: (n: number) => void }) {
   return (
-    <div>
-      <label className="mb-1 block text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</label>
-      <input type="number" value={value} onChange={e => onChange(Number(e.target.value) || 0)} className="w-full rounded-md border bg-white px-3 py-2 text-sm tabular-nums focus:outline-none" style={{ borderColor: HAIRLINE, fontFamily: 'var(--font-geist-mono)' }} />
-    </div>
+    <span
+      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium capitalize"
+      style={styles}
+    >
+      {(status || "unknown").replace(/_/g, " ")}
+    </span>
   );
 }

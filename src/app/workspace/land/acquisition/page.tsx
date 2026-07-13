@@ -1,239 +1,330 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  DarkStatCard,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+  StatusDot,
+  YellowBadge,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  DollarSign,
+  TrendingDown,
+  Building2,
+  Target,
+  Gauge,
+} from "lucide-react";
 
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
-
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
+export const dynamic = "force-dynamic";
 
 const fmtMoney = (n: number) =>
-  n.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  n.toLocaleString("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  });
 
-const fmtPct = (n: number) => `${(n * 100).toFixed(1)}%`;
+export default async function AcquisitionPage() {
+  const supabase = createServerClient();
 
-type Scenario = {
-  name: string;
-  label: string;
-  multiplier: number;
-  color: string;
-};
+  const { data: parcels } = await supabase
+    .from("land_parcels")
+    .select("*")
+    .order("opportunity_score", { ascending: false });
 
-const SCENARIOS: Scenario[] = [
-  { name: 'conservative', label: 'Conservative', multiplier: 0.85, color: RED },
-  { name: 'base', label: 'Base Case', multiplier: 1.0, color: BUTTER },
-  { name: 'aggressive', label: 'Aggressive', multiplier: 1.2, color: GREEN },
-];
+  const parcelList = parcels ?? [];
 
-export default function AcquisitionModelerPage() {
-  const [purchasePrice, setPurchasePrice] = useState(450000);
-  const [holdingCostMo, setHoldingCostMo] = useState(2500);
-  const [exitStrategy, setExitStrategy] = useState<'flip' | 'develop' | 'hold'>('flip');
-  const [holdPeriod, setHoldPeriod] = useState(12);
-  const [targetIRR, setTargetIRR] = useState(0.20);
+  // Only parcels with pricing data
+  const pricedParcels = parcelList.filter(
+    (p) => p.asking_price || p.assessed_value
+  );
 
-  const calcs = useMemo(() => {
-    const totalHoldCost = holdingCostMo * holdPeriod;
-    const totalBasis = purchasePrice + totalHoldCost;
-    const breakevenPrice = totalBasis;
-    const targetSalePrice = totalBasis * (1 + targetIRR * (holdPeriod / 12));
-    const projectedProfit = targetSalePrice - totalBasis;
-    const irr = projectedProfit / purchasePrice / (holdPeriod / 12);
+  // KPIs
+  const totalAskingValue = parcelList.reduce(
+    (s, p) => s + Number(p.asking_price || 0),
+    0
+  );
+  const totalAssessedValue = parcelList.reduce(
+    (s, p) => s + Number(p.assessed_value || 0),
+    0
+  );
+  const totalAcreage = parcelList.reduce(
+    (s, p) => s + Number(p.acreage || 0),
+    0
+  );
+  const avgPricePerAcre =
+    totalAcreage > 0 && totalAskingValue > 0
+      ? totalAskingValue / totalAcreage
+      : 0;
 
-    return { totalHoldCost, totalBasis, breakevenPrice, targetSalePrice, projectedProfit, irr };
-  }, [purchasePrice, holdingCostMo, holdPeriod, targetIRR]);
+  // Distressed parcels (distress_score >= 7)
+  const distressedCount = parcelList.filter(
+    (p) => Number(p.distress_score || 0) >= 7
+  ).length;
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, color: INK, fontFamily: 'var(--font-inter)' }}>
-      <header className="border-b bg-white" style={{ borderColor: HAIRLINE }}>
-        <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10 lg:py-10">
-          <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Land . Acquisition</p>
-          <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-            Acquisition <em className="italic">Modeler</em>.
-          </h1>
-          <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-            Model land acquisitions with hold cost analysis, exit scenarios, and IRR projections. Know your numbers before you write the offer.
-          </p>
-        </div>
-      </header>
+    <div
+      className="min-h-screen px-6 py-8 lg:px-10"
+      style={{ backgroundColor: T.cream }}
+    >
+      <PageTitle
+        eyebrow="DEAL MODELING"
+        title={
+          <>
+            Acquisition <em className="italic text-stone-500">Analysis</em>
+          </>
+        }
+        subtitle="Price-to-value analysis, per-acre economics, and distress indicators for every parcel."
+      />
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-10">
-        <div className="grid gap-8 lg:grid-cols-5">
-          {/* Input form */}
-          <div className="lg:col-span-2">
-            <div className="rounded-lg border bg-white p-6" style={{ borderColor: HAIRLINE }}>
-              <div className="text-[10px] uppercase tracking-[0.16em] mb-5" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Deal Inputs</div>
+      {/* KPIs */}
+      <section className="mb-10 grid gap-4 lg:grid-cols-5">
+        <DarkStatCard
+          label="TOTAL ASKING VALUE"
+          value={totalAskingValue > 0 ? fmtMoney(totalAskingValue) : "$0"}
+          subtitle={`${parcelList.length} parcels tracked`}
+          icon={<DollarSign className="h-5 w-5 text-stone-400" />}
+        />
+        <KpiCard
+          label="TOTAL ASSESSED"
+          value={totalAssessedValue > 0 ? fmtMoney(totalAssessedValue) : "$0"}
+          note="County assessed value"
+        />
+        <KpiCard
+          label="AVG $/ACRE"
+          value={avgPricePerAcre > 0 ? fmtMoney(avgPricePerAcre) : "N/A"}
+          note="Based on asking price"
+        />
+        <KpiCard
+          label="DISTRESSED"
+          value={distressedCount}
+          note="Distress score >= 7"
+        />
+        <KpiCard
+          label="TOTAL ACREAGE"
+          value={totalAcreage.toFixed(1)}
+          note="All parcels"
+        />
+      </section>
 
-              <div className="space-y-5">
-                <InputField label="Purchase Price" prefix="$" value={purchasePrice} onChange={setPurchasePrice} />
-                <InputField label="Holding Costs / Month" prefix="$" value={holdingCostMo} onChange={setHoldingCostMo} />
+      {/* Per-Parcel Acquisition Cards */}
+      <SectionLabel>ACQUISITION BREAKDOWN</SectionLabel>
+      <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        {parcelList.map((p, i) => {
+          const asking = Number(p.asking_price || 0);
+          const assessed = Number(p.assessed_value || 0);
+          const acreage = Number(p.acreage || 0);
+          const maxUnits = Number(p.max_units || 0);
 
-                <div>
-                  <label className="block text-[10px] uppercase tracking-[0.14em] mb-1.5" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Exit Strategy</label>
-                  <div className="flex gap-2">
-                    {(['flip', 'develop', 'hold'] as const).map((s) => (
-                      <motion.button
-                        key={s}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                        onClick={() => setExitStrategy(s)}
-                        className="rounded-md border px-3 py-2 text-xs font-medium capitalize"
+          const pricePerAcre = acreage > 0 && asking > 0 ? asking / acreage : 0;
+          const pricePerUnit = maxUnits > 0 && asking > 0 ? asking / maxUnits : 0;
+
+          // Value gap: asking vs assessed
+          const valueGap =
+            assessed > 0 && asking > 0
+              ? ((asking - assessed) / assessed) * 100
+              : null;
+
+          const distressScore = Number(p.distress_score || 0);
+          const opportunityScore = Number(p.opportunity_score || 0);
+          const motivationScore = Number(p.motivation_score || 0);
+
+          return (
+            <StaggerIn key={p.id} index={i}>
+              <Card>
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-medium text-stone-900">
+                      {p.address || "No Address"}
+                    </h3>
+                    <p className="text-xs text-stone-500">
+                      {[p.city, p.county].filter(Boolean).join(", ")}
+                    </p>
+                  </div>
+                  {p.status && <YellowBadge>{p.status}</YellowBadge>}
+                </div>
+
+                {/* Price comparison */}
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <PriceBlock
+                    label="Asking Price"
+                    value={asking > 0 ? fmtMoney(asking) : "N/A"}
+                    accent
+                  />
+                  <PriceBlock
+                    label="Assessed Value"
+                    value={assessed > 0 ? fmtMoney(assessed) : "N/A"}
+                  />
+                </div>
+
+                {/* Value gap bar */}
+                {valueGap !== null && (
+                  <div className="mt-3 rounded-xl bg-stone-100 px-3 py-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] uppercase tracking-wider text-stone-500">
+                        Price vs Assessed
+                      </span>
+                      <span
+                        className="text-sm font-bold tabular-nums"
                         style={{
-                          borderColor: exitStrategy === s ? INK : HAIRLINE,
-                          backgroundColor: exitStrategy === s ? INK : 'white',
-                          color: exitStrategy === s ? CREAM : MID,
+                          color:
+                            valueGap > 20
+                              ? T.red
+                              : valueGap < -10
+                              ? T.green
+                              : "#CA8A04",
+                          fontFamily: "var(--font-geist-mono)",
                         }}
                       >
-                        {s}
-                      </motion.button>
-                    ))}
+                        {valueGap > 0 ? "+" : ""}
+                        {valueGap.toFixed(1)}%
+                      </span>
+                    </div>
                   </div>
-                </div>
-
-                <InputField label="Hold Period (Months)" value={holdPeriod} onChange={setHoldPeriod} />
-
-                <div>
-                  <label className="block text-[10px] uppercase tracking-[0.14em] mb-1.5" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Target IRR</label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="range"
-                      min={0.05}
-                      max={0.50}
-                      step={0.01}
-                      value={targetIRR}
-                      onChange={(e) => setTargetIRR(parseFloat(e.target.value))}
-                      className="flex-1"
-                    />
-                    <span className="text-sm font-medium tabular-nums" style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}>{fmtPct(targetIRR)}</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Results */}
-          <div className="lg:col-span-3 space-y-6">
-            {/* Summary metrics */}
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-              <MetricCard label="Total Hold Cost" value={fmtMoney(calcs.totalHoldCost)} />
-              <MetricCard label="Breakeven Price" value={fmtMoney(calcs.breakevenPrice)} />
-              <MetricCard label="Target Sale Price" value={fmtMoney(calcs.targetSalePrice)} accent />
-              <MetricCard label="Projected Profit" value={fmtMoney(calcs.projectedProfit)} positive={calcs.projectedProfit > 0} />
-              <MetricCard label="Projected IRR" value={fmtPct(calcs.irr)} positive={calcs.irr >= targetIRR} />
-              <MetricCard label="Total Basis" value={fmtMoney(calcs.totalBasis)} />
-            </div>
-
-            {/* Scenario cards */}
-            <div>
-              <h2 className="text-2xl mb-1" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-                Exit <em className="italic">Scenarios</em>
-              </h2>
-              <p className="mb-4 text-xs uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>
-                Three views of your deal based on market conditions
-              </p>
-
-              <div className="grid gap-4 sm:grid-cols-3">
-                {SCENARIOS.map((sc) => {
-                  const salePrice = calcs.targetSalePrice * sc.multiplier;
-                  const profit = salePrice - calcs.totalBasis;
-                  const roi = profit / purchasePrice;
-                  const irr = roi / (holdPeriod / 12);
-
-                  return (
-                    <motion.div
-                      key={sc.name}
-                      whileHover={{ y: -2, boxShadow: '0 4px 12px rgba(0,0,0,0.06)' }}
-                      className="rounded-lg border bg-white p-5"
-                      style={{ borderColor: HAIRLINE, borderTopColor: sc.color, borderTopWidth: 3 }}
-                    >
-                      <div className="flex items-center gap-2 mb-4">
-                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: sc.color }} />
-                        <span className="text-xs font-medium uppercase tracking-wider" style={{ color: MID, fontFamily: 'var(--font-geist-mono)' }}>{sc.label}</span>
-                      </div>
-
-                      <div className="space-y-3">
-                        <ScenarioRow label="Sale Price" value={fmtMoney(salePrice)} />
-                        <ScenarioRow label="Profit" value={fmtMoney(profit)} positive={profit > 0} />
-                        <ScenarioRow label="ROI" value={fmtPct(roi)} positive={roi > 0} />
-                        <ScenarioRow label="Annualized IRR" value={fmtPct(irr)} positive={irr > 0} />
-                      </div>
-
-                      <div className="mt-4 pt-3 border-t" style={{ borderColor: HAIRLINE }}>
-                        <div className="text-xs italic" style={{ fontFamily: 'var(--font-heading)', color: MID }}>
-                          {profit > 0 ? `${fmtMoney(profit)} above breakeven` : `${fmtMoney(Math.abs(profit))} shortfall`}
-                        </div>
-                      </div>
-                    </motion.div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Casa Intelligence */}
-            <div className="rounded-lg border p-5" style={{ borderColor: BUTTER, backgroundColor: '#FEF9E1' }}>
-              <div className="text-[10px] uppercase tracking-[0.16em] mb-1" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Casa Intelligence</div>
-              <p className="text-sm leading-relaxed" style={{ fontFamily: 'var(--font-heading)', color: INK }}>
-                {calcs.irr >= targetIRR ? (
-                  <>This deal meets your <em className="italic">{fmtPct(targetIRR)} target IRR</em> under base-case assumptions. Conservative scenario should be your floor for negotiation. Consider tightening hold period to improve returns.</>
-                ) : (
-                  <>This deal <em className="italic">does not meet</em> your {fmtPct(targetIRR)} target IRR under current assumptions. Negotiate purchase price down to {fmtMoney(purchasePrice * 0.85)} or reduce hold period to improve the spread.</>
                 )}
-              </p>
-            </div>
-          </div>
-        </div>
-      </main>
-    </div>
-  );
-}
 
-function InputField({ label, prefix, value, onChange }: { label: string; prefix?: string; value: number; onChange: (v: number) => void }) {
-  return (
-    <div>
-      <label className="block text-[10px] uppercase tracking-[0.14em] mb-1.5" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</label>
-      <div className="flex items-center rounded-md border bg-white overflow-hidden" style={{ borderColor: HAIRLINE }}>
-        {prefix && <span className="px-3 text-sm" style={{ color: DIM }}>{prefix}</span>}
-        <input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
-          className="w-full px-3 py-2.5 text-sm focus:outline-none"
-          style={{ fontFamily: 'var(--font-geist-mono)', color: INK }}
-        />
+                {/* Unit economics */}
+                <div className="mt-3 grid grid-cols-2 gap-3 border-t border-stone-200 pt-3">
+                  <div>
+                    <span
+                      className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      $/Acre
+                    </span>
+                    <p
+                      className="text-sm font-medium text-stone-900"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      {pricePerAcre > 0 ? fmtMoney(pricePerAcre) : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <span
+                      className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      $/Unit
+                    </span>
+                    <p
+                      className="text-sm font-medium text-stone-900"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      {pricePerUnit > 0 ? fmtMoney(pricePerUnit) : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <span
+                      className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      Acreage
+                    </span>
+                    <p className="text-sm text-stone-900">
+                      {acreage > 0 ? `${acreage.toFixed(2)} ac` : "N/A"}
+                    </p>
+                  </div>
+                  <div>
+                    <span
+                      className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      Max Units
+                    </span>
+                    <p className="text-sm text-stone-900">
+                      {maxUnits > 0 ? maxUnits : "N/A"}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Score gauges */}
+                <div className="mt-3 grid grid-cols-3 gap-2 border-t border-stone-200 pt-3">
+                  <MiniScore label="Opportunity" value={opportunityScore} />
+                  <MiniScore label="Distress" value={distressScore} />
+                  <MiniScore label="Motivation" value={motivationScore} />
+                </div>
+
+                {/* Distress flags */}
+                {(p.tax_delinquent || distressScore >= 7) && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {p.tax_delinquent && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                        <TrendingDown className="h-3 w-3" />
+                        Tax Delinquent
+                      </span>
+                    )}
+                    {distressScore >= 7 && (
+                      <span className="inline-flex items-center gap-1 rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[10px] font-medium text-red-700">
+                        <Target className="h-3 w-3" />
+                        High Distress
+                      </span>
+                    )}
+                  </div>
+                )}
+              </Card>
+            </StaggerIn>
+          );
+        })}
+        {parcelList.length === 0 && (
+          <Card>
+            <p className="py-8 text-center text-sm text-stone-400">
+              No parcels found. Add parcels with pricing data for acquisition analysis.
+            </p>
+          </Card>
+        )}
       </div>
     </div>
   );
 }
 
-function MetricCard({ label, value, accent, positive }: { label: string; value: string; accent?: boolean; positive?: boolean }) {
+function PriceBlock({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: string;
+  accent?: boolean;
+}) {
   return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>{label}</div>
-      <div
-        className="mt-2 text-xl sm:text-2xl tabular-nums"
-        style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: positive !== undefined ? (positive ? GREEN : RED) : INK }}
+    <div
+      className={`rounded-xl px-3 py-2 ${
+        accent ? "bg-amber-50 border border-amber-200" : "bg-stone-100"
+      }`}
+    >
+      <p
+        className="text-[10px] uppercase tracking-[0.14em] text-stone-500"
+        style={{ fontFamily: "var(--font-geist-mono)" }}
+      >
+        {label}
+      </p>
+      <p
+        className="mt-0.5 text-lg font-medium text-stone-900"
+        style={{ fontFamily: "var(--font-geist-mono)" }}
       >
         {value}
-      </div>
+      </p>
     </div>
   );
 }
 
-function ScenarioRow({ label, value, positive }: { label: string; value: string; positive?: boolean }) {
+function MiniScore({ label, value }: { label: string; value: number }) {
+  const color = value >= 8 ? T.green : value >= 5 ? "#CA8A04" : T.red;
   return (
-    <div className="flex items-center justify-between">
-      <span className="text-xs" style={{ color: DIM }}>{label}</span>
-      <span
-        className="text-sm font-medium tabular-nums"
-        style={{ fontFamily: 'var(--font-geist-mono)', color: positive !== undefined ? (positive ? GREEN : RED) : INK }}
+    <div className="text-center">
+      <p className="text-[9px] uppercase tracking-wider text-stone-400">
+        {label}
+      </p>
+      <p
+        className="text-lg font-bold tabular-nums"
+        style={{ color, fontFamily: "var(--font-geist-mono)" }}
       >
         {value}
-      </span>
+      </p>
     </div>
   );
 }

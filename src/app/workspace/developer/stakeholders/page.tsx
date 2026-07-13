@@ -1,202 +1,379 @@
-'use client';
+import { createServerClient } from "@/lib/supabase-server";
+import {
+  Card,
+  KpiCard,
+  PageTitle,
+  SectionLabel,
+  StaggerIn,
+  ListContainer,
+  ListHeader,
+  ListRow,
+  StatusDot,
+  YellowBadge,
+  IconChip,
+} from "@/components/ui/primitives";
+import { T } from "@/components/ui/tokens";
+import {
+  Users,
+  UserCircle,
+  HardHat,
+  Ruler,
+  Building2,
+  MessageSquare,
+  ArrowRight,
+  Clock,
+  FileQuestion,
+} from "lucide-react";
 
-import { useState, useMemo } from 'react';
-import { motion } from 'framer-motion';
+export const dynamic = "force-dynamic";
 
-/* ── Design tokens ─────────────────────────────────────────────── */
-const INK = '#111111';
-const CREAM = '#FAFAF7';
-const HAIRLINE = 'rgba(17,17,17,0.08)';
-const BUTTER = '#F9D96A';
-const DIM = 'rgba(17,17,17,0.45)';
-const MID = 'rgba(17,17,17,0.65)';
-const RED = '#B91C1C';
-const GREEN = '#15803D';
-
-/* ── Types ─────────────────────────────────────────────────────── */
-type RecipientType = 'investor' | 'lender' | 'owner';
-type MessageType = 'monthly report' | 'draw request' | 'milestone update';
-type MessageStatus = 'sent' | 'read' | 'responded';
-
-type Message = {
-  id: string;
-  recipient: string;
-  recipientType: RecipientType;
-  subject: string;
-  type: MessageType;
-  dateSent: string;
-  status: MessageStatus;
+const fmtDate = (iso: string | null) => {
+  if (!iso) return "---";
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
-/* ── Mock data ─────────────────────────────────────────────────── */
-const MOCK_MESSAGES: Message[] = [
-  { id: 'm1', recipient: 'Greystone Capital Partners', recipientType: 'investor', subject: 'Q1 2026 Quarterly Performance Report — Citrus Heights', type: 'monthly report', dateSent: '2026-04-01', status: 'responded' },
-  { id: 'm2', recipient: 'Pacific Western Bank', recipientType: 'lender', subject: 'Draw Request #7 — Vertical Construction Phase 2', type: 'draw request', dateSent: '2026-04-03', status: 'read' },
-  { id: 'm3', recipient: 'Harborview Trust LLC', recipientType: 'investor', subject: 'Foundation Completion — Milestone Achieved', type: 'milestone update', dateSent: '2026-04-05', status: 'sent' },
-  { id: 'm4', recipient: 'Linda Marchetti', recipientType: 'owner', subject: 'March 2026 Monthly Construction Update', type: 'monthly report', dateSent: '2026-03-31', status: 'responded' },
-  { id: 'm5', recipient: 'Apex Equity Fund II', recipientType: 'investor', subject: 'Draw Request #6 — Framing & Rough MEP', type: 'draw request', dateSent: '2026-03-18', status: 'responded' },
-  { id: 'm6', recipient: 'First Republic CRE', recipientType: 'lender', subject: 'February Monthly Report — Vista del Mar', type: 'monthly report', dateSent: '2026-03-02', status: 'read' },
-  { id: 'm7', recipient: 'Summit Ridge Holdings', recipientType: 'investor', subject: 'Entitlement Approval — Milestone Update', type: 'milestone update', dateSent: '2026-03-10', status: 'responded' },
-  { id: 'm8', recipient: 'Pacific Western Bank', recipientType: 'lender', subject: 'Draw Request #5 — Site Work & Utilities', type: 'draw request', dateSent: '2026-02-20', status: 'responded' },
-  { id: 'm9', recipient: 'Greystone Capital Partners', recipientType: 'investor', subject: 'February 2026 Investor Letter', type: 'monthly report', dateSent: '2026-02-28', status: 'read' },
-  { id: 'm10', recipient: 'Linda Marchetti', recipientType: 'owner', subject: 'Topping-Out Ceremony — Milestone Reached', type: 'milestone update', dateSent: '2026-04-07', status: 'sent' },
+type Person = {
+  name: string;
+  role: string;
+  projects: string[];
+};
+
+const ROLE_ICONS: Record<string, typeof UserCircle> = {
+  "Project Manager": UserCircle,
+  Contractor: HardHat,
+  Architect: Ruler,
+  Planner: Building2,
+  Other: Users,
+};
+
+const ROLE_ORDER = [
+  "Project Manager",
+  "Contractor",
+  "Architect",
+  "Planner",
+  "Other",
 ];
 
-const fmtDate = (iso: string) =>
-  new Date(iso + 'T00:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+const RFI_STATUS_STYLE: Record<string, { bg: string; text: string }> = {
+  open:        { bg: "#FEF3C7", text: "#92400E" },
+  in_progress: { bg: "#DBEAFE", text: "#1E40AF" },
+  answered:    { bg: "#D1FAE5", text: "#065F46" },
+  closed:      { bg: "#F3F4F6", text: "#374151" },
+};
 
-/* ── Page ──────────────────────────────────────────────────────── */
-export default function StakeholderCommunicationsPage() {
-  const [typeFilter, setTypeFilter] = useState<'all' | MessageType>('all');
-  const [showCompose, setShowCompose] = useState(false);
+const fmtStatus = (s: string) =>
+  s
+    .split("_")
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 
-  const rows = useMemo(() => {
-    let r = [...MOCK_MESSAGES];
-    if (typeFilter !== 'all') r = r.filter((m) => m.type === typeFilter);
-    r.sort((a, b) => new Date(b.dateSent).getTime() - new Date(a.dateSent).getTime());
-    return r;
-  }, [typeFilter]);
+export default async function StakeholdersPage() {
+  const supabase = createServerClient();
 
-  const sentThisMonth = MOCK_MESSAGES.filter((m) => m.dateSent >= '2026-04-01').length;
-  const pendingDraws = MOCK_MESSAGES.filter((m) => m.type === 'draw request' && m.status !== 'responded').length;
-  const investorCount = new Set(MOCK_MESSAGES.filter((m) => m.recipientType === 'investor').map((m) => m.recipient)).size;
+  const [{ data: devProjects }, { data: rfis }, { data: entitlements }] =
+    await Promise.all([
+      supabase.from("dev_projects").select("*"),
+      supabase.from("rfis").select("*").order("created_at", { ascending: false }),
+      supabase.from("entitlements").select("id, project_id, assigned_planner, planner_email, planner_phone"),
+    ]);
+
+  const projects = devProjects ?? [];
+  const rfiList = rfis ?? [];
+  const entList = entitlements ?? [];
+
+  // Build project name lookup
+  const projectMap = new Map<string, string>();
+  for (const p of projects) {
+    projectMap.set(p.id, p.name);
+  }
+
+  // Extract people from all sources
+  const peopleMap = new Map<string, Person>();
+
+  const addPerson = (name: string | null, role: string, projectId: string | null) => {
+    if (!name || name.trim() === "") return;
+    const trimmed = name.trim();
+    const key = `${trimmed}::${role}`;
+    const projName = projectId ? projectMap.get(projectId) ?? "Unknown" : "---";
+    if (peopleMap.has(key)) {
+      const existing = peopleMap.get(key)!;
+      if (!existing.projects.includes(projName)) {
+        existing.projects.push(projName);
+      }
+    } else {
+      peopleMap.set(key, { name: trimmed, role, projects: [projName] });
+    }
+  };
+
+  // From dev_projects
+  for (const p of projects) {
+    addPerson(p.project_manager, "Project Manager", p.id);
+    addPerson(p.general_contractor, "Contractor", p.id);
+    addPerson(p.architect, "Architect", p.id);
+  }
+
+  // From entitlements
+  for (const e of entList) {
+    addPerson(e.assigned_planner, "Planner", e.project_id);
+  }
+
+  // From RFIs - submitters and assignees
+  for (const r of rfiList) {
+    if (r.submitted_by) addPerson(r.submitted_by, "Other", r.project_id);
+    if (r.assigned_to) addPerson(r.assigned_to, "Other", r.project_id);
+  }
+
+  const allPeople = Array.from(peopleMap.values());
+
+  // Group by role
+  const byRole = new Map<string, Person[]>();
+  for (const person of allPeople) {
+    if (!byRole.has(person.role)) byRole.set(person.role, []);
+    byRole.get(person.role)!.push(person);
+  }
+
+  // KPIs
+  const totalPeople = allPeople.length;
+  const totalProjects = projects.length;
+  const totalRfis = rfiList.length;
+  const roleCount = byRole.size;
+
+  // Recent RFIs as communication timeline (top 15)
+  const recentRfis = rfiList.slice(0, 15);
+
+  if (totalPeople === 0 && rfiList.length === 0) {
+    return (
+      <div
+        className="min-h-screen px-6 py-8 lg:px-10"
+        style={{ backgroundColor: T.cream, color: T.ink }}
+      >
+        <PageTitle
+          eyebrow="STAKEHOLDERS"
+          title={
+            <>
+              Project <em className="italic text-stone-500">Team</em>.
+            </>
+          }
+        />
+        <Card>
+          <div className="py-16 text-center">
+            <Users className="mx-auto h-10 w-10 text-stone-300" />
+            <p className="mt-4 text-sm text-stone-500">
+              No stakeholders found. Add team members to your projects to
+              populate this directory.
+            </p>
+          </div>
+        </Card>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: CREAM, color: INK, fontFamily: 'var(--font-inter)' }}>
-      {/* Header */}
-      <header style={{ borderBottom: `1px solid ${HAIRLINE}`, backgroundColor: '#fff' }}>
-        <div className="mx-auto max-w-7xl px-6 py-8 lg:px-10 lg:py-10">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <div>
-              <p className="mb-2 text-[11px] uppercase tracking-[0.18em]" style={{ color: DIM, fontFamily: 'var(--font-geist-mono)' }}>Developer &middot; Stakeholders</p>
-              <h1 className="text-4xl tracking-tight sm:text-5xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>
-                Stakeholder <em className="italic">Communications</em>.
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm" style={{ color: MID }}>
-                Centralized log of investor, lender, and owner communications. Every draw request, report, and milestone in one view.
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <motion.button whileHover={{ scale: 1.03 }} className="rounded-md border px-3 py-2 text-xs font-medium transition-colors" style={{ borderColor: HAIRLINE, color: MID }}>Export</motion.button>
-              <motion.button whileHover={{ scale: 1.03 }} onClick={() => setShowCompose(!showCompose)} className="rounded-md border border-transparent px-3 py-2 text-xs font-medium" style={{ backgroundColor: BUTTER, color: INK }}>+ Compose</motion.button>
-            </div>
-          </div>
+    <div
+      className="min-h-screen px-6 py-8 lg:px-10"
+      style={{ backgroundColor: T.cream, color: T.ink }}
+    >
+      <PageTitle
+        eyebrow="STAKEHOLDERS"
+        title={
+          <>
+            Project <em className="italic text-stone-500">Team</em>.
+          </>
+        }
+        subtitle={`${totalPeople} team members across ${totalProjects} projects.`}
+      />
 
-          {/* KPIs */}
-          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            <Kpi label="Sent this month" value={String(sentThisMonth)} />
-            <Kpi label="Avg response time" value="1.4 days" hint="Across all recipients" />
-            <Kpi label="Pending draws" value={String(pendingDraws)} accent={pendingDraws > 0} />
-            <Kpi label="Investor count" value={String(investorCount)} />
-          </div>
+      {/* KPI Row */}
+      <section className="mb-10 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <KpiCard label="TEAM MEMBERS" value={totalPeople} />
+        <KpiCard
+          label="ROLES"
+          value={roleCount}
+          note={ROLE_ORDER.filter((r) => byRole.has(r))
+            .slice(0, 3)
+            .join(", ")}
+        />
+        <KpiCard label="PROJECTS" value={totalProjects} />
+        <KpiCard
+          label="TOTAL RFIS"
+          value={totalRfis}
+          note="Communication log"
+        />
+      </section>
+
+      {/* Stakeholder directory by role */}
+      <div className="grid gap-8 lg:grid-cols-2">
+        <div className="space-y-6">
+          <SectionLabel>TEAM DIRECTORY</SectionLabel>
+
+          {ROLE_ORDER.filter((role) => byRole.has(role)).map((role, ri) => {
+            const people = byRole.get(role)!;
+            const RoleIcon = ROLE_ICONS[role] ?? Users;
+
+            return (
+              <StaggerIn key={role} index={ri}>
+                <div className="mb-2">
+                  <div className="mb-3 flex items-center gap-2">
+                    <RoleIcon className="h-4 w-4 text-stone-400" />
+                    <span
+                      className="text-xs uppercase tracking-[0.18em] text-stone-500"
+                      style={{ fontFamily: "var(--font-geist-mono)" }}
+                    >
+                      {role}s ({people.length})
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {people.map((person, pi) => (
+                      <Card key={`${person.name}-${pi}`} padded={false}>
+                        <div className="p-5">
+                          <div className="flex items-start gap-3">
+                            <div
+                              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold"
+                              style={{
+                                backgroundColor: "rgba(249,217,106,0.25)",
+                                color: "#92700C",
+                              }}
+                            >
+                              {person.name
+                                .split(" ")
+                                .map((w) => w[0])
+                                .slice(0, 2)
+                                .join("")
+                                .toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="truncate text-sm font-medium text-stone-900">
+                                {person.name}
+                              </h4>
+                              <p className="text-xs text-stone-500">{role}</p>
+                            </div>
+                          </div>
+                          {person.projects.length > 0 && (
+                            <div className="mt-3 flex flex-wrap gap-1">
+                              {person.projects.map((proj, j) => (
+                                <span
+                                  key={j}
+                                  className="rounded-full bg-stone-100 px-2 py-0.5 text-[10px] font-medium text-stone-600"
+                                >
+                                  {proj}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </StaggerIn>
+            );
+          })}
         </div>
-      </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8 lg:px-10">
-        {/* Compose form */}
-        {showCompose && (
-          <section className="mb-8 rounded-lg border bg-white p-6" style={{ borderColor: HAIRLINE }}>
-            <h2 className="mb-4 text-lg" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500 }}>New <em className="italic">message</em></h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>Recipient</label>
-                <input className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: HAIRLINE }} placeholder="Greystone Capital Partners" />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>Recipient type</label>
-                <select className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: HAIRLINE }}>
-                  <option>Investor</option>
-                  <option>Lender</option>
-                  <option>Owner</option>
-                </select>
-              </div>
-              <div className="sm:col-span-2">
-                <label className="mb-1 block text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>Subject</label>
-                <input className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: HAIRLINE }} placeholder="Q1 2026 Performance Report" />
-              </div>
-              <div>
-                <label className="mb-1 block text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>Type</label>
-                <select className="w-full rounded-md border px-3 py-2 text-sm" style={{ borderColor: HAIRLINE }}>
-                  <option>Monthly Report</option>
-                  <option>Draw Request</option>
-                  <option>Milestone Update</option>
-                </select>
-              </div>
-              <div className="flex items-end">
-                <motion.button whileHover={{ scale: 1.03 }} className="rounded-md px-4 py-2 text-sm font-medium" style={{ backgroundColor: BUTTER, color: INK }}>Send message</motion.button>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* Communication log - RFI timeline */}
+        <div>
+          <SectionLabel>COMMUNICATION LOG</SectionLabel>
+          <p className="mt-1 mb-4 text-xs text-stone-500">
+            Recent RFIs showing who communicated with whom.
+          </p>
 
-        {/* Filters */}
-        <div className="mb-5 flex flex-wrap items-center gap-2">
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value as any)} className="rounded-md border bg-white px-3 py-2 text-sm" style={{ borderColor: HAIRLINE, color: MID }}>
-            <option value="all">All types</option>
-            <option value="monthly report">Monthly Report</option>
-            <option value="draw request">Draw Request</option>
-            <option value="milestone update">Milestone Update</option>
-          </select>
+          {recentRfis.length > 0 ? (
+            <ListContainer>
+              <ListHeader label="RECENT RFIS" />
+              <div className="px-4 pb-4">
+                {recentRfis.map((rfi, i) => {
+                  const st =
+                    RFI_STATUS_STYLE[rfi.status] ?? RFI_STATUS_STYLE.open;
+                  const projName =
+                    projectMap.get(rfi.project_id) ?? "Unknown Project";
+
+                  return (
+                    <ListRow key={rfi.id} last={i === recentRfis.length - 1}>
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
+                        <IconChip>
+                          <FileQuestion className="h-3.5 w-3.5 text-stone-700" />
+                        </IconChip>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span
+                              className="text-[10px] font-bold uppercase tracking-wider text-stone-400"
+                              style={{
+                                fontFamily: "var(--font-geist-mono)",
+                              }}
+                            >
+                              RFI-{rfi.rfi_number ?? rfi.id?.slice(0, 4)}
+                            </span>
+                            {rfi.priority && (
+                              <span
+                                className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${
+                                  rfi.priority === "high" || rfi.priority === "critical"
+                                    ? "bg-red-50 text-red-700"
+                                    : rfi.priority === "medium"
+                                      ? "bg-amber-50 text-amber-700"
+                                      : "bg-stone-100 text-stone-500"
+                                }`}
+                              >
+                                {rfi.priority}
+                              </span>
+                            )}
+                          </div>
+                          <p className="mt-0.5 truncate text-sm font-medium text-stone-900">
+                            {rfi.title}
+                          </p>
+                          <div className="mt-1 flex items-center gap-1 text-[11px] text-stone-500">
+                            {rfi.submitted_by && (
+                              <>
+                                <span className="font-medium text-stone-700">
+                                  {rfi.submitted_by}
+                                </span>
+                                <ArrowRight className="h-2.5 w-2.5" />
+                              </>
+                            )}
+                            {rfi.assigned_to && (
+                              <span className="font-medium text-stone-700">
+                                {rfi.assigned_to}
+                              </span>
+                            )}
+                          </div>
+                          <div className="mt-1 flex items-center gap-2 text-[10px] text-stone-400">
+                            <span>{projName}</span>
+                            {rfi.created_at && (
+                              <>
+                                <span>·</span>
+                                <span>{fmtDate(rfi.created_at)}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <span
+                        className="shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium"
+                        style={{ backgroundColor: st.bg, color: st.text }}
+                      >
+                        {fmtStatus(rfi.status ?? "open")}
+                      </span>
+                    </ListRow>
+                  );
+                })}
+              </div>
+            </ListContainer>
+          ) : (
+            <Card>
+              <div className="py-8 text-center">
+                <MessageSquare className="mx-auto h-8 w-8 text-stone-300" />
+                <p className="mt-3 text-sm text-stone-500">
+                  No RFIs found. Communication log will appear here.
+                </p>
+              </div>
+            </Card>
+          )}
         </div>
-
-        {/* Table */}
-        <div className="overflow-hidden rounded-lg border bg-white" style={{ borderColor: HAIRLINE }}>
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b text-left text-[11px] uppercase tracking-[0.14em]" style={{ borderColor: HAIRLINE, color: DIM, backgroundColor: CREAM }}>
-                <th className="px-4 py-3 font-medium">Recipient</th>
-                <th className="px-4 py-3 font-medium">Subject</th>
-                <th className="px-4 py-3 font-medium">Type</th>
-                <th className="px-4 py-3 font-medium">Date sent</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((m) => (
-                <motion.tr key={m.id} whileHover={{ backgroundColor: '#FDF8E8' }} className="border-b last:border-0 cursor-default" style={{ borderColor: HAIRLINE }}>
-                  <td className="px-4 py-3">
-                    <div className="font-medium" style={{ color: INK }}>{m.recipient}</div>
-                    <div className="text-xs capitalize" style={{ color: DIM }}>{m.recipientType}</div>
-                  </td>
-                  <td className="px-4 py-3" style={{ color: MID }}>{m.subject}</td>
-                  <td className="px-4 py-3"><TypePill type={m.type} /></td>
-                  <td className="px-4 py-3" style={{ color: MID }}>{fmtDate(m.dateSent)}</td>
-                  <td className="px-4 py-3"><StatusPill status={m.status} /></td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </main>
+      </div>
     </div>
   );
-}
-
-/* ── Components ────────────────────────────────────────────────── */
-function Kpi({ label, value, hint, accent }: { label: string; value: string; hint?: string; accent?: boolean }) {
-  return (
-    <div className="rounded-lg border bg-white p-4" style={{ borderColor: accent ? BUTTER : HAIRLINE }}>
-      <div className="text-[10px] uppercase tracking-[0.16em]" style={{ color: DIM }}>{label}</div>
-      <div className="mt-2 text-2xl sm:text-3xl" style={{ fontFamily: 'var(--font-heading)', fontWeight: 500, color: INK }}>{value}</div>
-      {hint && <div className="mt-1 text-xs" style={{ color: DIM }}>{hint}</div>}
-    </div>
-  );
-}
-
-function TypePill({ type }: { type: MessageType }) {
-  const map: Record<MessageType, string> = {
-    'monthly report': 'bg-blue-50 text-blue-800 border-blue-200',
-    'draw request': 'bg-amber-50 text-amber-800 border-amber-200',
-    'milestone update': 'bg-emerald-50 text-emerald-800 border-emerald-200',
-  };
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${map[type]}`}>{type}</span>;
-}
-
-function StatusPill({ status }: { status: MessageStatus }) {
-  const map: Record<MessageStatus, { cls: string }> = {
-    sent: { cls: 'bg-neutral-50 text-neutral-700 border-neutral-200' },
-    read: { cls: 'bg-blue-50 text-blue-800 border-blue-200' },
-    responded: { cls: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
-  };
-  return <span className={`inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium capitalize ${map[status].cls}`}>{status}</span>;
 }
