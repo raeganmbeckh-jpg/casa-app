@@ -22,6 +22,13 @@
 - One dark statement card per view with a live computed number.
 - Font families: `var(--font-heading)` for titles, `var(--font-geist-mono)` for labels/numbers, `var(--font-inter)` for body.
 
+## Data Law
+
+- `verify:data` must pass before any task is done. A source silently returning nothing is a FAIL, not a shrug.
+- The unified property API must return data from ATTOM, Rentcast, and Google for any valid address.
+- Critical fields (year_built, beds, sqft_living, market_value_avm, rent_estimate) must have non-null values with confidence > 0.
+- Supabase tables backing each workspace must have rows — an empty table means a workspace lost its data source.
+
 ## Work Style
 
 - Work in SMALL batches — one page or one feature per task, never a multi-workspace sweep in one shot.

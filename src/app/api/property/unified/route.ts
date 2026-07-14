@@ -28,6 +28,11 @@ interface UnifiedField {
   conflicts?: { source: Source; value: string | number | boolean | null }[]
 }
 
+interface SourceError {
+  status: number | null
+  reason: string
+}
+
 interface UnifiedResponse {
   address: string
   normalized_address: string | null
@@ -36,6 +41,7 @@ interface UnifiedResponse {
   fields: Record<string, UnifiedField>
   sources_responded: string[]
   sources_failed: string[]
+  sources_errors: Record<string, SourceError>
   fetched_at: string
   cache_ttl: number
   cached: boolean
@@ -78,6 +84,19 @@ async function fetchAttom(address1: string, address2: string) {
     fetch(`${base}/property/expandedprofile?${qs}`, { headers }),
     fetch(`${base}/attomavm/detail?${qs}`, { headers }),
   ])
+
+  // Capture HTTP status for error reporting
+  const profileStatus = profileRes.status === 'fulfilled' ? profileRes.value.status : 0
+  const avmStatus = avmRes.status === 'fulfilled' ? avmRes.value.status : 0
+
+  // Auth failures — propagate as error info
+  if (profileStatus === 401 || profileStatus === 403 || avmStatus === 401 || avmStatus === 403) {
+    const errStatus = profileStatus === 401 || profileStatus === 403 ? profileStatus : avmStatus
+    throw new Error(`attom_auth_${errStatus}`)
+  }
+  if (profileStatus >= 500 || avmStatus >= 500) {
+    throw new Error(`attom_server_${Math.max(profileStatus, avmStatus)}`)
+  }
 
   const profile =
     profileRes.status === 'fulfilled' && profileRes.value.ok
@@ -159,12 +178,23 @@ async function fetchRentcast(address: string) {
 }
 
 async function fetchGoogle(address: string) {
-  const key = process.env.GOOGLE_MAPS_API_KEY!
+  // Prefer server key (no referrer restriction) over client key
+  const key = process.env.GOOGLE_MAPS_SERVER_KEY ?? process.env.GOOGLE_MAPS_API_KEY!
   const res = await fetch(
     `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${key}`,
   )
-  if (!res.ok) return null
+  if (!res.ok) {
+    throw new Error(`google_http_${res.status}`)
+  }
   const json = await res.json()
+  // Google returns 200 with error_message for key restrictions
+  if (json.error_message) {
+    const isRefRestriction = json.error_message.includes('referer restrictions') || json.error_message.includes('API key')
+    throw new Error(isRefRestriction ? 'google_referrer_restricted' : `google_api_error: ${json.error_message.slice(0, 80)}`)
+  }
+  if (json.status === 'REQUEST_DENIED') {
+    throw new Error(`google_denied: ${json.error_message || 'REQUEST_DENIED'}`)
+  }
   const r = json?.results?.[0]
   if (!r) return null
   return {
@@ -331,6 +361,22 @@ export async function POST(request: NextRequest) {
       .filter(Boolean) as string[]
     const sources_failed = sourceNames.filter((s) => !sources_responded.includes(s))
 
+    // Build per-source error details
+    const sources_errors: Record<string, SourceError> = {}
+    results.forEach((r, i) => {
+      const name = sourceNames[i]
+      if (r.status === 'rejected') {
+        const msg = r.reason?.message || String(r.reason)
+        const statusMatch = msg.match(/(\d{3})/)
+        sources_errors[name] = {
+          status: statusMatch ? parseInt(statusMatch[1]) : null,
+          reason: msg,
+        }
+      } else if (!r.value.data) {
+        sources_errors[name] = { status: 200, reason: 'no_data_for_address' }
+      }
+    })
+
     // Merge every field with attribution + confidence
     const fields: Record<string, UnifiedField> = {}
     for (const k of FIELD_KEYS) {
@@ -369,6 +415,7 @@ export async function POST(request: NextRequest) {
       fields,
       sources_responded,
       sources_failed,
+      sources_errors,
       fetched_at: new Date().toISOString(),
       cache_ttl: CACHE_TTL_SECONDS,
       cached: false,

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "next lint",
     "verify": "node scripts/verify.mjs",
-    "ship": "npm run build && npx vercel --prod && npm run verify"
+    "verify:data": "node scripts/verify-data.mjs",
+    "ship": "npm run build && npx vercel --prod && npm run verify && npm run verify:data"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.86.1",
